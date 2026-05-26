@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { writeFile } from 'node:fs/promises';
+import { mkdir, readdir, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
@@ -13,7 +13,13 @@ import type { AiImageProvider } from './ai-image-provider';
 const execFileAsync = promisify(execFile);
 
 const PYTHON_BIN = 'python3';
-const PYTHON_SCRIPT = join(__dirname, '..', '..', 'python', 'process_image.py');
+const PYTHON_SCRIPT = join(
+  __dirname,
+  '..',
+  '..',
+  'python',
+  'split_stickers.py',
+);
 
 export type StickerStage = 'ai' | 'post';
 export type StickerProgress = (stage: StickerStage) => Promise<void> | void;
@@ -27,26 +33,28 @@ export class ImageProcessingService {
     private readonly aiProvider: AiImageProvider,
   ) {}
 
-  async generateSticker(
+  async generateStickers(
     sourceImage: Buffer,
     prompt: string,
     onProgress?: StickerProgress,
-  ): Promise<string> {
+  ): Promise<string[]> {
     await onProgress?.('ai');
     const aiOutput = await this.aiProvider.generate(sourceImage, prompt);
 
     const jobId = randomUUID();
     const aiInputPath = join(tmpdir(), `sticker_${jobId}_ai.png`);
-    const finalOutputPath = join(tmpdir(), `sticker_${jobId}.webp`);
+    const outputDir = join(tmpdir(), `stickers_${jobId}`);
 
     await writeFile(aiInputPath, aiOutput);
+    await mkdir(outputDir, { recursive: true });
 
     await onProgress?.('post');
     try {
       const { stderr } = await execFileAsync(PYTHON_BIN, [
         PYTHON_SCRIPT,
         aiInputPath,
-        finalOutputPath,
+        '-o',
+        outputDir,
       ]);
       if (stderr) {
         this.logger.warn(`python stderr: ${stderr}`);
@@ -56,7 +64,15 @@ export class ImageProcessingService {
       throw new Error(`python image processing failed: ${message}`);
     }
 
-    this.logger.log(`sticker ready at ${finalOutputPath}`);
-    return finalOutputPath;
+    const entries = await readdir(outputDir);
+    const stickerPaths = entries
+      .filter((name) => name.endsWith('.webp'))
+      .sort()
+      .map((name) => join(outputDir, name));
+
+    this.logger.log(
+      `sticker pack ready: ${stickerPaths.length} files in ${outputDir}`,
+    );
+    return stickerPaths;
   }
 }

@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { Injectable, Logger } from '@nestjs/common';
 import { AiImageProvider } from './ai-image-provider';
 
-const STUB_IMAGE_PATH = join(__dirname, '..', '..', 'public', 'test.png');
+const STUB_IMAGE_PATH = join(__dirname, '..', '..', 'public', 'testimage.png');
 
 @Injectable()
 export class StubAiImageProvider implements AiImageProvider {

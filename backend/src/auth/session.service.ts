@@ -16,7 +16,10 @@ export interface SessionUser {
 export class SessionService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async issue(userId: string, issuedVia: Channel): Promise<{ sid: string; expiresAt: Date }> {
+  async issue(
+    userId: string,
+    issuedVia: Channel,
+  ): Promise<{ sid: string; expiresAt: Date }> {
     const sid = randomBytes(SESSION_BYTES).toString('base64url');
     const expiresAt = new Date(Date.now() + SESSION_TTL_MS);
     await this.prisma.session.create({

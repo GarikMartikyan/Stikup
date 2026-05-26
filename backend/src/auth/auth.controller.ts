@@ -44,8 +44,15 @@ export class AuthController {
       consumed.issuedVia,
     );
 
-    res.cookie(this.config.sessionCookieName, sid, this.cookieOptions(expiresAt));
-    res.redirect(302, `${this.config.publicAppUrl}${this.config.postLoginPath}`);
+    res.cookie(
+      this.config.sessionCookieName,
+      sid,
+      this.cookieOptions(expiresAt),
+    );
+    res.redirect(
+      302,
+      `${this.config.publicAppUrl}${this.config.postLoginPath}`,
+    );
   }
 
   @Get('me')
@@ -60,7 +67,10 @@ export class AuthController {
   async logout(@Req() req: Request, @Res() res: Response): Promise<void> {
     const sid = req.cookies?.[this.config.sessionCookieName];
     if (sid) await this.sessions.revoke(sid);
-    res.clearCookie(this.config.sessionCookieName, this.cookieOptions(new Date(0)));
+    res.clearCookie(
+      this.config.sessionCookieName,
+      this.cookieOptions(new Date(0)),
+    );
     res.status(204).send();
   }
 

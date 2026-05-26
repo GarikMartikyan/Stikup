@@ -1,0 +1,70 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Channel {
+  telegram
+  whatsapp
+}
+
+model User {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  identities   ChannelIdentity[]
+  loginTokens  LoginToken[]
+  sessions     Session[]
+
+  @@map("users")
+}
+
+model ChannelIdentity {
+  id            String   @id @default(uuid()) @db.Uuid
+  userId        String   @map("user_id") @db.Uuid
+  channel       Channel
+  channelUserId String   @map("channel_user_id")
+  displayName   String?  @map("display_name")
+  username      String?
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([channel, channelUserId])
+  @@index([userId])
+  @@map("channel_identities")
+}
+
+model LoginToken {
+  token       String    @id
+  userId      String    @map("user_id") @db.Uuid
+  issuedVia   Channel   @map("issued_via")
+  expiresAt   DateTime  @map("expires_at") @db.Timestamptz(6)
+  consumedAt  DateTime? @map("consumed_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+  @@index([userId])
+  @@map("login_tokens")
+}
+
+model Session {
+  id         String    @id
+  userId     String    @map("user_id") @db.Uuid
+  issuedVia  Channel   @map("issued_via")
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz(6)
+  revokedAt  DateTime? @map("revoked_at") @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}

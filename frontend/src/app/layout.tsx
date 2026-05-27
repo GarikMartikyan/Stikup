@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Bricolage_Grotesque } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale } from "next-intl/server";
+import Script from "next/script";
+import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -14,11 +16,25 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const bricolage = Bricolage_Grotesque({
+  variable: "--font-bricolage",
+  subsets: ["latin"],
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   title: "Stikup — A sticker pack of YOU, in Telegram",
   description:
-    "Turn one selfie into a personalized Telegram sticker pack in under 3 minutes. Free 4-sticker preview, one-time unlock for the full pack.",
+    "Turn one selfie into a personalized Telegram sticker pack in under 3 minutes. 3 free stickers, one-time unlock for the full 12-sticker pack.",
 };
+
+const noFlashThemeScript = `
+(function(){try{
+  var t=localStorage.getItem("stikup:theme");
+  var pd=window.matchMedia("(prefers-color-scheme: dark)").matches;
+  if(t==="dark"||(!t&&pd))document.documentElement.classList.add("dark");
+}catch(e){}})();
+`;
 
 export default async function RootLayout({
   children,
@@ -30,10 +46,18 @@ export default async function RootLayout({
   return (
     <html
       lang={locale}
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${bricolage.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
+      <head>
+        <Script id="no-flash-theme" strategy="beforeInteractive">
+          {noFlashThemeScript}
+        </Script>
+      </head>
       <body className="min-h-full flex flex-col">
-        <NextIntlClientProvider>{children}</NextIntlClientProvider>
+        <NextIntlClientProvider>
+          <ThemeProvider>{children}</ThemeProvider>
+        </NextIntlClientProvider>
       </body>
     </html>
   );

@@ -1,0 +1,41 @@
+import {
+  Controller,
+  Get,
+  Param,
+  Post,
+  Req,
+  UnauthorizedException,
+} from '@nestjs/common';
+import type { Request } from 'express';
+
+import { SessionService } from '../auth/session.service';
+import { AppConfigService } from '../config/app-config.service';
+import { PackService } from './pack.service';
+
+@Controller('packs')
+export class PackController {
+  constructor(
+    private readonly sessions: SessionService,
+    private readonly packs: PackService,
+    private readonly config: AppConfigService,
+  ) {}
+
+  @Get('bot-url')
+  async botUrl(): Promise<{ botUrl: string }> {
+    const botUrl = await this.packs.getBotUrl();
+    return { botUrl };
+  }
+
+  @Post(':packId/claim-free')
+  async claimFree(
+    @Param('packId') _packId: string,
+    @Req() req: Request,
+  ): Promise<{ delivered: boolean; botUrl: string }> {
+    const cookies = (req.cookies ?? {}) as Record<string, string | undefined>;
+    const sid = cookies[this.config.sessionCookieName];
+    const session = await this.sessions.resolve(sid);
+    if (!session) throw new UnauthorizedException();
+
+    return this.packs.claimFreeStickers(session.userId);
+  }
+}

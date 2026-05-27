@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { mkdir, readdir, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
@@ -37,7 +37,7 @@ export class ImageProcessingService {
     sourceImage: Buffer,
     prompt: string,
     onProgress?: StickerProgress,
-  ): Promise<string[]> {
+  ): Promise<{ stickerPaths: string[]; cleanup: () => Promise<void> }> {
     await onProgress?.('ai');
     const aiOutput = await this.aiProvider.generate(sourceImage, prompt);
 
@@ -73,6 +73,30 @@ export class ImageProcessingService {
     this.logger.log(
       `sticker pack ready: ${stickerPaths.length} files in ${outputDir}`,
     );
-    return stickerPaths;
+
+    // Caller owns cleanup — the returned sticker paths are read after this
+    // function resolves, so deleting them here would race the consumer.
+    const cleanup = async (): Promise<void> => {
+      try {
+        await rm(outputDir, { recursive: true, force: true });
+      } catch (err) {
+        this.logger.debug(
+          `failed to remove outputDir ${outputDir}: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
+      }
+      try {
+        await rm(aiInputPath, { force: true });
+      } catch (err) {
+        this.logger.debug(
+          `failed to remove aiInputPath ${aiInputPath}: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
+      }
+    };
+
+    return { stickerPaths, cleanup };
   }
 }

@@ -26,7 +26,16 @@ export class TelegramUpdate implements OnModuleInit {
     await this.bot.telegram.setMyCommands([
       { command: 'start', description: 'Log in to the app' },
       { command: 'receive', description: 'Generate a sticker pack' },
+      { command: 'open', description: 'Open the frontend' },
     ]);
+  }
+
+  @Command('open')
+  async onOpen(@Ctx() ctx: Context): Promise<void> {
+    const url = this.appConfig.publicAppUrl;
+    await ctx.reply(url, {
+      reply_markup: { inline_keyboard: [[{ text: 'Open', url }]] },
+    });
   }
 
   @Start()
@@ -78,23 +87,32 @@ export class TelegramUpdate implements OnModuleInit {
     }, 800);
 
     try {
-      const stickerPaths = await this.imageProcessing.generateStickers(
-        Buffer.alloc(0),
-        'sticker pack',
-      );
+      const { stickerPaths, cleanup } =
+        await this.imageProcessing.generateStickers(
+          Buffer.alloc(0),
+          'sticker pack',
+        );
 
-      clearInterval(tick);
-      await ctx.telegram
-        .deleteMessage(status.chat.id, status.message_id)
-        .catch(() => undefined);
+      try {
+        clearInterval(tick);
+        await ctx.telegram
+          .deleteMessage(status.chat.id, status.message_id)
+          .catch(() => undefined);
 
-      if (stickerPaths.length === 0) {
-        await ctx.reply('No stickers were produced.');
-        return;
-      }
+        if (stickerPaths.length === 0) {
+          await ctx.reply('No stickers were produced.');
+          return;
+        }
 
-      for (const stickerPath of stickerPaths) {
-        await ctx.replyWithSticker(Input.fromLocalFile(stickerPath));
+        for (const stickerPath of stickerPaths) {
+          await ctx.replyWithSticker(Input.fromLocalFile(stickerPath));
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        this.logger.error(`/receive failed: ${message}`);
+        await ctx.reply(`Failed to generate stickers: ${message}`);
+      } finally {
+        await cleanup();
       }
     } catch (err) {
       clearInterval(tick);

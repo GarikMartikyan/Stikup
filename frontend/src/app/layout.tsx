@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Bricolage_Grotesque } from "next/font/google";
-import { NextIntlClientProvider } from "next-intl";
-import { getLocale } from "next-intl/server";
 import Script from "next/script";
 import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
@@ -36,16 +34,14 @@ const noFlashThemeScript = `
 }catch(e){}})();
 `;
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const locale = await getLocale();
-
   return (
     <html
-      lang={locale}
+      lang="en"
       className={`${geistSans.variable} ${geistMono.variable} ${bricolage.variable} h-full antialiased`}
       suppressHydrationWarning
     >
@@ -55,9 +51,7 @@ export default async function RootLayout({
         </Script>
       </head>
       <body className="min-h-full flex flex-col">
-        <NextIntlClientProvider>
-          <ThemeProvider>{children}</ThemeProvider>
-        </NextIntlClientProvider>
+        <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
   );

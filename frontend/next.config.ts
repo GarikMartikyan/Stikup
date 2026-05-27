@@ -1,5 +1,4 @@
 import type {NextConfig} from "next";
-import createNextIntlPlugin from "next-intl/plugin";
 
 const backendUrl = process.env.BACKEND_URL || "http://localhost:3131";
 
@@ -13,5 +12,4 @@ const nextConfig: NextConfig = {
     },
 };
 
-const withNextIntl = createNextIntlPlugin();
-export default withNextIntl(nextConfig);
+export default nextConfig;

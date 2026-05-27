@@ -1,9 +1,10 @@
 import { Module } from '@nestjs/common';
+import type { ConfigType } from '@nestjs/config';
 import { TelegrafModule } from 'nestjs-telegraf';
 
 import { AuthModule } from './auth/auth.module';
 import { AppConfigModule } from './config/app-config.module';
-import { AppConfigService } from './config/app-config.service';
+import { telegramConfig } from './config/telegram.config';
 import { ImageProcessingModule } from './image-processing/image-processing.module';
 import { PackModule } from './pack/pack.module';
 import { PrismaModule } from './prisma/prisma.module';
@@ -15,9 +16,9 @@ import { TelegramModule } from './telegram/telegram.module';
     PrismaModule,
     AuthModule,
     TelegrafModule.forRootAsync({
-      inject: [AppConfigService],
-      useFactory: (config: AppConfigService) => ({
-        token: config.telegramBotToken,
+      inject: [telegramConfig.KEY],
+      useFactory: (tg: ConfigType<typeof telegramConfig>) => ({
+        token: tg.botToken,
       }),
     }),
     ImageProcessingModule,

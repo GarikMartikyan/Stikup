@@ -1,17 +1,18 @@
-import { Global, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 
-import { AppConfigService } from './app-config.service';
+import { appConfig } from './app.config';
+import { frontendConfig } from './frontend.config';
+import { sessionConfig } from './session.config';
+import { telegramConfig } from './telegram.config';
 
-@Global()
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: ['../.env', '.env'],
+      load: [appConfig, telegramConfig, frontendConfig, sessionConfig],
     }),
   ],
-  providers: [AppConfigService],
-  exports: [AppConfigService],
 })
 export class AppConfigModule {}

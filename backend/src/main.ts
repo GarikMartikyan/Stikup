@@ -1,15 +1,16 @@
 import { Logger } from '@nestjs/common';
+import type { ConfigType } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import cookieParser from 'cookie-parser';
 
 import { AppModule } from './app.module';
-import { AppConfigService } from './config/app-config.service';
+import { appConfig } from './config/app.config';
 
-async function bootstrap() {
+async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
   app.use(cookieParser());
-  const port = app.get(AppConfigService).port;
-  await app.listen(port);
-  Logger.log(`Server running on port: ${port}`, 'Bootstrap');
+  const cfg = app.get<ConfigType<typeof appConfig>>(appConfig.KEY);
+  await app.listen(cfg.port);
+  Logger.log(`Server running on port: ${cfg.port}`, 'Bootstrap');
 }
-bootstrap();
+void bootstrap();

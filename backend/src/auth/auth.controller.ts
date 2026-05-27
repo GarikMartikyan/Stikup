@@ -1,15 +1,18 @@
 import {
   Controller,
   Get,
+  Inject,
   Post,
   Query,
   Req,
   Res,
   UnauthorizedException,
 } from '@nestjs/common';
+import type { ConfigType } from '@nestjs/config';
 import type { CookieOptions, Request, Response } from 'express';
 
-import { AppConfigService } from '../config/app-config.service';
+import { frontendConfig } from '../config/frontend.config';
+import { sessionConfig } from '../config/session.config';
 import { SessionService } from './session.service';
 import { TokenService } from './token.service';
 
@@ -18,7 +21,10 @@ export class AuthController {
   constructor(
     private readonly tokens: TokenService,
     private readonly sessions: SessionService,
-    private readonly config: AppConfigService,
+    @Inject(frontendConfig.KEY)
+    private readonly frontend: ConfigType<typeof frontendConfig>,
+    @Inject(sessionConfig.KEY)
+    private readonly session: ConfigType<typeof sessionConfig>,
   ) {}
 
   @Get('exchange')
@@ -26,7 +32,7 @@ export class AuthController {
     @Query('t') token: string | undefined,
     @Res() res: Response,
   ): Promise<void> {
-    const loginUrl = `${this.config.publicAppUrl}/auth/login-failed`;
+    const loginUrl = `${this.frontend.publicAppUrl}/auth/login-failed`;
 
     if (!token) {
       res.redirect(302, loginUrl);
@@ -44,20 +50,17 @@ export class AuthController {
       consumed.issuedVia,
     );
 
-    res.cookie(
-      this.config.sessionCookieName,
-      sid,
-      this.cookieOptions(expiresAt),
-    );
+    res.cookie(this.session.cookieName, sid, this.cookieOptions(expiresAt));
     res.redirect(
       302,
-      `${this.config.publicAppUrl}${this.config.postLoginPath}`,
+      `${this.frontend.publicAppUrl}${this.session.postLoginPath}`,
     );
   }
 
   @Get('me')
   async me(@Req() req: Request): Promise<{ userId: string }> {
-    const sid = req.cookies?.[this.config.sessionCookieName];
+    const cookies = (req.cookies ?? {}) as Record<string, string | undefined>;
+    const sid = cookies[this.session.cookieName];
     const session = await this.sessions.resolve(sid);
     if (!session) throw new UnauthorizedException();
     return { userId: session.userId };
@@ -65,23 +68,21 @@ export class AuthController {
 
   @Post('logout')
   async logout(@Req() req: Request, @Res() res: Response): Promise<void> {
-    const sid = req.cookies?.[this.config.sessionCookieName];
+    const cookies = (req.cookies ?? {}) as Record<string, string | undefined>;
+    const sid = cookies[this.session.cookieName];
     if (sid) await this.sessions.revoke(sid);
-    res.clearCookie(
-      this.config.sessionCookieName,
-      this.cookieOptions(new Date(0)),
-    );
+    res.clearCookie(this.session.cookieName, this.cookieOptions(new Date(0)));
     res.status(204).send();
   }
 
   private cookieOptions(expires: Date): CookieOptions {
     return {
       httpOnly: true,
-      secure: this.config.sessionCookieSecure,
+      secure: this.session.cookieSecure,
       sameSite: 'lax',
       expires,
       path: '/',
-      domain: this.config.sessionCookieDomain,
+      domain: this.session.cookieDomain,
     };
   }
 }

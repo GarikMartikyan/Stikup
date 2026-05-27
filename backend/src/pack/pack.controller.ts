@@ -1,15 +1,17 @@
 import {
   Controller,
   Get,
+  Inject,
   Param,
   Post,
   Req,
   UnauthorizedException,
 } from '@nestjs/common';
+import type { ConfigType } from '@nestjs/config';
 import type { Request } from 'express';
 
 import { SessionService } from '../auth/session.service';
-import { AppConfigService } from '../config/app-config.service';
+import { sessionConfig } from '../config/session.config';
 import { PackService } from './pack.service';
 
 @Controller('packs')
@@ -17,7 +19,8 @@ export class PackController {
   constructor(
     private readonly sessions: SessionService,
     private readonly packs: PackService,
-    private readonly config: AppConfigService,
+    @Inject(sessionConfig.KEY)
+    private readonly session: ConfigType<typeof sessionConfig>,
   ) {}
 
   @Get('bot-url')
@@ -32,7 +35,7 @@ export class PackController {
     @Req() req: Request,
   ): Promise<{ delivered: boolean; botUrl: string }> {
     const cookies = (req.cookies ?? {}) as Record<string, string | undefined>;
-    const sid = cookies[this.config.sessionCookieName];
+    const sid = cookies[this.session.cookieName];
     const session = await this.sessions.resolve(sid);
     if (!session) throw new UnauthorizedException();
 

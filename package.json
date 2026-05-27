@@ -18,6 +18,9 @@
     "lint": "npm run -w backend lint && npm run -w frontend lint",
     "typecheck": "npm run -w backend typecheck && npm run -w frontend typecheck",
     "prisma:status": "npm run -w backend prisma:status",
+    "openapi:dump": "npm run -w backend openapi:dump",
+    "openapi:codegen": "openapi-typescript shared/openapi.json -o shared/openapi.d.ts",
+    "openapi": "npm run openapi:dump && npm run openapi:codegen",
     "prepare": "husky"
   },
   "dependencies": {

@@ -7,9 +7,10 @@ import { PackList } from "@/components/dashboard/pack-list";
 import { StatsRow } from "@/components/dashboard/stats-row";
 import type { DashboardPack } from "@/components/dashboard/data";
 import { serverFetch } from "@/lib/api";
+import type { AuthMeResponse } from "@/lib/api-types";
 
 export default async function DashboardPage() {
-  const session = await serverFetch<{ userId: string }>("/auth/me");
+  const session = await serverFetch<AuthMeResponse>("/auth/me");
   if (!session) redirect("/");
 
   // Mocked pack history for the UI demo

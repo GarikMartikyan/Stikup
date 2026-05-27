@@ -9,6 +9,13 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import type { ConfigType } from '@nestjs/config';
+import {
+  ApiOkResponse,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
+  ApiUnauthorizedResponse,
+} from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import type { CookieOptions, Request, Response } from 'express';
 
@@ -17,6 +24,7 @@ import { sessionConfig } from '../config/session.config';
 import { SessionService } from './session.service';
 import { TokenService } from './token.service';
 
+@ApiTags('auth')
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -30,6 +38,11 @@ export class AuthController {
 
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Get('exchange')
+  @ApiQuery({ name: 't', required: false })
+  @ApiResponse({
+    status: 302,
+    description: 'Redirect to dashboard or login-failed',
+  })
   async exchange(
     @Query('t') token: string | undefined,
     @Res() res: Response,
@@ -60,6 +73,13 @@ export class AuthController {
   }
 
   @Get('me')
+  @ApiOkResponse({
+    schema: {
+      properties: { userId: { type: 'string', format: 'uuid' } },
+      required: ['userId'],
+    },
+  })
+  @ApiUnauthorizedResponse()
   async me(@Req() req: Request): Promise<{ userId: string }> {
     const cookies = (req.cookies ?? {}) as Record<string, string | undefined>;
     const sid = cookies[this.session.cookieName];
@@ -69,6 +89,7 @@ export class AuthController {
   }
 
   @Post('logout')
+  @ApiResponse({ status: 204 })
   async logout(@Req() req: Request, @Res() res: Response): Promise<void> {
     const cookies = (req.cookies ?? {}) as Record<string, string | undefined>;
     const sid = cookies[this.session.cookieName];

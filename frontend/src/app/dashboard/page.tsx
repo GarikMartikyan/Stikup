@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import {
   ArrowRight,
@@ -13,29 +12,15 @@ import {
 } from "lucide-react";
 import { AppHeader } from "@/components/app-header";
 import { StickerCard } from "@/components/sticker-card";
-
-const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3131";
+import { serverFetch } from "@/lib/api";
 
 const ALL_STICKERS = Array.from({ length: 12 }, (_, i) => ({
   src: `/assets/sticker_${i + 1}.webp`,
   alt: `Sticker ${i + 1}`,
 }));
 
-async function fetchSession(): Promise<{ userId: string } | null> {
-  const cookieStore = await cookies();
-  const cookieHeader = cookieStore.toString();
-
-  const res = await fetch(`${BACKEND_URL}/auth/me`, {
-    headers: { cookie: cookieHeader },
-    cache: "no-store",
-  });
-
-  if (!res.ok) return null;
-  return (await res.json()) as { userId: string };
-}
-
 export default async function DashboardPage() {
-  const session = await fetchSession();
+  const session = await serverFetch<{ userId: string }>("/auth/me");
   if (!session) redirect("/");
 
   // Mocked pack history for the UI demo

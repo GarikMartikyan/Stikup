@@ -10,6 +10,7 @@ import {
 import type { ConfigType } from '@nestjs/config';
 import type { Request } from 'express';
 
+import { BOT_SENDER, type BotSender } from '../auth/channel/bot-sender';
 import { SessionService } from '../auth/session.service';
 import { sessionConfig } from '../config/session.config';
 import { ClaimFreeResult, PackService } from './pack.service';
@@ -19,13 +20,14 @@ export class PackController {
   constructor(
     private readonly sessions: SessionService,
     private readonly packs: PackService,
+    @Inject(BOT_SENDER) private readonly botSender: BotSender,
     @Inject(sessionConfig.KEY)
     private readonly session: ConfigType<typeof sessionConfig>,
   ) {}
 
   @Get('bot-url')
   async botUrl(): Promise<{ botUrl: string }> {
-    const botUrl = await this.packs.getBotUrl();
+    const botUrl = await this.botSender.getBotUrl();
     return { botUrl };
   }
 

@@ -1,11 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { InjectBot } from 'nestjs-telegraf';
-import { Context, Input, Telegraf } from 'telegraf';
 
+import { BOT_SENDER, type BotSender } from '../auth/channel/bot-sender';
 import { PrismaService } from '../prisma/prisma.service';
 
 const FREE_STICKER_DIR = join(__dirname, '..', '..', 'public', 'free-stickers');
@@ -24,12 +23,11 @@ export interface ClaimFreeResult {
 @Injectable()
 export class PackService {
   private readonly logger = new Logger(PackService.name);
-  private cachedBotUsername: string | null = null;
   // Lazily loaded so a malformed manifest fails on use, not on module init.
   private cachedStickerFiles: string[] | null = null;
 
   constructor(
-    @InjectBot() private readonly bot: Telegraf<Context>,
+    @Inject(BOT_SENDER) private readonly botSender: BotSender,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -37,16 +35,23 @@ export class PackService {
     packId: string,
     userId: string,
   ): Promise<ClaimFreeResult> {
-    const botUrl = await this.getBotUrl();
+    const botUrl = await this.botSender.getBotUrl();
 
     const identity = await this.prisma.channelIdentity.findFirst({
-      where: { userId, channel: 'telegram' },
-      select: { channelUserId: true },
+      where: { userId, channel: this.botSender.channel },
+      select: { channelUserId: true, channel: true },
     });
 
     if (!identity) {
       this.logger.log(
-        `claim-free: user ${userId} has no telegram identity; redirecting to /start`,
+        `claim-free: user ${userId} has no ${this.botSender.channel} identity; redirecting to /start`,
+      );
+      return { delivered: false, botUrl };
+    }
+
+    if (identity.channel !== this.botSender.channel) {
+      this.logger.log(
+        `claim-free: identity channel ${identity.channel} does not match sender ${this.botSender.channel}; skipping`,
       );
       return { delivered: false, botUrl };
     }
@@ -55,7 +60,7 @@ export class PackService {
     // sending stickers so double-tap / retry doesn't re-deliver the pack.
     try {
       await this.prisma.packClaim.create({
-        data: { packId, userId, channel: 'telegram' },
+        data: { packId, userId, channel: this.botSender.channel },
       });
     } catch (err) {
       if (
@@ -71,31 +76,15 @@ export class PackService {
     }
 
     const stickers = this.getFreeStickerFiles();
-    const chatId = Number(identity.channelUserId);
     for (const filename of stickers) {
       const path = join(FREE_STICKER_DIR, filename);
-      await this.bot.telegram.sendSticker(chatId, Input.fromLocalFile(path));
+      await this.botSender.sendSticker(identity.channelUserId, path);
     }
     this.logger.log(
-      `claim-free: sent ${stickers.length} stickers to telegram chat ${chatId}`,
+      `claim-free: sent ${stickers.length} stickers to ${this.botSender.channel} user ${identity.channelUserId}`,
     );
 
     return { delivered: true, botUrl };
-  }
-
-  async getBotUrl(): Promise<string> {
-    const username = await this.getBotUsername();
-    return `https://t.me/${username}`;
-  }
-
-  private async getBotUsername(): Promise<string> {
-    if (this.cachedBotUsername) return this.cachedBotUsername;
-    const me = await this.bot.telegram.getMe();
-    if (!me.username) {
-      throw new Error('Telegram bot has no username configured');
-    }
-    this.cachedBotUsername = me.username;
-    return me.username;
   }
 
   private getFreeStickerFiles(): string[] {

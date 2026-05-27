@@ -6,6 +6,7 @@ import { AuthModule } from './auth/auth.module';
 import { AppConfigModule } from './config/app-config.module';
 import { telegramConfig } from './config/telegram.config';
 import { ImageProcessingModule } from './image-processing/image-processing.module';
+import { JobsModule } from './jobs/jobs.module';
 import { PackModule } from './pack/pack.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { TelegramModule } from './telegram/telegram.module';
@@ -24,6 +25,7 @@ import { TelegramModule } from './telegram/telegram.module';
     ImageProcessingModule,
     TelegramModule,
     PackModule,
+    JobsModule,
   ],
 })
 export class AppModule {}

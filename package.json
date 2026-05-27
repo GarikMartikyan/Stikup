@@ -20,6 +20,9 @@
     "prisma:status": "npm run -w backend prisma:status",
     "prepare": "husky"
   },
+  "dependencies": {
+    "@nestjs/platform-express": "^11.1.24"
+  },
   "devDependencies": {
     "concurrently": "^9.2.1",
     "husky": "^9.1.7",

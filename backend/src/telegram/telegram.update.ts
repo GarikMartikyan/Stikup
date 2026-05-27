@@ -1,13 +1,13 @@
 import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import type { ConfigType } from '@nestjs/config';
 import { Command, Ctx, InjectBot, Start, Update } from 'nestjs-telegraf';
-import { Context, Input, Telegraf } from 'telegraf';
+import { Context, Telegraf } from 'telegraf';
 
 import { TelegramAdapter } from '../auth/channel/telegram-adapter';
 import { IdentityService } from '../auth/identity.service';
 import { TokenService } from '../auth/token.service';
 import { frontendConfig } from '../config/frontend.config';
-import { ImageProcessingService } from '../image-processing/image-processing.service';
+import { StickerQueueService } from '../queue/sticker.queue';
 
 @Update()
 @Injectable()
@@ -21,7 +21,7 @@ export class TelegramUpdate implements OnModuleInit {
     private readonly telegramAdapter: TelegramAdapter,
     private readonly identity: IdentityService,
     private readonly tokens: TokenService,
-    private readonly imageProcessing: ImageProcessingService,
+    private readonly stickerQueue: StickerQueueService,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -65,65 +65,21 @@ export class TelegramUpdate implements OnModuleInit {
 
   @Command('receive')
   async onReceive(@Ctx() ctx: Context): Promise<void> {
-    const status = await ctx.reply('⏳ Processing');
-    const frames = [
-      '⏳ Processing',
-      '⌛ Processing.',
-      '⏳ Processing..',
-      '⌛ Processing...',
-    ];
-    let frame = 1;
-    const tick = setInterval(() => {
-      void ctx.telegram
-        .editMessageText(
-          status.chat.id,
-          status.message_id,
-          undefined,
-          frames[frame % frames.length],
-        )
-        .catch(() => {
-          // Ignore: a "message is not modified" race or rate-limit hiccup
-          // shouldn't break the pipeline.
-        });
-      frame += 1;
-    }, 800);
-
-    try {
-      const { stickerPaths, cleanup } =
-        await this.imageProcessing.generateStickers(
-          Buffer.alloc(0),
-          'sticker pack',
-        );
-
-      try {
-        clearInterval(tick);
-        await ctx.telegram
-          .deleteMessage(status.chat.id, status.message_id)
-          .catch(() => undefined);
-
-        if (stickerPaths.length === 0) {
-          await ctx.reply('No stickers were produced.');
-          return;
-        }
-
-        for (const stickerPath of stickerPaths) {
-          await ctx.replyWithSticker(Input.fromLocalFile(stickerPath));
-        }
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        this.logger.error(`/receive failed: ${message}`);
-        await ctx.reply(`Failed to generate stickers: ${message}`);
-      } finally {
-        await cleanup();
-      }
-    } catch (err) {
-      clearInterval(tick);
-      await ctx.telegram
-        .deleteMessage(status.chat.id, status.message_id)
-        .catch(() => undefined);
-      const message = err instanceof Error ? err.message : String(err);
-      this.logger.error(`/receive failed: ${message}`);
-      await ctx.reply(`Failed to generate stickers: ${message}`);
+    const fromId = ctx.from?.id;
+    const chatId = ctx.chat?.id;
+    if (fromId === undefined || chatId === undefined) {
+      await ctx.reply("Sorry, I couldn't read your chat info.");
+      return;
     }
+
+    await this.stickerQueue.enqueue({
+      channelUserId: String(fromId),
+      chatId,
+      prompt: 'sticker pack',
+    });
+
+    await ctx.reply(
+      "⏳ Working on it. I'll send the stickers as soon as they're ready.",
+    );
   }
 }

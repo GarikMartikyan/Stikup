@@ -4,6 +4,7 @@ import { ConfigModule } from '@nestjs/config';
 import { aiConfig } from './ai.config';
 import { appConfig } from './app.config';
 import { frontendConfig } from './frontend.config';
+import { redisConfig } from './redis.config';
 import { sessionConfig } from './session.config';
 import { telegramConfig } from './telegram.config';
 
@@ -18,6 +19,7 @@ import { telegramConfig } from './telegram.config';
         frontendConfig,
         sessionConfig,
         aiConfig,
+        redisConfig,
       ],
     }),
   ],

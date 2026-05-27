@@ -12,6 +12,7 @@ import { ImageProcessingModule } from './image-processing/image-processing.modul
 import { JobsModule } from './jobs/jobs.module';
 import { PackModule } from './pack/pack.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { QueueModule } from './queue/queue.module';
 import { TelegramModule } from './telegram/telegram.module';
 
 @Module({
@@ -27,6 +28,7 @@ import { TelegramModule } from './telegram/telegram.module';
       }),
     }),
     ImageProcessingModule,
+    QueueModule,
     TelegramModule,
     PackModule,
     JobsModule,

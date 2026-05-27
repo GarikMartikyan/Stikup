@@ -9,6 +9,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import type { ConfigType } from '@nestjs/config';
+import { Throttle } from '@nestjs/throttler';
 import type { CookieOptions, Request, Response } from 'express';
 
 import { frontendConfig } from '../config/frontend.config';
@@ -27,6 +28,7 @@ export class AuthController {
     private readonly session: ConfigType<typeof sessionConfig>,
   ) {}
 
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Get('exchange')
   async exchange(
     @Query('t') token: string | undefined,

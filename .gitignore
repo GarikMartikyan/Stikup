@@ -1,3 +1,11 @@
+# Dependencies (workspaces hoist to root node_modules)
+node_modules/
+
+# Build output
+dist/
+.next/
+*.tsbuildinfo
+
 # OS
 .DS_Store
 Thumbs.db

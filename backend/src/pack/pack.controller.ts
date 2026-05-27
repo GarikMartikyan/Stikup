@@ -12,7 +12,7 @@ import type { Request } from 'express';
 
 import { SessionService } from '../auth/session.service';
 import { sessionConfig } from '../config/session.config';
-import { PackService } from './pack.service';
+import { ClaimFreeResult, PackService } from './pack.service';
 
 @Controller('packs')
 export class PackController {
@@ -31,14 +31,14 @@ export class PackController {
 
   @Post(':packId/claim-free')
   async claimFree(
-    @Param('packId') _packId: string,
+    @Param('packId') packId: string,
     @Req() req: Request,
-  ): Promise<{ delivered: boolean; botUrl: string }> {
+  ): Promise<ClaimFreeResult> {
     const cookies = (req.cookies ?? {}) as Record<string, string | undefined>;
     const sid = cookies[this.session.cookieName];
     const session = await this.sessions.resolve(sid);
     if (!session) throw new UnauthorizedException();
 
-    return this.packs.claimFreeStickers(session.userId);
+    return this.packs.claimFreeStickers(packId, session.userId);
   }
 }

@@ -68,3 +68,14 @@ model Session {
   @@index([expiresAt])
   @@map("sessions")
 }
+
+model PackClaim {
+  packId      String   @map("pack_id")
+  userId      String   @map("user_id") @db.Uuid
+  deliveredAt DateTime @default(now()) @map("delivered_at") @db.Timestamptz(6)
+  channel     Channel
+
+  @@id([packId, userId])
+  @@index([userId])
+  @@map("pack_claims")
+}

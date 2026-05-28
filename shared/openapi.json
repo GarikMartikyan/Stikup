@@ -60,6 +60,93 @@
         "tags": ["auth"]
       }
     },
+    "/auth/register": {
+      "post": {
+        "operationId": "AuthController_register",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailAuthDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Registered and session set"
+          },
+          "409": {
+            "description": "Email already registered"
+          }
+        },
+        "tags": ["auth"]
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "operationId": "AuthController_login",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailAuthDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Authenticated and session set"
+          },
+          "401": {
+            "description": ""
+          }
+        },
+        "tags": ["auth"]
+      }
+    },
+    "/auth/google/start": {
+      "get": {
+        "operationId": "AuthController_googleStart",
+        "parameters": [],
+        "responses": {
+          "302": {
+            "description": "Redirect to Google OAuth"
+          }
+        },
+        "tags": ["auth"]
+      }
+    },
+    "/auth/google/callback": {
+      "get": {
+        "operationId": "AuthController_googleCallback",
+        "parameters": [
+          {
+            "name": "state",
+            "required": false,
+            "in": "query",
+            "schema": {}
+          },
+          {
+            "name": "code",
+            "required": false,
+            "in": "query",
+            "schema": {}
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Redirect to dashboard or error"
+          }
+        },
+        "tags": ["auth"]
+      }
+    },
     "/packs/bot-url": {
       "get": {
         "operationId": "PackController_botUrl",
@@ -300,6 +387,22 @@
         "name": "sid"
       }
     },
-    "schemas": {}
+    "schemas": {
+      "EmailAuthDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "user@example.com"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 128
+          }
+        },
+        "required": ["email", "password"]
+      }
+    }
   }
 }

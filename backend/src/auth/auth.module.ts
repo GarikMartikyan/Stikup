@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 
 import { AuthController } from './auth.controller';
 import { BOT_SENDER } from './channel/bot-sender';
+import { EmailAdapter } from './channel/email-adapter';
+import { GoogleAdapter } from './channel/google-adapter';
 import { TelegramAdapter } from './channel/telegram-adapter';
 import { TelegramBotSender } from './channel/telegram-bot-sender';
 import { IdentityService } from './identity.service';
@@ -12,6 +14,8 @@ import { TokenService } from './token.service';
   controllers: [AuthController],
   providers: [
     TelegramAdapter,
+    EmailAdapter,
+    GoogleAdapter,
     IdentityService,
     TokenService,
     SessionService,
@@ -19,6 +23,8 @@ import { TokenService } from './token.service';
   ],
   exports: [
     TelegramAdapter,
+    EmailAdapter,
+    GoogleAdapter,
     IdentityService,
     TokenService,
     SessionService,

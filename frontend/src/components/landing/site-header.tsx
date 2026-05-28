@@ -17,6 +17,12 @@ export function SiteHeader() {
         <div className="flex items-center gap-2">
           <ThemeToggle />
           <Link
+            href="/login"
+            className="rounded-full px-4 py-2 text-sm font-semibold text-[var(--color-fg-muted)] transition hover:text-[var(--color-fg)]"
+          >
+            Log in
+          </Link>
+          <Link
             href="/upload"
             className="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-fg)] px-4 py-2 text-sm font-semibold text-[var(--color-bg)] shadow-sm transition hover:opacity-90"
           >

@@ -14,7 +14,19 @@ import { SESSION_COOKIE_NAME } from "@/lib/config";
  * `backend/src/config/session.config.ts` (env: `SESSION_COOKIE_NAME`).
  */
 export function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
   const hasSession = request.cookies.has(SESSION_COOKIE_NAME);
+
+  if (pathname === "/login" || pathname === "/register") {
+    if (hasSession) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/dashboard";
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
+    return NextResponse.next();
+  }
+
   if (!hasSession) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
@@ -25,7 +37,6 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // Only run on protected routes. `dashboard/:path*` matches both `/dashboard`
-  // and any nested segments under it.
-  matcher: ["/dashboard", "/dashboard/:path*"],
+  // Protected routes + auth pages for redirect-if-logged-in logic.
+  matcher: ["/dashboard", "/dashboard/:path*", "/login", "/register"],
 };

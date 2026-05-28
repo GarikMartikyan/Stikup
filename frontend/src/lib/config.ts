@@ -20,3 +20,11 @@ export const BACKEND_URL =
  */
 export const SESSION_COOKIE_NAME =
   process.env.SESSION_COOKIE_NAME ?? "sid";
+
+/**
+ * Telegram bot URL shown on the login/register pages.
+ * Must be a NEXT_PUBLIC_ var so the browser can read it.
+ * Falls back to a sensible stub so the button renders in dev without config.
+ */
+export const TELEGRAM_BOT_URL =
+  process.env.NEXT_PUBLIC_TELEGRAM_BOT_URL ?? "https://t.me/stikup_bot";

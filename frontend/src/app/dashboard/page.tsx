@@ -1,17 +1,14 @@
-import { redirect } from "next/navigation";
-import { LogOut } from "lucide-react";
 import { AppHeader } from "@/components/app-header";
 import { AccountRow } from "@/components/dashboard/account-row";
 import { GreetingStrip } from "@/components/dashboard/greeting-strip";
 import { PackList } from "@/components/dashboard/pack-list";
 import { StatsRow } from "@/components/dashboard/stats-row";
+import { UserMenu } from "@/components/auth/user-menu";
 import type { DashboardPack } from "@/components/dashboard/data";
-import { serverFetch } from "@/lib/api";
-import type { AuthMeResponse } from "@/lib/api-types";
+import { requireSession } from "@/lib/auth/require-session";
 
 export default async function DashboardPage() {
-  const session = await serverFetch<AuthMeResponse>("/auth/me");
-  if (!session) redirect("/");
+  const session = await requireSession();
 
   // Mocked pack history for the UI demo
   const packs: DashboardPack[] = [
@@ -28,18 +25,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="relative flex min-h-dvh flex-col">
-      <AppHeader
-        right={
-          <form action="/auth/logout" method="post">
-            <button
-              type="submit"
-              className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-border)] bg-[var(--color-bg-elev)] px-3.5 py-1.5 text-xs font-semibold text-[var(--color-fg-muted)] hover:text-[var(--color-fg)]"
-            >
-              <LogOut className="h-3 w-3" /> Sign out
-            </button>
-          </form>
-        }
-      />
+      <AppHeader right={<UserMenu />} />
 
       <main className="snap-section mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center px-5 py-8 md:py-12">
         <GreetingStrip shortId={shortId} />

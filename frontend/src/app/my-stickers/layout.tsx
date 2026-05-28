@@ -3,7 +3,7 @@ import { StoreProvider } from "@/lib/store/providers";
 
 export const dynamic = "force-dynamic";
 
-export default async function DashboardLayout({
+export default async function MyStickersLayout({
   children,
 }: {
   children: React.ReactNode;

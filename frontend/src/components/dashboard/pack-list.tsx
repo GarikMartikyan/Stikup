@@ -1,10 +1,15 @@
+"use client";
+
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { PackCard } from "./pack-card";
 import { EmptyPackState } from "./empty-pack-state";
 import type { DashboardPack } from "./data";
+import { useT } from "@/components/language-provider";
 
 export function PackList({ packs }: { packs: DashboardPack[] }) {
+  const t = useT();
+
   if (packs.length === 0) {
     return <EmptyPackState />;
   }
@@ -16,10 +21,10 @@ export function PackList({ packs }: { packs: DashboardPack[] }) {
     >
       <div className="flex items-end justify-between">
         <h2 className="font-[family-name:var(--font-display)] text-2xl font-bold tracking-tight md:text-3xl">
-          Your packs
+          {t("dashboard.pack_list.your_packs")}
         </h2>
         <span className="font-mono text-xs text-[var(--color-fg-subtle)]">
-          {packs.length} pack{packs.length !== 1 ? "s" : ""}
+          {packs.length} {packs.length !== 1 ? t("dashboard.pack_list.pack_plural") : t("dashboard.pack_list.pack_singular")}
         </span>
       </div>
 
@@ -38,10 +43,10 @@ export function PackList({ packs }: { packs: DashboardPack[] }) {
               <Plus className="h-6 w-6" strokeWidth={2.2} />
             </div>
             <div className="mt-4 font-[family-name:var(--font-display)] text-xl font-bold">
-              Make another pack
+              {t("dashboard.pack_list.make_another")}
             </div>
             <div className="mt-1 text-sm text-[var(--color-fg-muted)]">
-              Different photo. Fresh 12 stickers. One payment.
+              {t("dashboard.pack_list.make_another_body")}
             </div>
           </div>
         </Link>

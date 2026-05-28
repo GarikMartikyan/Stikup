@@ -6,9 +6,12 @@ import Link from "next/link";
 import { Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLoginMutation } from "@/lib/store/auth-api";
+import { useT } from "@/components/language-provider";
+import { safeNextPath } from "@/lib/auth/safe-next";
 
 export function LoginForm({ next }: { next?: string }) {
   const router = useRouter();
+  const t = useT();
   const [login, { isLoading }] = useLoginMutation();
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
@@ -22,9 +25,9 @@ export function LoginForm({ next }: { next?: string }) {
 
     try {
       await login({ email, password }).unwrap();
-      router.push(next && next.startsWith("/") ? next : "/dashboard");
+      router.push(safeNextPath(next));
     } catch {
-      setError("Invalid email or password.");
+      setError(t("auth.login.error_invalid"));
     }
   }
 
@@ -35,7 +38,7 @@ export function LoginForm({ next }: { next?: string }) {
           htmlFor="email"
           className="text-sm font-medium text-[var(--color-fg)]"
         >
-          Email
+          {t("auth.common.email_label")}
         </label>
         <input
           id="email"
@@ -43,8 +46,8 @@ export function LoginForm({ next }: { next?: string }) {
           type="email"
           autoComplete="email"
           required
-          className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-elev)] px-3.5 py-2.5 text-sm text-[var(--color-fg)] placeholder-[var(--color-fg-muted)] outline-none transition focus:border-[var(--color-brand)] focus:ring-2 focus:ring-[var(--color-brand)]/20"
-          placeholder="you@example.com"
+          className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-elev)] px-3.5 py-2.5 text-sm text-[var(--color-fg)] placeholder-[var(--color-fg-muted)] outline-none transition focus:border-[var(--color-brand-soft)] focus:ring-2 focus:ring-[var(--color-brand)]/15"
+          placeholder={t("auth.common.email_placeholder")}
         />
       </div>
 
@@ -54,13 +57,13 @@ export function LoginForm({ next }: { next?: string }) {
             htmlFor="password"
             className="text-sm font-medium text-[var(--color-fg)]"
           >
-            Password
+            {t("auth.common.password_label")}
           </label>
           <Link
             href="/auth/forgot"
             className="text-sm text-[var(--color-fg-muted)] hover:text-[var(--color-fg)] hover:underline"
           >
-            Forgot password?
+            {t("auth.login.forgot_password")}
           </Link>
         </div>
         <div className="relative">
@@ -70,12 +73,12 @@ export function LoginForm({ next }: { next?: string }) {
             type={showPassword ? "text" : "password"}
             autoComplete="current-password"
             required
-            className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-elev)] px-3.5 py-2.5 pr-10 text-sm text-[var(--color-fg)] placeholder-[var(--color-fg-muted)] outline-none transition focus:border-[var(--color-brand)] focus:ring-2 focus:ring-[var(--color-brand)]/20"
+            className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-elev)] px-3.5 py-2.5 pr-10 text-sm text-[var(--color-fg)] placeholder-[var(--color-fg-muted)] outline-none transition focus:border-[var(--color-brand-soft)] focus:ring-2 focus:ring-[var(--color-brand)]/15"
             placeholder="••••••••"
           />
           <button
             type="button"
-            aria-label={showPassword ? "Hide password" : "Show password"}
+            aria-label={showPassword ? t("auth.common.hide_password") : t("auth.common.show_password")}
             onClick={() => setShowPassword((v) => !v)}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-fg-muted)] hover:text-[var(--color-fg)]"
           >
@@ -100,7 +103,7 @@ export function LoginForm({ next }: { next?: string }) {
         aria-busy={isLoading}
         className="w-full"
       >
-        {isLoading ? "Signing in…" : "Sign in"}
+        {isLoading ? t("auth.login.signing_in") : t("auth.login.sign_in")}
       </Button>
     </form>
   );

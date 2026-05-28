@@ -1,3 +1,7 @@
+"use client";
+
+import { useT } from "@/components/language-provider";
+
 function Stat({
   label,
   value,
@@ -21,12 +25,13 @@ function Stat({
 }
 
 export function StatsRow({ packCount }: { packCount: number }) {
+  const t = useT();
   return (
     <div className="reveal mt-8 grid gap-4 md:grid-cols-4" style={{ animationDelay: "120ms" }}>
-      <Stat label="Packs" value={String(packCount)} hint="lifetime" />
-      <Stat label="Stickers owned" value={String(packCount * 12)} hint="across all packs" />
-      <Stat label="Regenerations" value="1 / pack" hint="paid-pack quota" />
-      <Stat label="Subscription" value="None" hint="never — one-time only" />
+      <Stat label={t("dashboard.stats.packs_label")} value={String(packCount)} hint={t("dashboard.stats.packs_hint")} />
+      <Stat label={t("dashboard.stats.stickers_label")} value={String(packCount * 12)} hint={t("dashboard.stats.stickers_hint")} />
+      <Stat label={t("dashboard.stats.regens_label")} value={t("dashboard.stats.regens_value")} hint={t("dashboard.stats.regens_hint")} />
+      <Stat label={t("dashboard.stats.subscription_label")} value={t("dashboard.stats.subscription_value")} hint={t("dashboard.stats.subscription_hint")} />
     </div>
   );
 }

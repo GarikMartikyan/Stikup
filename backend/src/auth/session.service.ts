@@ -15,6 +15,8 @@ export interface SessionUser {
 export interface UserProfile {
   userId: string;
   email: string | null;
+  displayName: string | null;
+  avatarUrl: string | null;
 }
 
 @Injectable()
@@ -48,10 +50,30 @@ export class SessionService {
   async findUser(userId: string): Promise<UserProfile | null> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, email: true },
+      select: {
+        id: true,
+        email: true,
+        identities: {
+          select: { displayName: true, avatarUrl: true },
+          orderBy: { createdAt: 'desc' },
+        },
+      },
     });
     if (!user) return null;
-    return { userId: user.id, email: user.email };
+    // Prefer the most-recently-linked identity that actually carries each
+    // field. A later, richer identity (e.g. Google with name + avatar) should
+    // win over an earlier bare one (e.g. email signup, or Telegram which has
+    // no avatar) instead of being shadowed by whichever was created first.
+    const displayName =
+      user.identities.find((i) => i.displayName)?.displayName ?? null;
+    const avatarUrl =
+      user.identities.find((i) => i.avatarUrl)?.avatarUrl ?? null;
+    return {
+      userId: user.id,
+      email: user.email,
+      displayName,
+      avatarUrl,
+    };
   }
 
   async revoke(sid: string): Promise<void> {
@@ -59,5 +81,12 @@ export class SessionService {
       where: { id: sid, revokedAt: null },
       data: { revokedAt: new Date() },
     });
+  }
+
+  async deleteUser(userId: string): Promise<void> {
+    await this.prisma.$transaction([
+      this.prisma.packClaim.deleteMany({ where: { userId } }),
+      this.prisma.user.delete({ where: { id: userId } }),
+    ]);
   }
 }

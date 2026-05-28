@@ -1,3 +1,4 @@
+import { networkInterfaces } from 'node:os';
 import { registerAs } from '@nestjs/config';
 import { plainToInstance } from 'class-transformer';
 import {
@@ -8,6 +9,16 @@ import {
   IsString,
   validateSync,
 } from 'class-validator';
+
+function getLanIPv4(): string | undefined {
+  const interfaces = networkInterfaces();
+  for (const name of Object.keys(interfaces)) {
+    for (const net of interfaces[name] ?? []) {
+      if (net.family === 'IPv4' && !net.internal) return net.address;
+    }
+  }
+  return undefined;
+}
 
 export class FrontendConfigSchema {
   @IsOptional()
@@ -43,21 +54,33 @@ function toBool(raw: string | undefined, fallback: boolean): boolean {
 export const frontendConfig = registerAs(
   'frontend',
   (): FrontendConfigSchema => {
+    const isDev = process.env.NODE_ENV !== 'production';
     const host = process.env.FRONTEND_HOST || undefined;
     const port = toInt(process.env.FRONTEND_PORT, 3000);
     const useHttps = toBool(process.env.FRONTEND_USE_HTTPS, false);
     const url = process.env.FRONTEND_URL || undefined;
 
-    const explicitPublic = process.env.PUBLIC_APP_URL;
     let publicAppUrl: string;
-    if (explicitPublic) {
-      publicAppUrl = explicitPublic.replace(/\/$/, '');
-    } else if (url) {
-      publicAppUrl = url.replace(/\/$/, '');
+    if (isDev) {
+      const explicitPublic = process.env.PUBLIC_APP_URL;
+      if (explicitPublic) {
+        publicAppUrl = explicitPublic.replace(/\/$/, '');
+      } else {
+        const scheme = useHttps ? 'https' : 'http';
+        const resolvedHost = getLanIPv4() ?? host ?? 'localhost';
+        publicAppUrl = `${scheme}://${resolvedHost}:${port}`;
+      }
     } else {
-      const scheme = useHttps ? 'https' : 'http';
-      const resolvedHost = host ?? 'localhost';
-      publicAppUrl = `${scheme}://${resolvedHost}:${port}`;
+      const explicitPublic = process.env.PUBLIC_APP_URL;
+      if (explicitPublic) {
+        publicAppUrl = explicitPublic.replace(/\/$/, '');
+      } else if (url) {
+        publicAppUrl = url.replace(/\/$/, '');
+      } else {
+        const scheme = useHttps ? 'https' : 'http';
+        const resolvedHost = host ?? 'localhost';
+        publicAppUrl = `${scheme}://${resolvedHost}:${port}`;
+      }
     }
 
     const raw = { host, port, useHttps, url, publicAppUrl };

@@ -1,6 +1,9 @@
 "use client";
 
+import { useT } from "@/components/language-provider";
+
 export function GoogleButton() {
+  const t = useT();
   return (
     <a
       href="/auth/google/start"
@@ -31,7 +34,7 @@ export function GoogleButton() {
           fill="#EA4335"
         />
       </svg>
-      Continue with Google
+      {t("auth.login.google_button")}
     </a>
   );
 }

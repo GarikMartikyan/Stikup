@@ -1,12 +1,12 @@
-import Link from "next/link";
+import Link from 'next/link';
 
 const SIZES = {
-  sm: "text-lg",
-  md: "text-2xl",
-  lg: "text-3xl",
+  sm: 'text-lg',
+  md: 'text-2xl',
+  lg: 'text-3xl',
 } as const;
 
-export function Brand({ size = "md" }: { size?: keyof typeof SIZES }) {
+export function Brand({ size = 'md' }: { size?: keyof typeof SIZES }) {
   return (
     <Link
       href="/"

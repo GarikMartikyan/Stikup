@@ -1,8 +1,6 @@
 "use client";
 
 import { use, useEffect, useState } from "react";
-import { ShieldCheck } from "lucide-react";
-import { AppHeader } from "@/components/app-header";
 import { ActionsRow } from "@/components/result/actions-row";
 import { ResultHeader } from "@/components/result/result-header";
 import { SidePanel } from "@/components/result/side-panel";
@@ -75,18 +73,7 @@ export default function ResultPage({
   };
 
   return (
-    <div className="relative flex min-h-dvh flex-col">
-      <AppHeader
-        right={
-          <div className="hidden items-center gap-1.5 rounded-full border border-[var(--color-border)] bg-[var(--color-bg-elev)] px-3 py-1.5 text-xs font-medium text-[var(--color-fg-muted)] md:inline-flex">
-            <ShieldCheck className="h-3 w-3" />
-            <span className="font-mono uppercase tracking-wide">
-              pack · {packId.slice(0, 6)}
-            </span>
-          </div>
-        }
-      />
-
+    <div className="relative flex flex-1 flex-col">
       <main className="relative mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center px-5 py-6 md:py-10">
         <ResultHeader />
 

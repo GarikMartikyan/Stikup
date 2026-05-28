@@ -3,6 +3,7 @@ import { randomBytes } from 'node:crypto';
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   Inject,
@@ -26,6 +27,7 @@ import type { CookieOptions, Request, Response } from 'express';
 
 import { frontendConfig } from '../config/frontend.config';
 import { sessionConfig } from '../config/session.config';
+import { TelegramMessageService } from '../telegram/telegram-message.service';
 import { EmailAdapter } from './channel/email-adapter';
 import { GoogleAdapter } from './channel/google-adapter';
 import { EmailAuthDto } from './dto/email-auth.dto';
@@ -46,6 +48,7 @@ export class AuthController {
     private readonly identity: IdentityService,
     private readonly emailAdapter: EmailAdapter,
     private readonly googleAdapter: GoogleAdapter,
+    private readonly telegramMessages: TelegramMessageService,
     @Inject(frontendConfig.KEY)
     private readonly frontend: ConfigType<typeof frontendConfig>,
     @Inject(sessionConfig.KEY)
@@ -57,7 +60,7 @@ export class AuthController {
   @ApiQuery({ name: 't', required: false })
   @ApiResponse({
     status: 302,
-    description: 'Redirect to dashboard or login-failed',
+    description: 'Redirect to post-login path or login-failed',
   })
   async exchange(
     @Query('t') token: string | undefined,
@@ -74,6 +77,15 @@ export class AuthController {
     if (!consumed) {
       res.redirect(302, loginUrl);
       return;
+    }
+
+    if (consumed.telegramChatId && consumed.telegramMessageId) {
+      this.telegramMessages
+        .deleteMessages(consumed.telegramChatId, [
+          consumed.telegramMessageId,
+          consumed.telegramUserMessageId,
+        ])
+        .catch(() => {});
     }
 
     const { sid, expiresAt } = await this.sessions.issue(
@@ -94,21 +106,63 @@ export class AuthController {
       properties: {
         userId: { type: 'string', format: 'uuid' },
         email: { type: 'string', nullable: true },
+        displayName: { type: 'string', nullable: true },
+        avatarUrl: { type: 'string', nullable: true },
       },
-      required: ['userId', 'email'],
+      required: ['userId', 'email', 'displayName', 'avatarUrl'],
     },
   })
   @ApiUnauthorizedResponse()
   async me(
     @Req() req: Request,
-  ): Promise<{ userId: string; email: string | null }> {
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<{
+    userId: string;
+    email: string | null;
+    displayName: string | null;
+    avatarUrl: string | null;
+  }> {
+    const cookies = (req.cookies ?? {}) as Record<string, string | undefined>;
+    const sid = cookies[this.session.cookieName];
+    const session = await this.sessions.resolve(sid);
+    if (!session) {
+      // Clear the stale session cookie so the next SSR sees `hasSession()`
+      // as false and renders the sign-in CTA directly, avoiding a /auth/me
+      // round-trip on every page load.
+      if (sid) {
+        res.clearCookie(
+          this.session.cookieName,
+          this.cookieOptions(new Date(0)),
+        );
+      }
+      throw new UnauthorizedException();
+    }
+    const user = await this.sessions.findUser(session.userId);
+    if (!user) {
+      res.clearCookie(this.session.cookieName, this.cookieOptions(new Date(0)));
+      throw new UnauthorizedException();
+    }
+    return {
+      userId: user.userId,
+      email: user.email,
+      displayName: user.displayName,
+      avatarUrl: user.avatarUrl,
+    };
+  }
+
+  @Throttle({ default: { limit: 3, ttl: 60000 } })
+  @Delete('me')
+  @HttpCode(204)
+  @ApiResponse({ status: 204, description: 'Account permanently deleted' })
+  @ApiUnauthorizedResponse()
+  async deleteMe(@Req() req: Request, @Res() res: Response): Promise<void> {
     const cookies = (req.cookies ?? {}) as Record<string, string | undefined>;
     const sid = cookies[this.session.cookieName];
     const session = await this.sessions.resolve(sid);
     if (!session) throw new UnauthorizedException();
-    const user = await this.sessions.findUser(session.userId);
-    if (!user) throw new UnauthorizedException();
-    return { userId: user.userId, email: user.email };
+    await this.sessions.deleteUser(session.userId);
+    res.clearCookie(this.session.cookieName, this.cookieOptions(new Date(0)));
+    res.status(204).send();
   }
 
   @Post('logout')
@@ -175,7 +229,10 @@ export class AuthController {
   @Get('google/callback')
   @ApiQuery({ name: 'code', required: false })
   @ApiQuery({ name: 'state', required: false })
-  @ApiResponse({ status: 302, description: 'Redirect to dashboard or error' })
+  @ApiResponse({
+    status: 302,
+    description: 'Redirect to post-login path or error',
+  })
   async googleCallback(
     @Query('code') code: string | undefined,
     @Query('state') state: string | undefined,

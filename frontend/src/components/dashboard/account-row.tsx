@@ -1,17 +1,23 @@
+"use client";
+
+import Link from "next/link";
 import { Settings, Trash2 } from "lucide-react";
 import type { ComponentType } from "react";
+import { useT } from "@/components/language-provider";
 
 function AccountCard({
   icon: Icon,
   title,
   body,
   cta,
+  href,
   danger,
 }: {
   icon: ComponentType<{ className?: string; strokeWidth?: number }>;
   title: string;
   body: string;
   cta: string;
+  href: string;
   danger?: boolean;
 }) {
   return (
@@ -33,8 +39,8 @@ function AccountCard({
           <div className="mt-1 text-sm text-[var(--color-fg-muted)]">{body}</div>
         </div>
       </div>
-      <button
-        type="button"
+      <Link
+        href={href}
         className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-bold transition ${
           danger
             ? "border border-[var(--color-danger)]/40 text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10"
@@ -42,25 +48,28 @@ function AccountCard({
         }`}
       >
         {cta}
-      </button>
+      </Link>
     </div>
   );
 }
 
 export function AccountRow() {
+  const t = useT();
   return (
     <section className="snap-section reveal mt-12 grid scroll-mt-20 gap-4 md:grid-cols-2">
       <AccountCard
         icon={Settings}
-        title="Account settings"
-        body="Linked accounts (Telegram, Google, email), language, transactional notifications."
-        cta="Open settings"
+        title={t("dashboard.account_row.settings_title")}
+        body={t("dashboard.account_row.settings_body")}
+        cta={t("dashboard.account_row.settings_cta")}
+        href="/settings"
       />
       <AccountCard
         icon={Trash2}
-        title="Delete account"
-        body="Cascading delete — your packs, stickers, and uploaded photo all removed. GDPR-compliant."
-        cta="Delete"
+        title={t("dashboard.account_row.delete_title")}
+        body={t("dashboard.account_row.delete_body")}
+        cta={t("dashboard.account_row.delete_cta")}
+        href="/settings#delete-account"
         danger
       />
     </section>

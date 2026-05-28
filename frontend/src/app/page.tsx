@@ -8,21 +8,22 @@ import { MarqueeStrip } from "@/components/landing/marquee-strip";
 import { PackShowcase } from "@/components/landing/pack-showcase";
 import { Pricing } from "@/components/landing/pricing";
 import { SiteFooter } from "@/components/landing/site-footer";
-import { SiteHeader } from "@/components/landing/site-header";
+import { hasSession } from "@/lib/auth/has-session";
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  const loggedIn = await hasSession();
+
   return (
     <div className="relative w-full overflow-x-hidden text-[var(--color-fg)]">
       <AtmosphericBackdrop />
-      <SiteHeader />
-      <Hero />
+      <Hero loggedIn={loggedIn} />
       <MarqueeStrip />
       <HowItWorks />
-      <PackShowcase />
+      <PackShowcase loggedIn={loggedIn} />
       <Features />
-      <Pricing />
+      <Pricing loggedIn={loggedIn} />
       <Faq />
-      <FinalCta />
+      <FinalCta loggedIn={loggedIn} />
       <SiteFooter />
     </div>
   );

@@ -14,7 +14,7 @@
         ],
         "responses": {
           "302": {
-            "description": "Redirect to dashboard or login-failed"
+            "description": "Redirect to post-login path or login-failed"
           }
         },
         "tags": ["auth"]
@@ -38,12 +38,33 @@
                     "email": {
                       "type": "string",
                       "nullable": true
+                    },
+                    "displayName": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "avatarUrl": {
+                      "type": "string",
+                      "nullable": true
                     }
                   },
-                  "required": ["userId", "email"]
+                  "required": ["userId", "email", "displayName", "avatarUrl"]
                 }
               }
             }
+          },
+          "401": {
+            "description": ""
+          }
+        },
+        "tags": ["auth"]
+      },
+      "delete": {
+        "operationId": "AuthController_deleteMe",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": "Account permanently deleted"
           },
           "401": {
             "description": ""
@@ -145,7 +166,7 @@
         ],
         "responses": {
           "302": {
-            "description": "Redirect to dashboard or error"
+            "description": "Redirect to post-login path or error"
           }
         },
         "tags": ["auth"]

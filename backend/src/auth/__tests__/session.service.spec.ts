@@ -13,7 +13,9 @@ function buildPrismaMock() {
       deleteMany: jest.fn(),
     },
     channelIdentity: { findUnique: jest.fn(), update: jest.fn() },
-    user: { create: jest.fn(), findUnique: jest.fn() },
+    user: { create: jest.fn(), findUnique: jest.fn(), delete: jest.fn() },
+    packClaim: { deleteMany: jest.fn() },
+    $transaction: jest.fn(),
     $queryRaw: jest.fn(),
   } as unknown as jest.Mocked<PrismaService>;
 }
@@ -131,34 +133,104 @@ describe('SessionService', () => {
       expect(result).toBeNull();
     });
 
-    it('returns userId and email when user exists', async () => {
+    it('returns userId, email, displayName, and avatarUrl when user exists', async () => {
       const prisma = buildPrismaMock();
       (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
         id: 'user-7',
         email: 'hello@example.com',
+        identities: [{ displayName: 'hello', avatarUrl: null }],
       });
       const service = new SessionService(prisma);
 
       const result = await service.findUser('user-7');
 
-      expect(result).toEqual({ userId: 'user-7', email: 'hello@example.com' });
+      expect(result).toEqual({
+        userId: 'user-7',
+        email: 'hello@example.com',
+        displayName: 'hello',
+        avatarUrl: null,
+      });
       expect(prisma.user.findUnique).toHaveBeenCalledWith({
         where: { id: 'user-7' },
-        select: { id: true, email: true },
+        select: {
+          id: true,
+          email: true,
+          identities: {
+            select: { displayName: true, avatarUrl: true },
+            orderBy: { createdAt: 'desc' },
+          },
+        },
       });
     });
 
-    it('returns null email for Google-only user', async () => {
+    it('coalesces displayName/avatarUrl from the newest identity that has each', async () => {
+      const prisma = buildPrismaMock();
+      // identities ordered newest-first: a freshly linked Telegram identity
+      // (no avatar) should not shadow an earlier Google identity's avatar.
+      (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
+        id: 'user-10',
+        email: 'multi@example.com',
+        identities: [
+          { displayName: 'Tg User', avatarUrl: null },
+          {
+            displayName: 'Ada Lovelace',
+            avatarUrl: 'https://lh3.googleusercontent.com/a/ada',
+          },
+        ],
+      });
+      const service = new SessionService(prisma);
+
+      const result = await service.findUser('user-10');
+
+      expect(result).toEqual({
+        userId: 'user-10',
+        email: 'multi@example.com',
+        displayName: 'Tg User',
+        avatarUrl: 'https://lh3.googleusercontent.com/a/ada',
+      });
+    });
+
+    it('returns displayName and avatarUrl from first identity for Google-only user', async () => {
       const prisma = buildPrismaMock();
       (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
         id: 'user-8',
         email: null,
+        identities: [
+          {
+            displayName: 'Ada Lovelace',
+            avatarUrl: 'https://lh3.googleusercontent.com/a/ada',
+          },
+        ],
       });
       const service = new SessionService(prisma);
 
       const result = await service.findUser('user-8');
 
-      expect(result).toEqual({ userId: 'user-8', email: null });
+      expect(result).toEqual({
+        userId: 'user-8',
+        email: null,
+        displayName: 'Ada Lovelace',
+        avatarUrl: 'https://lh3.googleusercontent.com/a/ada',
+      });
+    });
+
+    it('returns null displayName and avatarUrl when no identity exists', async () => {
+      const prisma = buildPrismaMock();
+      (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
+        id: 'user-9',
+        email: null,
+        identities: [],
+      });
+      const service = new SessionService(prisma);
+
+      const result = await service.findUser('user-9');
+
+      expect(result).toEqual({
+        userId: 'user-9',
+        email: null,
+        displayName: null,
+        avatarUrl: null,
+      });
     });
   });
 
@@ -178,6 +250,35 @@ describe('SessionService', () => {
       const ts = (arg.data.revokedAt as Date).getTime();
       expect(ts).toBeGreaterThanOrEqual(before - 5);
       expect(ts).toBeLessThanOrEqual(after + 5);
+    });
+  });
+
+  describe('deleteUser', () => {
+    it('calls $transaction with packClaim.deleteMany and user.delete for the given userId', async () => {
+      const prisma = buildPrismaMock();
+      (prisma.$transaction as jest.Mock).mockResolvedValueOnce([]);
+      const service = new SessionService(prisma);
+
+      // Capture what the interactive-array form would build
+      const deleteManySentinel = Symbol('deleteMany');
+      const userDeleteSentinel = Symbol('userDelete');
+      (prisma.packClaim.deleteMany as jest.Mock).mockReturnValueOnce(
+        deleteManySentinel,
+      );
+      (prisma.user.delete as jest.Mock).mockReturnValueOnce(userDeleteSentinel);
+
+      await service.deleteUser('user-del');
+
+      expect(prisma.packClaim.deleteMany).toHaveBeenCalledWith({
+        where: { userId: 'user-del' },
+      });
+      expect(prisma.user.delete).toHaveBeenCalledWith({
+        where: { id: 'user-del' },
+      });
+      expect(prisma.$transaction).toHaveBeenCalledWith([
+        deleteManySentinel,
+        userDeleteSentinel,
+      ]);
     });
   });
 });

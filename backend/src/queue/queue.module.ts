@@ -1,5 +1,5 @@
 import { BullModule } from '@nestjs/bullmq';
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import type { ConfigType } from '@nestjs/config';
 
 import { AuthModule } from '../auth/auth.module';
@@ -18,7 +18,7 @@ import { STICKER_QUEUE_NAME, StickerQueueService } from './sticker.queue';
     }),
     BullModule.registerQueue({ name: STICKER_QUEUE_NAME }),
     ImageProcessingModule,
-    AuthModule,
+    forwardRef(() => AuthModule),
   ],
   providers: [StickerQueueService, StickerProcessor],
   exports: [StickerQueueService],

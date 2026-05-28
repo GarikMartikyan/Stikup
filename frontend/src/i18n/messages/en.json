@@ -1,0 +1,435 @@
+{
+  "common": {
+    "loading": "Loading",
+    "try_again": "Try again",
+    "cancel": "Cancel",
+    "close": "Close",
+    "or": "or",
+    "back_to_home": "Back to home",
+    "signing_out": "Signing out…",
+    "sign_out": "Sign out",
+    "signing_out_spinner": "Signing out"
+  },
+  "header": {
+    "sign_in": "Sign in",
+    "open_account_menu": "Open account menu",
+    "close_account_menu": "Close account menu",
+    "close_menu": "Close menu",
+    "account_menu_label": "Account menu",
+    "nav_how": "How it works",
+    "nav_pack": "The pack",
+    "nav_pricing": "Pricing",
+    "nav_faq": "FAQ",
+    "brand_home_label": "Stikup home",
+    "switch_to_light": "Switch to light theme",
+    "switch_to_dark": "Switch to dark theme"
+  },
+  "auth": {
+    "common": {
+      "email_label": "Email",
+      "email_placeholder": "you@example.com",
+      "password_label": "Password",
+      "hide_password": "Hide password",
+      "show_password": "Show password"
+    },
+    "login": {
+      "title": "Sign in to Stikup",
+      "subtitle": "Welcome back — pick your method below.",
+      "forgot_password": "Forgot password?",
+      "sign_in": "Sign in",
+      "signing_in": "Signing in…",
+      "no_account": "Don't have an account?",
+      "sign_up": "Sign up",
+      "error_invalid": "Invalid email or password.",
+      "google_button": "Continue with Google",
+      "telegram_button": "Continue with Telegram"
+    },
+    "register": {
+      "title": "Create your account",
+      "subtitle": "Free to join — your first 3 stickers are on us.",
+      "password_hint": "8+ characters, 1 number",
+      "password_placeholder": "At least 8 characters",
+      "confirm_password_label": "Confirm password",
+      "passwords_mismatch": "Passwords don't match.",
+      "terms_agree": "I agree to the",
+      "terms_link": "Terms",
+      "and": "and",
+      "privacy_link": "Privacy Policy",
+      "create_account": "Create account",
+      "creating_account": "Creating account…",
+      "already_have_account": "Already have an account?",
+      "sign_in": "Sign in",
+      "error_mismatch": "Passwords don't match.",
+      "error_conflict": "An account with that email already exists.",
+      "error_failed": "Registration failed. Please try again."
+    },
+    "forgot": {
+      "title": "Reset your password",
+      "subtitle": "Enter your email and we'll send you a reset link.",
+      "send_link": "Send reset link",
+      "sent_message": "If an account with that email exists, we'll send a reset link. Check your inbox.",
+      "back_to_sign_in": "Back to sign in"
+    },
+    "login_failed": {
+      "title": "Sign-in failed",
+      "body": "We couldn't complete the sign-in. This can happen if you denied access or the link expired.",
+      "back_to_sign_in": "Back to sign in"
+    },
+    "logout": {
+      "signing_out_label": "Signing out"
+    },
+    "user_drawer": {
+      "home": "Home",
+      "my_stickers": "My Stickers",
+      "settings": "Settings",
+      "signing_out": "Signing out…",
+      "sign_out": "Sign out"
+    }
+  },
+  "landing": {
+    "hero": {
+      "badge": "New · 12 stickers in a minute",
+      "title_prefix": "A sticker pack of",
+      "title_highlight": "YOU",
+      "title_suffix": "in your Telegram.",
+      "cta_authenticated": "Make my stickers",
+      "cta_anonymous": "Sign in to start",
+      "see_how": "See how it works",
+      "description": "One selfie. Twelve cartoon stickers. Yours forever — installed straight into Telegram by our bot. No artists. No prompts.",
+      "loved_by": "Loved by early testers",
+      "selfie_label": "Your selfie",
+      "ready": "ready",
+      "pack_count": "{count} stickers"
+    },
+    "how_it_works": {
+      "eyebrow": "How it works",
+      "title": "Three steps.",
+      "title_suffix": "No prompts to write.",
+      "description": "The whole flow is built for one-handed mobile use — because that's where Telegram lives.",
+      "step_label": "STEP",
+      "steps": {
+        "step_01_title": "DM the bot",
+        "step_01_body": "Open @stikup_bot and tap /start. We send you a one-tap link straight into the app — no passwords.",
+        "step_02_title": "Drop one selfie",
+        "step_02_body": "Front-facing photo, good light, one face. We check it instantly and tell you if anything looks off.",
+        "step_03_title": "Get 3 free, unlock 12",
+        "step_03_body": "Your full pack of 12 generates upfront. Take the 3 free ones — or pay once to unlock all 12 and have the bot install it."
+      }
+    },
+    "pack_showcase": {
+      "eyebrow": "The pack",
+      "title": "Here's what you actually get.",
+      "description": "Every pack is 12 stickers, generated from one photo. You see all 12 right away — 3 are free to take, 9 stay locked until you unlock the pack.",
+      "cta_authenticated": "Try the free preview",
+      "cta_anonymous": "Sign in to try free",
+      "unlock_authenticated": "Unlock all 12",
+      "unlock_anonymous": "Sign in to unlock",
+      "stickers_locked": "9 stickers locked",
+      "your_pack_ready": "Your pack · ready",
+      "bullets": {
+        "b1": "12 expressive emotions, hand-curated",
+        "b2": "Real Telegram sticker set you own",
+        "b3": "Free 3 stickers — no payment required",
+        "b4": "Pay once to unlock all 12, no subscription",
+        "b5": "One regeneration included with every paid pack"
+      }
+    },
+    "features": {
+      "eyebrow": "Why Stikup",
+      "title": "Built for the chat,",
+      "title_suffix": "not the gallery.",
+      "items": {
+        "ready_title": "Ready in ~3 minutes",
+        "ready_body": "Synchronous flow. Watch your pack come to life while you wait.",
+        "likeness_title": "Likeness that lands",
+        "likeness_body": "Tight prompts + a forgiving cartoon style so people actually recognise you.",
+        "telegram_title": "Real Telegram pack",
+        "telegram_body": "Created under your Telegram account. Yours forever. Install with one tap.",
+        "download_title": "Yours to download",
+        "download_body": "Grab the WebPs or PNGs and use them anywhere — TikTok, IG, Discord, you name it."
+      }
+    },
+    "pricing": {
+      "eyebrow": "Pricing",
+      "title": "One pack. One price.",
+      "title_suffix": "No subscription. Ever.",
+      "description": "Try the 3-sticker preview free. Pay once to unlock the full pack — keep it forever.",
+      "full_pack_badge": "Full pack of 12",
+      "one_time": "one-time",
+      "regional_pricing": "Regional pricing — pay in your own currency.",
+      "cta_authenticated": "Start free pack",
+      "cta_anonymous": "Sign in to start",
+      "payment_methods": "Stripe · Apple Pay · Google Pay · CIS, EU, US currency support",
+      "bullets": {
+        "b1": "All 12 stickers (3 free + 9 unlocked)",
+        "b2": "Real Telegram sticker set you own",
+        "b3": "1 free regeneration of the pack",
+        "b4": "PNG + WebP downloads",
+        "b5": "Bot delivers it for you in seconds",
+        "b6": "No watermark. No subscription. No catch."
+      }
+    },
+    "faq": {
+      "eyebrow": "FAQ",
+      "title": "Questions, answered.",
+      "items": {
+        "q1": "How does it actually work?",
+        "a1": "You message our Telegram bot. It opens a webpage where you upload one selfie. About 1–3 minutes later, you see all 12 stickers — 3 are free to take, and the other 9 are visibly locked. Pay once to unlock the whole pack and the bot installs it to your Telegram.",
+        "q2": "What's included when I pay?",
+        "a2": "All 12 stickers unlock instantly — no second wait. The bot creates a real Telegram sticker set you own and DMs you the install link. You also get one regeneration of that pack in case the result isn't quite right.",
+        "q3": "Can I make more than one pack?",
+        "a3": "Yes — each pack is a separate purchase. After your first paid pack, you can upload a new photo and run the flow again. No subscription, no surprise charges.",
+        "q4": "What about my photo?",
+        "a4": "Stored only while your account exists. Delete your account from settings — the photo, the pack, the generated files all cascade out. GDPR-ready from day one.",
+        "q5": "Why are 9 stickers locked instead of just hidden?",
+        "a5": "So you can see exactly what you'd be unlocking. The locked previews are the real generated stickers — visible, with a small lock badge on top. Paying flips the badge off and installs all 12 to your Telegram, no second AI call."
+      }
+    },
+    "final_cta": {
+      "title_line1": "Your face.",
+      "title_line2": "Your pack.",
+      "title_line3": "Three minutes.",
+      "description": "One selfie. We do the rest. Sticker pack waiting in your Telegram.",
+      "cta_authenticated": "Try the free preview",
+      "cta_anonymous": "Sign in to try free",
+      "open_bot": "Open Telegram bot",
+      "ready": "Ready in 3 minutes",
+      "age_gdpr": "13+ only · GDPR ready",
+      "download": "Download PNG / WebP"
+    },
+    "footer": {
+      "privacy": "Privacy",
+      "terms": "Terms",
+      "support": "Support",
+      "copyright": "© 2026 Stikup"
+    }
+  },
+  "dashboard": {
+    "greeting": {
+      "title": "My Stickers",
+      "subtitle": "user",
+      "make_new_pack": "Make a new pack"
+    },
+    "stats": {
+      "packs_label": "Packs",
+      "packs_hint": "lifetime",
+      "stickers_label": "Stickers owned",
+      "stickers_hint": "across all packs",
+      "regens_label": "Regenerations",
+      "regens_value": "1 / pack",
+      "regens_hint": "paid-pack quota",
+      "subscription_label": "Subscription",
+      "subscription_value": "None",
+      "subscription_hint": "never — one-time only"
+    },
+    "pack_list": {
+      "your_packs": "Your packs",
+      "pack_singular": "pack",
+      "pack_plural": "packs",
+      "make_another": "Make another pack",
+      "make_another_body": "Different photo. Fresh 12 stickers. One payment."
+    },
+    "pack_card": {
+      "stickers_count": "12/12 stickers",
+      "ready": "ready",
+      "install": "Install",
+      "regens_left": "Regenerations: {count} left",
+      "regenerate": "Regenerate",
+      "view": "View"
+    },
+    "empty_state": {
+      "title": "No sticker packs yet",
+      "body": "You haven't made a sticker pack yet. Drop a selfie to begin.",
+      "cta": "Make your first pack"
+    },
+    "account_row": {
+      "settings_title": "Account settings",
+      "settings_body": "Theme, language, and other preferences.",
+      "settings_cta": "Open settings",
+      "delete_title": "Delete account",
+      "delete_body": "Cascading delete — your packs, stickers, and uploaded photo all removed. GDPR-compliant.",
+      "delete_cta": "Delete"
+    }
+  },
+  "upload": {
+    "intro": {
+      "step": "Step 01 of 03",
+      "title": "Drop in one photo.",
+      "description": "Front-facing, well-lit, one face in frame. We'll handle the rest."
+    },
+    "drop_zone": {
+      "upload_aria": "Upload a selfie",
+      "title": "Drop a selfie or tap to pick",
+      "formats": "JPEG · PNG · HEIC · up to 10 MB",
+      "hint_drag": "Drag & drop",
+      "hint_paste": "Paste",
+      "hint_camera": "Open camera",
+      "selfie_preview_alt": "Your selfie preview",
+      "remove_photo": "Remove photo",
+      "looks_good": "Looks good"
+    },
+    "actions": {
+      "pick_from_device": "Pick from device",
+      "use_camera": "Use camera",
+      "generate": "Generate my pack",
+      "sending": "Sending to AI…",
+      "choose_another": "Choose another",
+      "back": "Back"
+    },
+    "tips": {
+      "section_label": "For best likeness",
+      "tip_face": "One face, facing the camera",
+      "tip_light": "Even, natural light",
+      "tip_camera": "Phone-camera resolution or higher",
+      "free_preview_label": "Free preview",
+      "free_preview_title": "3 stickers free. Unlock 9 more for $5.99.",
+      "free_preview_body": "Your full pack of 12 generates upfront. After you see it, you decide whether to take the 3 free, unlock all 12, or regenerate.",
+      "privacy_note": "We never share or sell your photo. It's stored only while your account exists and removed instantly when you delete it."
+    },
+    "error": {
+      "photo_not_accepted": "Photo not accepted",
+      "invalid_format": "Use a JPEG, PNG, or HEIC photo.",
+      "too_large": "File is over 10 MB. Try a smaller export."
+    }
+  },
+  "result": {
+    "header": {
+      "eyebrow": "Pack ready",
+      "title": "Your sticker pack is alive.",
+      "description": "All 12 generated. 3 free, 9 unlock with the pack.",
+      "selfie_alt": "Your selfie"
+    },
+    "sticker_grid": {
+      "unlocked": "{count} unlocked",
+      "locked": "{count} locked",
+      "sticker_n": "Sticker {n}",
+      "locked_sticker": "Locked sticker",
+      "locked_note": "Locked stickers are real — they're already generated. Unlock instantly reveals all 9 with no second wait."
+    },
+    "actions": {
+      "unlock_all": "Unlock all {count}",
+      "take_free": "Take {count} free",
+      "install_telegram": "Install to Telegram",
+      "sending_telegram": "Sending to Telegram…",
+      "regenerate": "Regenerate",
+      "regen_left": "1 free regen left",
+      "recommended": "Recommended"
+    },
+    "preview_panel": {
+      "preview_label": "Preview",
+      "sticker_n": "Sticker {n}",
+      "tap_to_preview": "Tap a sticker to preview it large",
+      "download": "Download",
+      "share": "Share"
+    },
+    "paywall": {
+      "unlock_badge": "Unlock the pack",
+      "one_time": "one-time",
+      "unlock_cta": "Unlock all 12 — {price}",
+      "payment_methods": "Stripe · Apple Pay · Google Pay",
+      "bullets": {
+        "b1": "All 12 stickers — locked ones reveal instantly",
+        "b2": "Bot installs the Telegram pack for you",
+        "b3": "1 free regeneration included",
+        "b4": "Download as PNG / WebP"
+      }
+    },
+    "quota": {
+      "title": "Quota",
+      "generations": "Generations",
+      "regenerations": "Regenerations",
+      "note": "Each paid pack grants you a fresh cycle: new photo, 12 new stickers, 1 more regen."
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "subtitle": "Theme, language, and account.",
+    "theme": {
+      "section_title": "Theme",
+      "section_description": "Choose how Stikup looks on this device.",
+      "radio_label": "Theme",
+      "light": "Light",
+      "dark": "Dark"
+    },
+    "language": {
+      "section_title": "Language",
+      "section_description": "Preferred interface language for this device.",
+      "radio_label": "Language"
+    },
+    "delete_account": {
+      "section_title": "Delete account",
+      "section_description": "Cascading delete — your packs, stickers, and uploads are removed. GDPR-compliant.",
+      "signed_in_as": "Signed in as {email}. This action is permanent.",
+      "action_permanent": "This action is permanent.",
+      "delete_button": "Delete account",
+      "confirm_type": "Type",
+      "confirm_to_confirm": "to confirm.",
+      "confirm_body": "Your account, packs, stickers, and uploads will be removed and cannot be recovered.",
+      "confirm_aria": "Type {phrase} to confirm",
+      "permanently_delete": "Permanently delete",
+      "deleting": "Deleting…",
+      "error_failed": "Could not delete account. Please try again."
+    }
+  },
+  "success": {
+    "payment_confirmed": "Payment confirmed",
+    "title_prefix": "Your pack is",
+    "title_highlight": "alive",
+    "description": "All 12 stickers installed under your Telegram account. Tap to add them to your sticker tray.",
+    "your_pack": "Your pack",
+    "install_telegram": "Install to Telegram",
+    "copy_link": "Copy link",
+    "whole_pack_label": "The whole pack · unlocked",
+    "stickers_heading": "12 stickers · all yours",
+    "download_all": "Download all (.zip)",
+    "share": "Share",
+    "share_tiktok_title": "Share to TikTok",
+    "share_tiktok_body": "Drop a sticker into a video and tag #stikup. Your pack travels.",
+    "share_tiktok_cta": "Open share",
+    "invite_title": "Invite a friend",
+    "invite_body": "They make a paid pack → you get 2 bonus stickers added to yours.",
+    "invite_cta": "Copy referral link",
+    "make_another_title": "Make another",
+    "make_another_body": "Different photo, fresh 12 stickers. Single $5.99 — no subscription.",
+    "make_another_cta": "Start new pack",
+    "thanks": "Thanks for trying Stikup.",
+    "go_to_stickers": "Go to my stickers"
+  },
+  "pages": {
+    "privacy": {
+      "eyebrow": "Legal",
+      "title": "Privacy Policy",
+      "body_1": "This page is being prepared. We take your privacy seriously and are working on a full policy document.",
+      "body_2": "In the meantime, if you have any questions about how we handle your data, please reach out at",
+      "back_home": "Back to home"
+    },
+    "terms": {
+      "eyebrow": "Legal",
+      "title": "Terms of Service",
+      "body_1": "This page is being prepared. Full terms of service will be published here shortly.",
+      "body_2": "If you have any questions in the meantime, contact us at",
+      "back_home": "Back to home"
+    },
+    "support": {
+      "eyebrow": "Help",
+      "title": "Support",
+      "body_1": "A full help centre is being prepared. For now, the fastest way to get help is to email us directly.",
+      "body_3": "We aim to respond within one business day.",
+      "back_home": "Back to home"
+    }
+  },
+  "errors": {
+    "not_found": {
+      "title": "Page not found",
+      "body": "The page you're looking for doesn't exist or has moved.",
+      "go_home": "Go home"
+    },
+    "error_boundary": {
+      "eyebrow": "Error",
+      "title": "Something went wrong",
+      "body": "We hit an unexpected hiccup while rendering this page. You can try again — if it keeps happening, please come back in a minute.",
+      "try_again": "Try again"
+    },
+    "loading": "Loading"
+  }
+}

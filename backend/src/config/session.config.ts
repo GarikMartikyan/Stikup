@@ -35,7 +35,7 @@ export const sessionConfig = registerAs('session', (): SessionConfigSchema => {
     cookieName: process.env.SESSION_COOKIE_NAME || 'sid',
     cookieDomain: process.env.SESSION_COOKIE_DOMAIN || undefined,
     cookieSecure: toBool(process.env.SESSION_COOKIE_SECURE, false),
-    postLoginPath: process.env.POST_LOGIN_PATH || '/dashboard',
+    postLoginPath: process.env.POST_LOGIN_PATH || '/my-stickers',
   };
 
   const instance = plainToInstance(SessionConfigSchema, raw);

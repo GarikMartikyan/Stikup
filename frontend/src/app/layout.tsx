@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Bricolage_Grotesque } from "next/font/google";
 import Script from "next/script";
+import { AppHeader } from "@/components/app-header";
+import { LanguageProvider } from "@/components/language-provider";
 import { ThemeProvider } from "@/components/theme-provider";
+import { StoreProvider } from "@/lib/store/providers";
+import { hasSession } from "@/lib/auth/has-session";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -34,11 +38,13 @@ const noFlashThemeScript = `
 }catch(e){}})();
 `;
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const loggedIn = await hasSession();
+
   return (
     <html
       lang="en"
@@ -50,8 +56,15 @@ export default function RootLayout({
           {noFlashThemeScript}
         </Script>
       </head>
-      <body className="min-h-full flex flex-col">
-        <ThemeProvider>{children}</ThemeProvider>
+      <body className="min-h-dvh flex flex-col">
+        <ThemeProvider>
+          <LanguageProvider>
+            <StoreProvider>
+              <AppHeader loggedIn={loggedIn} />
+              {children}
+            </StoreProvider>
+          </LanguageProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

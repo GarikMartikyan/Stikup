@@ -9,7 +9,8 @@ import Link from "next/link";
  * lightweight header here (brand wordmark only, no ThemeToggle) rather than
  * importing AppHeader, which pulls in ThemeToggle (a "use client" component
  * relying on a React context that is absent during static generation of this
- * special segment).
+ * special segment). Strings are hardcoded in English for the same reason —
+ * the LanguageProvider context is unavailable during special-segment prerender.
  */
 export default function NotFound() {
   return (

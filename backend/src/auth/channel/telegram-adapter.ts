@@ -20,6 +20,10 @@ export class TelegramAdapter {
       profile: {
         displayName: displayName || undefined,
         username: from.username,
+        // Telegram avatar URLs embed the bot token and expire after ~1h, so we
+        // can't safely persist them as-is. Wire this through a backend image
+        // proxy (resolve file_id → fresh URL on demand) before populating.
+        avatarUrl: undefined,
       },
     };
   }

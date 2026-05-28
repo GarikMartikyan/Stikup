@@ -42,9 +42,7 @@ export function StickerCard({
     >
       <div
         className={`relative h-full w-full rounded-[18%] bg-[var(--color-bg-elev)] ring-1 ring-[var(--color-border)] shadow-[var(--shadow-sticker)] transition-transform duration-300 ${
-          locked
-            ? "blur-sm grayscale opacity-70"
-            : "group-hover:-translate-y-1 group-hover:scale-[1.04]"
+          locked ? "" : "group-hover:-translate-y-1 group-hover:scale-[1.04]"
         }`}
       >
         <Image
@@ -57,14 +55,9 @@ export function StickerCard({
         />
 
         {locked && (
-          <>
-            {/* Subtle dim so the lock badge reads clearly on any sticker */}
-            <div className="absolute inset-0 rounded-[18%] bg-[var(--color-fg)]/12" />
-            {/* Lock badge — pinned to the top-right so the sticker stays visible */}
-            <div className="absolute right-1.5 top-1.5 grid h-7 w-7 place-items-center rounded-full bg-[var(--color-fg)] text-[var(--color-bg)] shadow-md ring-2 ring-[var(--color-bg-elev)]">
-              <Lock className="h-3.5 w-3.5" strokeWidth={2.5} />
-            </div>
-          </>
+          <div className="absolute right-1.5 top-1.5 grid h-7 w-7 place-items-center rounded-full bg-[var(--color-fg)] text-[var(--color-bg)] shadow-md ring-2 ring-[var(--color-bg-elev)]">
+            <Lock className="h-3.5 w-3.5" strokeWidth={2.5} />
+          </div>
         )}
       </div>
     </div>

@@ -30,7 +30,7 @@ export interface paths {
         get: operations["AuthController_me"];
         put?: never;
         post?: never;
-        delete?: never;
+        delete: operations["AuthController_deleteMe"];
         options?: never;
         head?: never;
         patch?: never;
@@ -193,7 +193,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Redirect to dashboard or login-failed */
+            /** @description Redirect to post-login path or login-failed */
             302: {
                 headers: {
                     [name: string]: unknown;
@@ -220,8 +220,34 @@ export interface operations {
                         /** Format: uuid */
                         userId: string;
                         email: string | null;
+                        displayName: string | null;
+                        avatarUrl: string | null;
                     };
                 };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AuthController_deleteMe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Account permanently deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             401: {
                 headers: {
@@ -335,7 +361,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Redirect to dashboard or error */
+            /** @description Redirect to post-login path or error */
             302: {
                 headers: {
                     [name: string]: unknown;

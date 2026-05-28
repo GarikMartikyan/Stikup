@@ -13,6 +13,7 @@ interface GoogleUserInfo {
   sub: string;
   name: string;
   email: string;
+  picture?: string;
 }
 
 @Injectable()
@@ -71,6 +72,7 @@ export class GoogleAdapter {
       profile: {
         displayName: userInfo.name,
         username: userInfo.email,
+        avatarUrl: userInfo.picture,
       },
     };
   }

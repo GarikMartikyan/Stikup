@@ -1,12 +1,9 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
-import { AppHeader } from "@/components/app-header";
 import { DropZone } from "@/components/upload/drop-zone";
 import { ErrorBanner } from "@/components/upload/error-banner";
-import { TipsPanel } from "@/components/upload/tips-panel";
+import { PrivacyNote, TipsPanel } from "@/components/upload/tips-panel";
 import { UploadActions } from "@/components/upload/upload-actions";
 import { UploadIntro } from "@/components/upload/upload-intro";
 import {
@@ -14,6 +11,7 @@ import {
   MAX_BYTES,
   type FileState,
 } from "@/components/upload/types";
+import { useT } from "@/components/language-provider";
 
 export default function UploadPage() {
   const galleryRef = useRef<HTMLInputElement | null>(null);
@@ -21,25 +19,26 @@ export default function UploadPage() {
   const [state, setState] = useState<FileState>({ kind: "idle" });
   const [dragOver, setDragOver] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const t = useT();
 
   const acceptFile = useCallback((file: File) => {
     if (!ACCEPTED.includes(file.type) && !/\.heic$|\.heif$/i.test(file.name)) {
       setState({
         kind: "error",
-        message: "Use a JPEG, PNG, or HEIC photo.",
+        message: t("upload.error.invalid_format"),
       });
       return;
     }
     if (file.size > MAX_BYTES) {
       setState({
         kind: "error",
-        message: "File is over 10 MB. Try a smaller export.",
+        message: t("upload.error.too_large"),
       });
       return;
     }
     const url = URL.createObjectURL(file);
     setState({ kind: "ready", file, url });
-  }, []);
+  }, [t]);
 
   const onPick = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -78,18 +77,7 @@ export default function UploadPage() {
   const fileReady = state.kind === "ready";
 
   return (
-    <div className="relative flex min-h-dvh flex-col">
-      <AppHeader
-        right={
-          <Link
-            href="/"
-            className="hidden items-center gap-1.5 rounded-full border border-[var(--color-border)] bg-[var(--color-bg-elev)] px-3.5 py-1.5 text-xs font-semibold text-[var(--color-fg-muted)] hover:text-[var(--color-fg)] md:inline-flex"
-          >
-            <ArrowLeft className="h-3 w-3" /> Back
-          </Link>
-        }
-      />
-
+    <div className="relative flex flex-1 flex-col">
       <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center px-5 py-6 md:py-10">
         <UploadIntro />
 
@@ -143,6 +131,8 @@ export default function UploadPage() {
               onSubmit={submit}
               onReset={reset}
             />
+
+            <PrivacyNote className="mt-5 hidden md:block" />
           </div>
 
           <TipsPanel />

@@ -6,5 +6,6 @@ export interface ChannelEvent {
   profile: {
     displayName?: string;
     username?: string;
+    avatarUrl?: string;
   };
 }

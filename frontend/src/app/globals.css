@@ -15,6 +15,7 @@
 
   /* Brand */
   --color-brand: #e0349a;
+  --color-brand-soft: color-mix(in oklab, var(--color-brand) 55%, transparent);
   --color-brand-2: #ffb422;
   --color-accent: #1ec8ff;
   --color-success: #10b981;
@@ -65,6 +66,16 @@ body {
   font-feature-settings: "ss01", "cv11";
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+html, body, * {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -ms-user-select: none !important;
+}
+input, textarea, [contenteditable="true"], [contenteditable="true"] * {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  -ms-user-select: text !important;
 }
 
 /* Section snap targets */
@@ -154,9 +165,8 @@ body {
 .marquee-track:hover { animation-play-state: paused; }
 
 :focus-visible {
-  outline: 2px solid var(--color-brand);
+  outline: 2px solid var(--color-brand-soft);
   outline-offset: 3px;
-  border-radius: 4px;
 }
 
 @media (prefers-reduced-motion: reduce) {

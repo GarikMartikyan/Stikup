@@ -6,8 +6,8 @@
     "node": ">=22"
   },
   "scripts": {
-    "dev": "NODE_OPTIONS=--max-old-space-size=4096 dotenv -e ../.env -- next dev",
-    "dev:webpack": "NODE_OPTIONS=--max-old-space-size=4096 dotenv -e ../.env -- next dev --webpack",
+    "dev": "NODE_OPTIONS=--max-old-space-size=4096 dotenv -e ../.env -- sh -c 'next dev -p ${FRONTEND_PORT:-3000}'",
+    "dev:webpack": "NODE_OPTIONS=--max-old-space-size=4096 dotenv -e ../.env -- sh -c 'next dev --webpack -p ${FRONTEND_PORT:-3000}'",
     "build": "dotenv -e ../.env -- next build",
     "start": "dotenv -e ../.env -- next start",
     "lint": "eslint",

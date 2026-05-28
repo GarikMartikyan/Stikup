@@ -1,5 +1,6 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 
+import { TelegramModule } from '../telegram/telegram.module';
 import { AuthController } from './auth.controller';
 import { BOT_SENDER } from './channel/bot-sender';
 import { EmailAdapter } from './channel/email-adapter';
@@ -11,6 +12,7 @@ import { SessionService } from './session.service';
 import { TokenService } from './token.service';
 
 @Module({
+  imports: [forwardRef(() => TelegramModule)],
   controllers: [AuthController],
   providers: [
     TelegramAdapter,

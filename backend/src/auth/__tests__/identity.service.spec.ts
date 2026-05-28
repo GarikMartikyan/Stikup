@@ -20,7 +20,11 @@ function buildPrismaMock() {
 const event: ChannelEvent = {
   channel: 'telegram',
   channelUserId: '123',
-  profile: { displayName: 'Ada', username: 'ada' },
+  profile: {
+    displayName: 'Ada',
+    username: 'ada',
+    avatarUrl: 'https://cdn.example/ada.png',
+  },
 };
 
 describe('IdentityService', () => {
@@ -44,6 +48,7 @@ describe('IdentityService', () => {
             channelUserId: '123',
             displayName: 'Ada',
             username: 'ada',
+            avatarUrl: 'https://cdn.example/ada.png',
           },
         },
       },
@@ -74,6 +79,7 @@ describe('IdentityService', () => {
       data: {
         displayName: 'Ada',
         username: 'ada',
+        avatarUrl: 'https://cdn.example/ada.png',
       },
     });
   });

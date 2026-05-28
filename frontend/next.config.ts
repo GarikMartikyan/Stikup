@@ -3,11 +3,12 @@ import type {NextConfig} from "next";
 const backendUrl = process.env.BACKEND_URL || "http://localhost:3131";
 
 const nextConfig: NextConfig = {
-    allowedDevOrigins: ['192.168.31.95', '192.168.31.179', 'localhost', '127.0.0.1'],
+    allowedDevOrigins: ['192.168.31.95', '192.168.31.179', 'localhost', '127.0.0.1', '*.trycloudflare.com'],
     experimental: {
         optimizePackageImports: ['lucide-react'],
         preloadEntriesOnStart: false,
         turbopackFileSystemCacheForDev: false,
+        turbopackFileSystemCacheForBuild: false,
     },
     async rewrites() {
         return [

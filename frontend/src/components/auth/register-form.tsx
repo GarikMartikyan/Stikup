@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRegisterMutation } from "@/lib/store/auth-api";
+import { useT } from "@/components/language-provider";
 
 function strengthOk(password: string) {
   return password.length >= 8 && /\d/.test(password);
@@ -13,6 +14,7 @@ function strengthOk(password: string) {
 
 export function RegisterForm() {
   const router = useRouter();
+  const t = useT();
   const [register, { isLoading }] = useRegisterMutation();
   const [error, setError] = useState<string | null>(null);
 
@@ -30,7 +32,7 @@ export function RegisterForm() {
     e.preventDefault();
     setError(null);
     if (password !== confirmPassword) {
-      setError("Passwords don't match.");
+      setError(t("auth.register.error_mismatch"));
       return;
     }
     const data = new FormData(e.currentTarget);
@@ -38,7 +40,7 @@ export function RegisterForm() {
 
     try {
       await register({ email, password }).unwrap();
-      router.push("/dashboard");
+      router.push("/my-stickers");
     } catch (err: unknown) {
       if (
         err !== null &&
@@ -46,9 +48,9 @@ export function RegisterForm() {
         "status" in err &&
         err.status === 409
       ) {
-        setError("An account with that email already exists.");
+        setError(t("auth.register.error_conflict"));
       } else {
-        setError("Registration failed. Please try again.");
+        setError(t("auth.register.error_failed"));
       }
     }
   }
@@ -60,7 +62,7 @@ export function RegisterForm() {
           htmlFor="email"
           className="text-sm font-medium text-[var(--color-fg)]"
         >
-          Email
+          {t("auth.common.email_label")}
         </label>
         <input
           id="email"
@@ -68,8 +70,8 @@ export function RegisterForm() {
           type="email"
           autoComplete="email"
           required
-          className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-elev)] px-3.5 py-2.5 text-sm text-[var(--color-fg)] placeholder-[var(--color-fg-muted)] outline-none transition focus:border-[var(--color-brand)] focus:ring-2 focus:ring-[var(--color-brand)]/20"
-          placeholder="you@example.com"
+          className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-elev)] px-3.5 py-2.5 text-sm text-[var(--color-fg)] placeholder-[var(--color-fg-muted)] outline-none transition focus:border-[var(--color-brand-soft)] focus:ring-2 focus:ring-[var(--color-brand)]/15"
+          placeholder={t("auth.common.email_placeholder")}
         />
       </div>
 
@@ -78,7 +80,7 @@ export function RegisterForm() {
           htmlFor="password"
           className="text-sm font-medium text-[var(--color-fg)]"
         >
-          Password
+          {t("auth.common.password_label")}
         </label>
         <div className="relative">
           <input
@@ -90,12 +92,12 @@ export function RegisterForm() {
             minLength={8}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-elev)] px-3.5 py-2.5 pr-10 text-sm text-[var(--color-fg)] placeholder-[var(--color-fg-muted)] outline-none transition focus:border-[var(--color-brand)] focus:ring-2 focus:ring-[var(--color-brand)]/20"
-            placeholder="At least 8 characters"
+            className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-elev)] px-3.5 py-2.5 pr-10 text-sm text-[var(--color-fg)] placeholder-[var(--color-fg-muted)] outline-none transition focus:border-[var(--color-brand-soft)] focus:ring-2 focus:ring-[var(--color-brand)]/15"
+            placeholder={t("auth.register.password_placeholder")}
           />
           <button
             type="button"
-            aria-label={showPassword ? "Hide password" : "Show password"}
+            aria-label={showPassword ? t("auth.common.hide_password") : t("auth.common.show_password")}
             onClick={() => setShowPassword((v) => !v)}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-fg-muted)] hover:text-[var(--color-fg)]"
           >
@@ -113,7 +115,7 @@ export function RegisterForm() {
               : "text-[var(--color-fg-muted)]"
           }`}
         >
-          8+ characters, 1 number
+          {t("auth.register.password_hint")}
         </p>
       </div>
 
@@ -122,7 +124,7 @@ export function RegisterForm() {
           htmlFor="confirm-password"
           className="text-sm font-medium text-[var(--color-fg)]"
         >
-          Confirm password
+          {t("auth.register.confirm_password_label")}
         </label>
         <div className="relative">
           <input
@@ -133,16 +135,16 @@ export function RegisterForm() {
             required
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
-            className={`w-full rounded-xl border bg-[var(--color-bg-elev)] px-3.5 py-2.5 pr-10 text-sm text-[var(--color-fg)] placeholder-[var(--color-fg-muted)] outline-none transition focus:ring-2 focus:ring-[var(--color-brand)]/20 ${
+            className={`w-full rounded-xl border bg-[var(--color-bg-elev)] px-3.5 py-2.5 pr-10 text-sm text-[var(--color-fg)] placeholder-[var(--color-fg-muted)] outline-none transition focus:ring-2 focus:ring-[var(--color-brand)]/15 ${
               confirmMismatch
                 ? "border-red-500 focus:border-red-500"
-                : "border-[var(--color-border)] focus:border-[var(--color-brand)]"
+                : "border-[var(--color-border)] focus:border-[var(--color-brand-soft)]"
             }`}
             placeholder="••••••••"
           />
           <button
             type="button"
-            aria-label={showConfirm ? "Hide password" : "Show password"}
+            aria-label={showConfirm ? t("auth.common.hide_password") : t("auth.common.show_password")}
             onClick={() => setShowConfirm((v) => !v)}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-fg-muted)] hover:text-[var(--color-fg)]"
           >
@@ -154,7 +156,7 @@ export function RegisterForm() {
           </button>
         </div>
         {confirmMismatch && (
-          <p className="text-xs text-red-500">Passwords don&apos;t match.</p>
+          <p className="text-xs text-red-500">{t("auth.register.passwords_mismatch")}</p>
         )}
       </div>
 
@@ -167,13 +169,13 @@ export function RegisterForm() {
           required
         />
         <span>
-          I agree to the{" "}
+          {t("auth.register.terms_agree")}{" "}
           <Link href="/terms" className="font-medium text-[var(--color-fg)] hover:underline">
-            Terms
+            {t("auth.register.terms_link")}
           </Link>{" "}
-          and{" "}
+          {t("auth.register.and")}{" "}
           <Link href="/privacy" className="font-medium text-[var(--color-fg)] hover:underline">
-            Privacy Policy
+            {t("auth.register.privacy_link")}
           </Link>
         </span>
       </label>
@@ -190,7 +192,7 @@ export function RegisterForm() {
         aria-busy={isLoading}
         className="w-full"
       >
-        {isLoading ? "Creating account…" : "Create account"}
+        {isLoading ? t("auth.register.creating_account") : t("auth.register.create_account")}
       </Button>
     </form>
   );

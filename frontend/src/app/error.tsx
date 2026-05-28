@@ -1,15 +1,11 @@
 "use client";
 
 import { useEffect } from "react";
-import { Button } from "@/components/ui/button";
 
 /**
- * Global error boundary for the App Router.
- *
- * Per Next 16 convention, this must be a Client Component. It is rendered as
- * the fallback UI for any uncaught error in a route segment under the root
- * layout. The root layout itself is handled by `global-error.tsx` (not present;
- * Next will fall back to its built-in shell).
+ * Root error boundary. Must be "use client" per Next.js convention.
+ * Strings are hardcoded in English — the LanguageProvider context may be
+ * unavailable when this renders as the global error fallback.
  */
 export default function Error({
   error,
@@ -19,14 +15,13 @@ export default function Error({
   reset: () => void;
 }) {
   useEffect(() => {
-    // Log to whatever reporting service is configured. For now, console.
     console.error(error);
   }, [error]);
 
   const isDev = process.env.NODE_ENV !== "production";
 
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col items-center justify-center px-5 py-12">
+    <main className="mx-auto flex flex-1 w-full max-w-2xl flex-col items-center justify-center px-5 py-12">
       <div className="w-full rounded-3xl border border-[var(--color-border)] bg-[var(--color-bg-elev)] p-8 shadow-[var(--shadow-card)] md:p-10">
         <div className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-fg-subtle)]">
           Error
@@ -47,7 +42,13 @@ export default function Error({
         ) : null}
 
         <div className="mt-6">
-          <Button onClick={() => reset()}>Try again</Button>
+          <button
+            type="button"
+            onClick={() => reset()}
+            className="inline-flex items-center justify-center gap-2 rounded-full bg-[var(--color-fg)] px-4 py-2 text-sm font-semibold text-[var(--color-bg)] shadow-sm transition hover:opacity-90"
+          >
+            Try again
+          </button>
         </div>
       </div>
     </main>

@@ -1,0 +1,16 @@
+{
+  "login": {
+    "caption": "Tap the button below to sign in. If you log out of the Stikup web app, just send /login here and follow the link to sign back in. The link is valid for 5 minutes.",
+    "button": "Sign in"
+  },
+  "open": {
+    "button": "Open"
+  },
+  "errors": {
+    "no_profile": "Sorry, I couldn't read your Telegram profile.",
+    "no_chat_info": "Sorry, I couldn't read your chat info."
+  },
+  "queue": {
+    "working_on_it": "⏳ Working on it. I'll send the stickers as soon as they're ready."
+  }
+}

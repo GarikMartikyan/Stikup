@@ -1,29 +1,34 @@
-import Image from "next/image";
-import Link from "next/link";
-import { ArrowRight, Sparkles, Star } from "lucide-react";
-import { ALL_STICKERS, HERO_STICKERS } from "./data";
+'use client';
 
-export function Hero() {
+import Image from 'next/image';
+import Link from 'next/link';
+import { ArrowRight, Sparkles, Star } from 'lucide-react';
+import { uploadCtaHref } from '@/lib/auth/cta-href';
+import { ALL_STICKERS, HERO_STICKERS } from './data';
+import { useT } from '@/components/language-provider';
+
+export function Hero({ loggedIn }: { loggedIn: boolean }) {
+  const t = useT();
   return (
     <section className="snap-section relative flex min-h-dvh scroll-mt-16 flex-col justify-center px-5 pt-20 pb-10 md:pt-14">
-      <div className="mx-auto grid w-full max-w-6xl items-center gap-10 md:grid-cols-[1.05fr_1fr]">
+      <div className="mx-auto grid w-full max-w-6xl items-start gap-10 md:grid-cols-[1.05fr_1fr]">
         <div>
           <span
             className="reveal inline-flex items-center gap-2 rounded-full border border-[var(--color-brand)]/25 bg-[var(--color-brand)]/10 px-3 py-1 text-xs font-semibold text-[var(--color-brand)]"
-            style={{ animationDelay: "0ms" }}
+            style={{ animationDelay: '0ms' }}
           >
             <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-brand)] animate-pulse" />
-            New · 12 stickers in a minute
+            {t('landing.hero.badge')}
           </span>
 
           <h1
             className="reveal mt-5 font-[family-name:var(--font-display)] text-[3.25rem] font-extrabold leading-[1.02] tracking-[-0.03em] md:text-[5.5rem]"
-            style={{ animationDelay: "100ms" }}
+            style={{ animationDelay: '100ms' }}
           >
-            A sticker pack of{" "}
+            {t('landing.hero.title_prefix')}{' '}
             <span className="relative inline-block">
               <span className="gradient-text bg-gradient-to-r from-[var(--color-brand)] via-[#ff5e72] to-[var(--color-brand-2)] bg-clip-text text-transparent">
-                YOU
+                {t('landing.hero.title_highlight')}
               </span>
               <svg
                 aria-hidden
@@ -46,40 +51,42 @@ export function Hero() {
               </svg>
             </span>
             ,
-            <br className="hidden md:block" /> in your Telegram.
+            <br className="hidden md:block" /> {t('landing.hero.title_suffix')}
           </h1>
-
-          <p
-            className="reveal mt-7 max-w-md text-lg text-[var(--color-fg-muted)]"
-            style={{ animationDelay: "200ms" }}
-          >
-            One selfie. Twelve cartoon stickers. Yours forever — installed
-            straight into Telegram by our bot. No artists. No prompts.
-          </p>
-
           <div
             className="reveal mt-8 flex flex-wrap gap-3"
-            style={{ animationDelay: "300ms" }}
+            style={{ animationDelay: '300ms' }}
           >
             <Link
-              href="/upload"
+              href={uploadCtaHref(loggedIn)}
               className="shimmer group relative inline-flex items-center gap-2 overflow-hidden rounded-full bg-gradient-to-r from-[var(--color-brand)] via-[#ff5e72] to-[var(--color-brand-2)] px-7 py-4 text-base font-bold text-white shadow-[0_18px_40px_-12px_rgba(224,52,154,0.55)] transition hover:-translate-y-0.5"
             >
               <Sparkles className="h-5 w-5" />
-              <span>Make my stickers</span>
+              <span>
+                {loggedIn
+                  ? t('landing.hero.cta_authenticated')
+                  : t('landing.hero.cta_anonymous')}
+              </span>
               <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
             </Link>
             <a
               href="#how"
               className="inline-flex items-center gap-2 rounded-full border border-[var(--color-border-strong)] bg-[var(--color-bg-elev)] px-7 py-4 text-base font-semibold text-[var(--color-fg)] transition hover:-translate-y-0.5"
             >
-              See how it works
+              {t('landing.hero.see_how')}
             </a>
           </div>
 
+          <p
+            className="reveal mt-7 max-w-md text-lg text-[var(--color-fg-muted)]"
+            style={{ animationDelay: '200ms' }}
+          >
+            {t('landing.hero.description')}
+          </p>
+
           <div
             className="reveal mt-10 flex items-center gap-5 text-sm text-[var(--color-fg-muted)]"
-            style={{ animationDelay: "400ms" }}
+            style={{ animationDelay: '400ms' }}
           >
             <div className="flex -space-x-2">
               {ALL_STICKERS.slice(0, 4).map((s, i) => (
@@ -103,43 +110,43 @@ export function Hero() {
                   <Star key={i} className="h-3.5 w-3.5 fill-current" />
                 ))}
               </div>
-              <span className="text-xs">Loved by early testers</span>
+              <span className="text-xs">{t('landing.hero.loved_by')}</span>
             </div>
           </div>
         </div>
 
         {/* RIGHT: portrait + floating stickers */}
-        <div className="relative mx-auto h-[450px] w-full max-w-md md:h-[480px]">
+        <div className="relative mt-10 mx-auto h-[450px] w-full max-w-md md:h-130 md:max-w-lg">
           <div className="absolute inset-6 -z-10 rounded-[2.5rem] bg-[conic-gradient(from_180deg_at_50%_50%,rgba(224,52,154,0.35),rgba(255,180,34,0.35),rgba(30,200,255,0.3),rgba(224,52,154,0.35))] blur-3xl opacity-70" />
 
           <div
-            className="reveal absolute left-1/2 top-1/2 h-[270px] w-[210px] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-[2rem] border border-[var(--color-border)] bg-[var(--color-bg-elev)] shadow-[var(--shadow-card)]"
-            style={{ animationDelay: "120ms" }}
+            className="reveal absolute left-1/2 top-1/2 h-[270px] w-[210px] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-[2rem] border border-[var(--color-border)] bg-[var(--color-bg-elev)] shadow-[var(--shadow-card)] md:h-80 md:w-62.5"
+            style={{ animationDelay: '120ms' }}
           >
             <Image
               src="/assets/real_image.webp"
-              alt="Your selfie"
+              alt={t('landing.hero.selfie_label')}
               width={420}
               height={540}
               priority
               className="h-full w-full object-cover"
             />
             <div className="absolute inset-x-3 bottom-3 flex items-center justify-between rounded-xl bg-[var(--color-fg)]/80 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--color-bg)] backdrop-blur">
-              <span>Your selfie</span>
+              <span>{t('landing.hero.selfie_label')}</span>
               <span className="inline-flex items-center gap-1">
                 <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-success)]" />
-                ready
+                {t('landing.hero.ready')}
               </span>
             </div>
           </div>
 
           {/* Floating sticker satellites */}
-          {HERO_STICKERS.map(({ idx, r, t, l, d }) => (
+          {HERO_STICKERS.map(({ idx, r, t: topPos, l, d }) => (
             <div
               key={idx}
               className="absolute h-24 w-24 md:h-28 md:w-28"
               style={{
-                top: t,
+                top: topPos,
                 left: l,
                 animation: `pop-in 0.55s cubic-bezier(0.34,1.56,0.64,1) ${600 + d}ms both, float-soft 6s ease-in-out ${1 + d / 1000}s infinite`,
               }}
@@ -160,10 +167,10 @@ export function Hero() {
           ))}
 
           <div
-            className="absolute -bottom-6 right-2 rotate-6 rounded-2xl bg-[var(--color-fg)] px-4 py-2 text-sm font-bold text-[var(--color-bg)] shadow-xl"
-            style={{ animation: "fade-up 0.6s ease-out 1.4s both" }}
+            className="absolute -bottom-2 right-2 rotate-6 rounded-2xl bg-[var(--color-fg)] px-4 py-2 text-sm font-bold text-[var(--color-bg)] shadow-xl"
+            style={{ animation: 'fade-up 0.6s ease-out 1.4s both' }}
           >
-            12 stickers · WebP · 512px
+            {t('landing.hero.pack_count', { count: 12 })}
           </div>
         </div>
       </div>

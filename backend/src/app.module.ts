@@ -1,7 +1,10 @@
+import * as path from 'node:path';
+
 import { Module } from '@nestjs/common';
 import type { ConfigType } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { AcceptLanguageResolver, I18nModule, QueryResolver } from 'nestjs-i18n';
 
 import { HttpOnlyThrottlerGuard } from './common/guards/http-only-throttler.guard';
 import { TelegrafModule } from 'nestjs-telegraf';
@@ -21,6 +24,17 @@ import { TelegramModule } from './telegram/telegram.module';
   imports: [
     AppConfigModule,
     PrismaModule,
+    I18nModule.forRoot({
+      fallbackLanguage: 'en',
+      loaderOptions: {
+        path: path.join(__dirname, 'i18n'),
+        watch: false,
+      },
+      resolvers: [
+        { use: QueryResolver, options: ['lang'] },
+        AcceptLanguageResolver,
+      ],
+    }),
     ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
     AuthModule,
     TelegrafModule.forRootAsync({

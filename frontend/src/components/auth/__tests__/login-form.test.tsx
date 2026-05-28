@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { LanguageProvider } from "@/components/language-provider";
+import enMessages from "@/i18n/messages/en.json";
 
 const mockPush = vi.fn();
 vi.mock("next/navigation", () => ({
@@ -19,31 +21,35 @@ describe("LoginForm", () => {
 
   async function setup() {
     const { LoginForm } = await import("../login-form");
-    return render(<LoginForm />);
+    return render(
+      <LanguageProvider>
+        <LoginForm />
+      </LanguageProvider>,
+    );
   }
 
   it("renders email and password fields with a submit button", async () => {
     await setup();
-    expect(screen.getByLabelText("Email")).toBeInTheDocument();
-    expect(screen.getByLabelText("Password")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Sign in" })).toBeInTheDocument();
+    expect(screen.getByLabelText(enMessages.auth.common.email_label)).toBeInTheDocument();
+    expect(screen.getByLabelText(enMessages.auth.common.password_label)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: enMessages.auth.login.sign_in })).toBeInTheDocument();
   });
 
-  it("navigates to /dashboard on successful login", async () => {
+  it("navigates to /my-stickers on successful login", async () => {
     mockLogin.mockReturnValue({ unwrap: () => Promise.resolve(undefined) });
     const user = userEvent.setup();
     await setup();
 
-    await user.type(screen.getByLabelText("Email"), "test@example.com");
-    await user.type(screen.getByLabelText("Password"), "password123");
-    await user.click(screen.getByRole("button", { name: "Sign in" }));
+    await user.type(screen.getByLabelText(enMessages.auth.common.email_label), "test@example.com");
+    await user.type(screen.getByLabelText(enMessages.auth.common.password_label), "password123");
+    await user.click(screen.getByRole("button", { name: enMessages.auth.login.sign_in }));
 
     await waitFor(() => {
       expect(mockLogin).toHaveBeenCalledWith({
         email: "test@example.com",
         password: "password123",
       });
-      expect(mockPush).toHaveBeenCalledWith("/dashboard");
+      expect(mockPush).toHaveBeenCalledWith("/my-stickers");
     });
   });
 
@@ -52,9 +58,9 @@ describe("LoginForm", () => {
     const user = userEvent.setup();
     await setup();
 
-    await user.type(screen.getByLabelText("Email"), "TEST@Example.COM");
-    await user.type(screen.getByLabelText("Password"), "password123");
-    await user.click(screen.getByRole("button", { name: "Sign in" }));
+    await user.type(screen.getByLabelText(enMessages.auth.common.email_label), "TEST@Example.COM");
+    await user.type(screen.getByLabelText(enMessages.auth.common.password_label), "password123");
+    await user.click(screen.getByRole("button", { name: enMessages.auth.login.sign_in }));
 
     await waitFor(() => {
       expect(mockLogin).toHaveBeenCalledWith(
@@ -70,13 +76,13 @@ describe("LoginForm", () => {
     const user = userEvent.setup();
     await setup();
 
-    await user.type(screen.getByLabelText("Email"), "bad@example.com");
-    await user.type(screen.getByLabelText("Password"), "wrongpass");
-    await user.click(screen.getByRole("button", { name: "Sign in" }));
+    await user.type(screen.getByLabelText(enMessages.auth.common.email_label), "bad@example.com");
+    await user.type(screen.getByLabelText(enMessages.auth.common.password_label), "wrongpass");
+    await user.click(screen.getByRole("button", { name: enMessages.auth.login.sign_in }));
 
     await waitFor(() => {
       expect(screen.getByRole("alert")).toHaveTextContent(
-        "Invalid email or password.",
+        enMessages.auth.login.error_invalid,
       );
     });
   });

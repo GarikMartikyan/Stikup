@@ -34,6 +34,7 @@ model ChannelIdentity {
   channelUserId String   @map("channel_user_id")
   displayName   String?  @map("display_name")
   username      String?
+  avatarUrl     String?  @map("avatar_url")
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -44,12 +45,15 @@ model ChannelIdentity {
 }
 
 model LoginToken {
-  token       String    @id
-  userId      String    @map("user_id") @db.Uuid
-  issuedVia   Channel   @map("issued_via")
-  expiresAt   DateTime  @map("expires_at") @db.Timestamptz(6)
-  consumedAt  DateTime? @map("consumed_at") @db.Timestamptz(6)
-  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  token             String    @id
+  userId            String    @map("user_id") @db.Uuid
+  issuedVia         Channel   @map("issued_via")
+  expiresAt         DateTime  @map("expires_at") @db.Timestamptz(6)
+  consumedAt        DateTime? @map("consumed_at") @db.Timestamptz(6)
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  telegramChatId        BigInt?   @map("telegram_chat_id")
+  telegramMessageId     Int?      @map("telegram_message_id")
+  telegramUserMessageId Int?      @map("telegram_user_message_id")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

@@ -1,7 +1,11 @@
+"use client";
+
 import Link from "next/link";
 import { ArrowRight, ImageIcon } from "lucide-react";
+import { useT } from "@/components/language-provider";
 
 export function EmptyPackState() {
+  const t = useT();
   return (
     <section className="reveal mt-10 flex flex-col items-center gap-6 py-12 text-center">
       <div className="relative">
@@ -12,17 +16,17 @@ export function EmptyPackState() {
       </div>
       <div>
         <p className="font-[family-name:var(--font-display)] text-2xl font-bold tracking-tight md:text-3xl">
-          No sticker packs yet
+          {t("dashboard.empty_state.title")}
         </p>
         <p className="mt-2 text-[var(--color-fg-muted)]">
-          You haven&apos;t made a sticker pack yet. Drop a selfie to begin.
+          {t("dashboard.empty_state.body")}
         </p>
       </div>
       <Link
         href="/upload"
         className="shimmer inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[var(--color-brand)] via-[#ff5e72] to-[var(--color-brand-2)] px-7 py-3.5 text-base font-bold text-white shadow-[0_18px_40px_-12px_rgba(224,52,154,0.55)] transition hover:-translate-y-0.5"
       >
-        Make your first pack
+        {t("dashboard.empty_state.cta")}
         <ArrowRight className="h-4 w-4" />
       </Link>
     </section>

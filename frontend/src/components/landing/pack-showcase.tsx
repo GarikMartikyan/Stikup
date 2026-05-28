@@ -1,54 +1,58 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Check, Lock } from "lucide-react";
 import { StickerCard } from "@/components/sticker-card";
+import { uploadCtaHref } from "@/lib/auth/cta-href";
 import { ALL_STICKERS } from "./data";
+import { useT } from "@/components/language-provider";
 
-const PACK_BULLETS = [
-  "12 expressive emotions, hand-curated",
-  "Real Telegram sticker set you own",
-  "Free 3 stickers — no payment required",
-  "Pay once to unlock all 12, no subscription",
-  "One regeneration included with every paid pack",
-];
+const PACK_BULLET_KEYS = [
+  "landing.pack_showcase.bullets.b1",
+  "landing.pack_showcase.bullets.b2",
+  "landing.pack_showcase.bullets.b3",
+  "landing.pack_showcase.bullets.b4",
+  "landing.pack_showcase.bullets.b5",
+] as const;
 
-export function PackShowcase() {
+export function PackShowcase({ loggedIn }: { loggedIn: boolean }) {
+  const t = useT();
+  const ctaHref = uploadCtaHref(loggedIn);
   return (
-    <section id="pack" className="snap-section relative flex min-h-dvh scroll-mt-16 flex-col justify-center bg-[var(--color-bg-sunk)] py-16 md:py-20">
+    <section id="pack" className="snap-section relative flex min-h-dvh flex-col justify-center bg-[var(--color-bg-sunk)] py-16 md:py-20">
       <div className="mx-auto w-full max-w-6xl px-5">
         <div className="grid items-center gap-14 md:grid-cols-[1fr_1.1fr]">
           <div className="reveal">
             <span className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-brand-2)]">
-              The pack
+              {t("landing.pack_showcase.eyebrow")}
             </span>
             <h2 className="mt-3 font-[family-name:var(--font-display)] text-4xl font-extrabold tracking-[-0.02em] md:text-6xl">
-              Here&apos;s what you actually get.
+              {t("landing.pack_showcase.title")}
             </h2>
             <p className="mt-5 max-w-md text-lg text-[var(--color-fg-muted)]">
-              Every pack is 12 stickers, generated from one photo. You see all
-              12 right away — 3 are free to take, 9 stay locked until you
-              unlock the pack.
+              {t("landing.pack_showcase.description")}
             </p>
 
             <ul className="mt-7 space-y-3">
-              {PACK_BULLETS.map((item) => (
+              {PACK_BULLET_KEYS.map((key) => (
                 <li
-                  key={item}
+                  key={key}
                   className="flex items-start gap-3 text-[var(--color-fg)]"
                 >
                   <span className="mt-0.5 grid h-5 w-5 place-items-center rounded-full bg-[var(--color-success)]/15 text-[var(--color-success)]">
                     <Check className="h-3 w-3" strokeWidth={3} />
                   </span>
-                  <span className="text-sm font-medium">{item}</span>
+                  <span className="text-sm font-medium">{t(key)}</span>
                 </li>
               ))}
             </ul>
 
             <Link
-              href="/upload"
+              href={ctaHref}
               className="mt-8 inline-flex items-center gap-2 text-base font-bold text-[var(--color-brand)] hover:opacity-80"
             >
-              Try the free preview
+              {loggedIn ? t("landing.pack_showcase.cta_authenticated") : t("landing.pack_showcase.cta_anonymous")}
               <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
@@ -73,7 +77,7 @@ export function PackShowcase() {
                       />
                     </div>
                     <div>
-                      <div className="text-sm font-bold">Your pack · ready</div>
+                      <div className="text-sm font-bold">{t("landing.pack_showcase.your_pack_ready")}</div>
                       <div className="text-[10px] text-[var(--color-fg-subtle)]">
                         t.me/addstickers/stikup_you
                       </div>
@@ -101,13 +105,13 @@ export function PackShowcase() {
                 <div className="mt-5 flex items-center justify-between rounded-2xl border border-dashed border-[var(--color-border-strong)] p-3">
                   <div className="flex items-center gap-2 text-xs">
                     <Lock className="h-3.5 w-3.5 text-[var(--color-fg-muted)]" />
-                    <span className="text-[var(--color-fg-muted)]">9 stickers locked</span>
+                    <span className="text-[var(--color-fg-muted)]">{t("landing.pack_showcase.stickers_locked")}</span>
                   </div>
                   <Link
-                    href="/upload"
+                    href={ctaHref}
                     className="rounded-full bg-gradient-to-r from-[var(--color-brand)] to-[var(--color-brand-2)] px-3.5 py-1.5 text-xs font-bold text-white shadow-sm"
                   >
-                    Unlock all 12
+                    {loggedIn ? t("landing.pack_showcase.unlock_authenticated") : t("landing.pack_showcase.unlock_anonymous")}
                   </Link>
                 </div>
               </div>

@@ -29,6 +29,7 @@ export class IdentityService {
         data: {
           displayName: event.profile.displayName,
           username: event.profile.username,
+          avatarUrl: event.profile.avatarUrl,
         },
       });
       return { userId: existing.userId };
@@ -42,6 +43,7 @@ export class IdentityService {
             channelUserId: event.channelUserId,
             displayName: event.profile.displayName,
             username: event.profile.username,
+            avatarUrl: event.profile.avatarUrl,
           },
         },
       },

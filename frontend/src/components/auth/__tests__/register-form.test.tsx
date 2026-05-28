@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { LanguageProvider } from "@/components/language-provider";
+import enMessages from "@/i18n/messages/en.json";
 
 const mockPush = vi.fn();
 vi.mock("next/navigation", () => ({
@@ -19,44 +21,48 @@ describe("RegisterForm", () => {
 
   async function setup() {
     const { RegisterForm } = await import("../register-form");
-    return render(<RegisterForm />);
+    return render(
+      <LanguageProvider>
+        <RegisterForm />
+      </LanguageProvider>,
+    );
   }
 
   it("renders email, password and a submit button", async () => {
     await setup();
-    expect(screen.getByLabelText("Email")).toBeInTheDocument();
-    expect(screen.getByLabelText("Password")).toBeInTheDocument();
+    expect(screen.getByLabelText(enMessages.auth.common.email_label)).toBeInTheDocument();
+    expect(screen.getByLabelText(enMessages.auth.common.password_label)).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Create account" }),
+      screen.getByRole("button", { name: enMessages.auth.register.create_account }),
     ).toBeInTheDocument();
   });
 
-  it("shows a client-side error when password is too short", async () => {
+  it("shows a password hint when password is too short", async () => {
     const user = userEvent.setup();
     await setup();
 
-    await user.type(screen.getByLabelText("Email"), "new@example.com");
-    await user.type(screen.getByLabelText("Password"), "short");
-    await user.click(screen.getByRole("button", { name: "Create account" }));
+    await user.type(screen.getByLabelText(enMessages.auth.common.email_label), "new@example.com");
+    await user.type(screen.getByLabelText(enMessages.auth.common.password_label), "short");
 
-    expect(screen.getByRole("alert")).toHaveTextContent(
-      "Password must be at least 8 characters.",
-    );
+    expect(screen.getByText(enMessages.auth.register.password_hint)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: enMessages.auth.register.create_account })).toBeDisabled();
     expect(mockRegister).not.toHaveBeenCalled();
     expect(mockPush).not.toHaveBeenCalled();
   });
 
-  it("navigates to /dashboard on successful registration", async () => {
+  it("navigates to /my-stickers on successful registration", async () => {
     mockRegister.mockReturnValue({ unwrap: () => Promise.resolve(undefined) });
     const user = userEvent.setup();
     await setup();
 
-    await user.type(screen.getByLabelText("Email"), "new@example.com");
-    await user.type(screen.getByLabelText("Password"), "password123");
-    await user.click(screen.getByRole("button", { name: "Create account" }));
+    await user.type(screen.getByLabelText(enMessages.auth.common.email_label), "new@example.com");
+    await user.type(screen.getByLabelText(enMessages.auth.common.password_label), "password123");
+    await user.type(screen.getByLabelText(enMessages.auth.register.confirm_password_label), "password123");
+    await user.click(screen.getByRole("checkbox"));
+    await user.click(screen.getByRole("button", { name: enMessages.auth.register.create_account }));
 
     await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith("/dashboard");
+      expect(mockPush).toHaveBeenCalledWith("/my-stickers");
     });
   });
 
@@ -67,13 +73,15 @@ describe("RegisterForm", () => {
     const user = userEvent.setup();
     await setup();
 
-    await user.type(screen.getByLabelText("Email"), "existing@example.com");
-    await user.type(screen.getByLabelText("Password"), "password123");
-    await user.click(screen.getByRole("button", { name: "Create account" }));
+    await user.type(screen.getByLabelText(enMessages.auth.common.email_label), "existing@example.com");
+    await user.type(screen.getByLabelText(enMessages.auth.common.password_label), "password123");
+    await user.type(screen.getByLabelText(enMessages.auth.register.confirm_password_label), "password123");
+    await user.click(screen.getByRole("checkbox"));
+    await user.click(screen.getByRole("button", { name: enMessages.auth.register.create_account }));
 
     await waitFor(() => {
       expect(screen.getByRole("alert")).toHaveTextContent(
-        "An account with that email already exists.",
+        enMessages.auth.register.error_conflict,
       );
     });
   });
@@ -85,13 +93,15 @@ describe("RegisterForm", () => {
     const user = userEvent.setup();
     await setup();
 
-    await user.type(screen.getByLabelText("Email"), "test@example.com");
-    await user.type(screen.getByLabelText("Password"), "password123");
-    await user.click(screen.getByRole("button", { name: "Create account" }));
+    await user.type(screen.getByLabelText(enMessages.auth.common.email_label), "test@example.com");
+    await user.type(screen.getByLabelText(enMessages.auth.common.password_label), "password123");
+    await user.type(screen.getByLabelText(enMessages.auth.register.confirm_password_label), "password123");
+    await user.click(screen.getByRole("checkbox"));
+    await user.click(screen.getByRole("button", { name: enMessages.auth.register.create_account }));
 
     await waitFor(() => {
       expect(screen.getByRole("alert")).toHaveTextContent(
-        "Registration failed. Please try again.",
+        enMessages.auth.register.error_failed,
       );
     });
   });

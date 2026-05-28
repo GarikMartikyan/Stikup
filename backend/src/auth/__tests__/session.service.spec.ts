@@ -13,7 +13,7 @@ function buildPrismaMock() {
       deleteMany: jest.fn(),
     },
     channelIdentity: { findUnique: jest.fn(), update: jest.fn() },
-    user: { create: jest.fn() },
+    user: { create: jest.fn(), findUnique: jest.fn() },
     $queryRaw: jest.fn(),
   } as unknown as jest.Mocked<PrismaService>;
 }
@@ -117,6 +117,48 @@ describe('SessionService', () => {
         where: { id: 'sid-x' },
         select: { userId: true, expiresAt: true, revokedAt: true },
       });
+    });
+  });
+
+  describe('findUser', () => {
+    it('returns null when user row is missing', async () => {
+      const prisma = buildPrismaMock();
+      (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce(null);
+      const service = new SessionService(prisma);
+
+      const result = await service.findUser('no-such-id');
+
+      expect(result).toBeNull();
+    });
+
+    it('returns userId and email when user exists', async () => {
+      const prisma = buildPrismaMock();
+      (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
+        id: 'user-7',
+        email: 'hello@example.com',
+      });
+      const service = new SessionService(prisma);
+
+      const result = await service.findUser('user-7');
+
+      expect(result).toEqual({ userId: 'user-7', email: 'hello@example.com' });
+      expect(prisma.user.findUnique).toHaveBeenCalledWith({
+        where: { id: 'user-7' },
+        select: { id: true, email: true },
+      });
+    });
+
+    it('returns null email for Google-only user', async () => {
+      const prisma = buildPrismaMock();
+      (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
+        id: 'user-8',
+        email: null,
+      });
+      const service = new SessionService(prisma);
+
+      const result = await service.findUser('user-8');
+
+      expect(result).toEqual({ userId: 'user-8', email: null });
     });
   });
 

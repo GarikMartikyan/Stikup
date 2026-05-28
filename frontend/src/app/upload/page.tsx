@@ -95,20 +95,27 @@ export default function UploadPage() {
 
         <div className="mt-6 grid gap-5 md:mt-8 md:grid-cols-[1.4fr_1fr]">
           <div className="reveal" style={{ animationDelay: "80ms" }}>
-            <DropZone
-              state={state}
-              dragOver={dragOver}
-              onDragOver={(e) => {
-                e.preventDefault();
-                setDragOver(true);
-              }}
-              onDragLeave={() => setDragOver(false)}
-              onDrop={onDrop}
-              onPick={() => galleryRef.current?.click()}
-              onReset={reset}
-            />
+            {/* Dropzone: desktop primary affordance — hidden on mobile where drag/paste don't apply */}
+            <div className="hidden md:block">
+              <DropZone
+                state={state}
+                dragOver={dragOver}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setDragOver(true);
+                }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={onDrop}
+                onPick={() => galleryRef.current?.click()}
+                onReset={reset}
+              />
+            </div>
 
-            {/* Gallery picker — no `capture` attribute so mobile opens the photo library, not the camera. */}
+            {/*
+              Single shared gallery input — both the dropzone button and the
+              "Pick from device" button click this same ref. Camera keeps its
+              own input because it needs the `capture` attribute.
+            */}
             <input
               ref={galleryRef}
               type="file"

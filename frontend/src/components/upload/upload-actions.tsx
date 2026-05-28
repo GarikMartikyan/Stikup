@@ -27,7 +27,9 @@ export function UploadActions({
 }: UploadActionsProps) {
   if (!fileReady) {
     return (
-      <div className="mt-5 flex flex-wrap gap-3">
+      /* Mobile-only: two icon buttons are the primary affordance on touch.
+         On desktop the dropzone handles everything so we hide these. */
+      <div className="mt-5 flex flex-wrap gap-3 md:hidden">
         <button
           type="button"
           onClick={onPickGallery}

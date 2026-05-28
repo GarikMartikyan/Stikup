@@ -42,7 +42,9 @@ export function StickerCard({
     >
       <div
         className={`relative h-full w-full rounded-[18%] bg-[var(--color-bg-elev)] ring-1 ring-[var(--color-border)] shadow-[var(--shadow-sticker)] transition-transform duration-300 ${
-          locked ? "" : "group-hover:-translate-y-1 group-hover:scale-[1.04]"
+          locked
+            ? "blur-sm grayscale opacity-70"
+            : "group-hover:-translate-y-1 group-hover:scale-[1.04]"
         }`}
       >
         <Image

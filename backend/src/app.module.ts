@@ -1,7 +1,9 @@
 import { Module } from '@nestjs/common';
 import type { ConfigType } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
+
+import { HttpOnlyThrottlerGuard } from './common/guards/http-only-throttler.guard';
 import { TelegrafModule } from 'nestjs-telegraf';
 
 import { AuthModule } from './auth/auth.module';
@@ -34,6 +36,6 @@ import { TelegramModule } from './telegram/telegram.module';
     JobsModule,
     HealthModule,
   ],
-  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
+  providers: [{ provide: APP_GUARD, useClass: HttpOnlyThrottlerGuard }],
 })
 export class AppModule {}

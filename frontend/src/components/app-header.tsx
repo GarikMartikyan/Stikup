@@ -7,7 +7,7 @@ export function AppHeader({
   right?: React.ReactNode;
 }) {
   return (
-    <header className="sticky top-0 z-40 border-b border-[var(--color-border)] bg-[var(--color-bg)]/85 backdrop-blur-xl">
+    <header className="sticky top-0 z-40 border-b border-[var(--color-border)] bg-[var(--color-bg-elev)]/80 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5">
         <Brand size="sm" />
         <div className="flex items-center gap-3">

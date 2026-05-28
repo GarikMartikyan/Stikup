@@ -219,6 +219,7 @@ export interface operations {
                     "application/json": {
                         /** Format: uuid */
                         userId: string;
+                        email: string | null;
                     };
                 };
             };

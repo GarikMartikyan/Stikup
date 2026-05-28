@@ -12,6 +12,11 @@ export interface SessionUser {
   userId: string;
 }
 
+export interface UserProfile {
+  userId: string;
+  email: string | null;
+}
+
 @Injectable()
 export class SessionService {
   constructor(private readonly prisma: PrismaService) {}
@@ -38,6 +43,15 @@ export class SessionService {
     if (session.revokedAt) return null;
     if (session.expiresAt.getTime() <= Date.now()) return null;
     return { userId: session.userId };
+  }
+
+  async findUser(userId: string): Promise<UserProfile | null> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true },
+    });
+    if (!user) return null;
+    return { userId: user.id, email: user.email };
   }
 
   async revoke(sid: string): Promise<void> {

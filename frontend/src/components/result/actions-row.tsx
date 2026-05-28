@@ -21,7 +21,7 @@ export function ActionsRow({ claiming, onClaim }: ActionsRowProps) {
         primary
       />
       <ActionButton
-        tone="ghost"
+        tone="secondary"
         title={`Take ${FREE_COUNT} free`}
         subtitle={claiming ? "Sending to Telegram…" : "Install to Telegram"}
         icon={claiming ? RefreshCw : Send}

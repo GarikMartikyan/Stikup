@@ -34,9 +34,13 @@
                     "userId": {
                       "type": "string",
                       "format": "uuid"
+                    },
+                    "email": {
+                      "type": "string",
+                      "nullable": true
                     }
                   },
-                  "required": ["userId"]
+                  "required": ["userId", "email"]
                 }
               }
             }

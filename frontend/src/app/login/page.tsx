@@ -7,9 +7,14 @@ import { GoogleButton } from "@/components/auth/google-button";
 import { TelegramButton } from "@/components/auth/telegram-button";
 import { Brand } from "@/components/brand";
 
-export default async function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string }>;
+}) {
   const session = await serverFetch<AuthMeResponse>("/auth/me");
-  if (session) redirect("/dashboard");
+  const { next } = await searchParams;
+  if (session) redirect(next && next.startsWith("/") ? next : "/dashboard");
 
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center px-4 py-12">
@@ -36,7 +41,7 @@ export default async function LoginPage() {
             <span className="h-px flex-1 bg-[var(--color-border)]" />
           </div>
 
-          <LoginForm />
+          <LoginForm next={next} />
         </div>
 
         <p className="mt-6 text-center text-sm text-[var(--color-fg-muted)]">

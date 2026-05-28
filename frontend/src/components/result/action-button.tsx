@@ -7,7 +7,7 @@ type ActionButtonProps = {
   title: string;
   subtitle: string;
   icon: ComponentType<{ className?: string; strokeWidth?: number }>;
-  tone: "brand" | "ghost";
+  tone: "brand" | "secondary" | "ghost";
   primary?: boolean;
   hint?: string;
   onClick?: () => void;
@@ -50,6 +50,25 @@ export function ActionButton({
       </button>
     );
   }
+  if (tone === "secondary") {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={disabled}
+        className="group rounded-2xl border-2 border-[var(--color-brand)] bg-[var(--color-bg-elev)] p-5 text-left transition hover:-translate-y-1 hover:bg-[var(--color-brand)]/5 disabled:cursor-wait disabled:opacity-80"
+      >
+        <div className="grid h-10 w-10 place-items-center rounded-xl bg-[var(--color-brand)]/10 text-[var(--color-brand)]">
+          <Icon className="h-5 w-5" strokeWidth={2.2} />
+        </div>
+        <div className="mt-4 font-[family-name:var(--font-display)] text-xl font-bold text-[var(--color-brand)]">
+          {title}
+        </div>
+        <div className="mt-1 text-sm text-[var(--color-fg-muted)]">{subtitle}</div>
+      </button>
+    );
+  }
+
   return (
     <button
       type="button"

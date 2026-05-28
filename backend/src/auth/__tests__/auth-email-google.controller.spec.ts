@@ -41,7 +41,12 @@ async function buildController(): Promise<AuthController> {
       { provide: TokenService, useValue: { consume: jest.fn() } },
       {
         provide: SessionService,
-        useValue: { issue: jest.fn(), resolve: jest.fn(), revoke: jest.fn() },
+        useValue: {
+          issue: jest.fn(),
+          resolve: jest.fn(),
+          revoke: jest.fn(),
+          findUser: jest.fn(),
+        },
       },
       {
         provide: IdentityService,
@@ -178,6 +183,87 @@ describe('AuthController — email/google endpoints', () => {
       await expect(
         controller.login({ email: 'user@example.com', password: 'wrong' }, res),
       ).rejects.toBeInstanceOf(UnauthorizedException);
+    });
+  });
+
+  describe('GET /auth/me', () => {
+    it('returns userId and email for a valid session', async () => {
+      const controller = await buildController();
+      const sessions = (
+        controller as unknown as { sessions: jest.Mocked<SessionService> }
+      ).sessions;
+
+      (sessions.resolve as jest.Mock).mockResolvedValueOnce({ userId: 'u99' });
+      (sessions.findUser as jest.Mock).mockResolvedValueOnce({
+        userId: 'u99',
+        email: 'user@example.com',
+      });
+
+      const req = {
+        cookies: { sid: 'valid-sid' },
+      } as unknown as import('express').Request;
+
+      const result = await controller.me(req);
+
+      expect(result).toEqual({ userId: 'u99', email: 'user@example.com' });
+    });
+
+    it('returns userId with null email for Google-only user', async () => {
+      const controller = await buildController();
+      const sessions = (
+        controller as unknown as { sessions: jest.Mocked<SessionService> }
+      ).sessions;
+
+      (sessions.resolve as jest.Mock).mockResolvedValueOnce({ userId: 'u88' });
+      (sessions.findUser as jest.Mock).mockResolvedValueOnce({
+        userId: 'u88',
+        email: null,
+      });
+
+      const req = {
+        cookies: { sid: 'valid-sid' },
+      } as unknown as import('express').Request;
+
+      const result = await controller.me(req);
+
+      expect(result).toEqual({ userId: 'u88', email: null });
+    });
+
+    it('throws UnauthorizedException when session is invalid', async () => {
+      const controller = await buildController();
+      const sessions = (
+        controller as unknown as { sessions: jest.Mocked<SessionService> }
+      ).sessions;
+
+      (sessions.resolve as jest.Mock).mockResolvedValueOnce(null);
+
+      const req = {
+        cookies: { sid: 'bad-sid' },
+      } as unknown as import('express').Request;
+
+      await expect(controller.me(req)).rejects.toBeInstanceOf(
+        UnauthorizedException,
+      );
+    });
+
+    it('throws UnauthorizedException when user row is missing', async () => {
+      const controller = await buildController();
+      const sessions = (
+        controller as unknown as { sessions: jest.Mocked<SessionService> }
+      ).sessions;
+
+      (sessions.resolve as jest.Mock).mockResolvedValueOnce({
+        userId: 'ghost',
+      });
+      (sessions.findUser as jest.Mock).mockResolvedValueOnce(null);
+
+      const req = {
+        cookies: { sid: 'orphan-sid' },
+      } as unknown as import('express').Request;
+
+      await expect(controller.me(req)).rejects.toBeInstanceOf(
+        UnauthorizedException,
+      );
     });
   });
 

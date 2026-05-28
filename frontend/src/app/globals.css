@@ -54,6 +54,8 @@
 }
 
 html, body { background: var(--color-bg); color: var(--color-fg); }
+/* Smooth color transitions when toggling theme — layout/transform excluded */
+body { transition: background-color 200ms ease, color 200ms ease; }
 html {
   scroll-behavior: smooth;
   scroll-snap-type: y proximity;

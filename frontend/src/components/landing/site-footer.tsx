@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Brand } from "@/components/brand";
 
 export function SiteFooter() {
@@ -6,9 +7,9 @@ export function SiteFooter() {
       <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-5 text-sm text-[var(--color-fg-muted)]">
         <Brand size="sm" />
         <div className="flex flex-wrap gap-x-6 gap-y-2">
-          <a href="#" className="hover:text-[var(--color-fg)]">Privacy</a>
-          <a href="#" className="hover:text-[var(--color-fg)]">Terms</a>
-          <a href="#" className="hover:text-[var(--color-fg)]">Support</a>
+          <Link href="/privacy" className="hover:text-[var(--color-fg)]">Privacy</Link>
+          <Link href="/terms" className="hover:text-[var(--color-fg)]">Terms</Link>
+          <Link href="/support" className="hover:text-[var(--color-fg)]">Support</Link>
           <a href="mailto:support@stikup.app" className="hover:text-[var(--color-fg)]">
             support@stikup.app
           </a>

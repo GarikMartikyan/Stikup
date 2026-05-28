@@ -1,11 +1,13 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
+import type { AuthMeResponse } from "@/lib/api-types";
+
 export const authApi = createApi({
   reducerPath: "authApi",
   baseQuery: fetchBaseQuery({ baseUrl: "/", credentials: "include" }),
   tagTypes: ["Me"],
   endpoints: (builder) => ({
-    getMe: builder.query<{ userId: string }, void>({
+    getMe: builder.query<AuthMeResponse, void>({
       query: () => "auth/me",
       providesTags: ["Me"],
     }),

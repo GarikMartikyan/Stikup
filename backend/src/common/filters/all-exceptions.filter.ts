@@ -20,11 +20,24 @@ export class AllExceptionsFilter implements ExceptionFilter {
   private readonly logger = new Logger(AllExceptionsFilter.name);
 
   catch(exception: unknown, host: ArgumentsHost): void {
+    const timestamp = new Date().toISOString();
+
+    // Non-HTTP contexts (e.g. Telegraf RPC) have no HTTP response object.
+    // Log and bail out — do not attempt to write a response.
+    if (host.getType() !== 'http') {
+      const stack =
+        exception instanceof Error ? exception.stack : String(exception);
+      this.logger.error(
+        `Unhandled exception in ${host.getType()} context`,
+        stack,
+      );
+      return;
+    }
+
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
 
-    const timestamp = new Date().toISOString();
     const path = request?.url ?? '';
 
     if (exception instanceof HttpException) {

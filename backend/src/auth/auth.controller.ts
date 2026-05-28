@@ -91,17 +91,24 @@ export class AuthController {
   @Get('me')
   @ApiOkResponse({
     schema: {
-      properties: { userId: { type: 'string', format: 'uuid' } },
-      required: ['userId'],
+      properties: {
+        userId: { type: 'string', format: 'uuid' },
+        email: { type: 'string', nullable: true },
+      },
+      required: ['userId', 'email'],
     },
   })
   @ApiUnauthorizedResponse()
-  async me(@Req() req: Request): Promise<{ userId: string }> {
+  async me(
+    @Req() req: Request,
+  ): Promise<{ userId: string; email: string | null }> {
     const cookies = (req.cookies ?? {}) as Record<string, string | undefined>;
     const sid = cookies[this.session.cookieName];
     const session = await this.sessions.resolve(sid);
     if (!session) throw new UnauthorizedException();
-    return { userId: session.userId };
+    const user = await this.sessions.findUser(session.userId);
+    if (!user) throw new UnauthorizedException();
+    return { userId: user.userId, email: user.email };
   }
 
   @Post('logout')

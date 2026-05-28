@@ -57,7 +57,7 @@ export function Pricing() {
                 href="/upload"
                 className="inline-flex items-center gap-2 rounded-full bg-[var(--color-fg)] px-6 py-3.5 text-base font-bold text-[var(--color-bg)] transition hover:opacity-90"
               >
-                Unlock the pack
+                Start free pack
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </div>

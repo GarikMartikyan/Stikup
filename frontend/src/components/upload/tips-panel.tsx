@@ -37,10 +37,6 @@ export function TipsPanel() {
           decide whether to take the 3 free, unlock all 12, or
           regenerate.
         </p>
-        <div className="mt-5 flex items-center gap-2 text-xs text-[var(--color-fg-subtle)]">
-          <span className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--color-success)]" />
-          You have 1 free generation available
-        </div>
       </div>
 
       <div className="rounded-3xl border border-dashed border-[var(--color-border-strong)] p-5 text-xs text-[var(--color-fg-muted)]">

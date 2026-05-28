@@ -7,19 +7,29 @@ import { UserMenu } from "@/components/auth/user-menu";
 import type { DashboardPack } from "@/components/dashboard/data";
 import { requireSession } from "@/lib/auth/require-session";
 
-export default async function DashboardPage() {
-  const session = await requireSession();
+type PageProps = {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
 
-  // Mocked pack history for the UI demo
-  const packs: DashboardPack[] = [
-    {
-      id: "demo-001",
-      name: "stikup_you_demo",
-      createdAt: "2026-05-24",
-      status: "ready",
-      regenLeft: 1,
-    },
-  ];
+export default async function DashboardPage({ searchParams }: PageProps) {
+  const session = await requireSession();
+  const params = await searchParams;
+
+  // Real packs come from the API once the backend endpoint exists.
+  // For now: no packs by default so fresh accounts see the empty state.
+  // Add ?demo=1 to the URL to preview the demo card (e.g. during development).
+  const packs: DashboardPack[] =
+    params.demo === "1"
+      ? [
+          {
+            id: "demo-001",
+            name: "stikup_you_demo",
+            createdAt: "2026-05-24",
+            status: "ready",
+            regenLeft: 1,
+          },
+        ]
+      : [];
 
   const shortId = session.userId.slice(0, 8);
 
@@ -28,7 +38,7 @@ export default async function DashboardPage() {
       <AppHeader right={<UserMenu />} />
 
       <main className="snap-section mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center px-5 py-8 md:py-12">
-        <GreetingStrip shortId={shortId} />
+        <GreetingStrip shortId={shortId} email={session.email} />
         <StatsRow packCount={packs.length} />
         <PackList packs={packs} />
         <AccountRow />

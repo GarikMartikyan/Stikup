@@ -13,7 +13,7 @@ interface MockResponse {
   json: jest.Mock;
 }
 
-function buildHost(
+function buildHttpHost(
   method = 'GET',
   url = '/foo',
 ): { host: ArgumentsHost; response: MockResponse } {
@@ -23,12 +23,22 @@ function buildHost(
   };
   const request = { url, method };
   const host = {
+    getType: () => 'http',
     switchToHttp: () => ({
       getResponse: () => response,
       getRequest: () => request,
     }),
   } as unknown as ArgumentsHost;
   return { host, response };
+}
+
+function buildRpcHost(): ArgumentsHost {
+  return {
+    getType: () => 'rpc',
+    switchToHttp: () => {
+      throw new Error('switchToHttp must not be called for rpc host');
+    },
+  } as unknown as ArgumentsHost;
 }
 
 describe('AllExceptionsFilter', () => {
@@ -47,7 +57,7 @@ describe('AllExceptionsFilter', () => {
   });
 
   it('forwards HttpException status + string message', () => {
-    const { host, response } = buildHost();
+    const { host, response } = buildHttpHost();
     const exception = new HttpException('Boom', HttpStatus.BAD_REQUEST);
 
     filter.catch(exception, host);
@@ -61,7 +71,7 @@ describe('AllExceptionsFilter', () => {
   });
 
   it('forwards HttpException status + object-with-message shape (e.g. ValidationPipe)', () => {
-    const { host, response } = buildHost();
+    const { host, response } = buildHttpHost();
     const exception = new BadRequestException({
       message: ['field must be a string'],
       error: 'Bad Request',
@@ -75,7 +85,7 @@ describe('AllExceptionsFilter', () => {
   });
 
   it('returns 500 with "Internal server error" for a thrown plain Error', () => {
-    const { host, response } = buildHost();
+    const { host, response } = buildHttpHost();
     const err = new Error('db died');
 
     filter.catch(err, host);
@@ -89,7 +99,7 @@ describe('AllExceptionsFilter', () => {
   });
 
   it('never serializes the stack into the response body', () => {
-    const { host, response } = buildHost();
+    const { host, response } = buildHttpHost();
     const err = new Error('stack-leak-check');
 
     filter.catch(err, host);
@@ -102,7 +112,7 @@ describe('AllExceptionsFilter', () => {
   });
 
   it('logs the stack via Logger when not an HttpException', () => {
-    const { host } = buildHost('POST', '/bar');
+    const { host } = buildHttpHost('POST', '/bar');
     const err = new Error('logme');
 
     filter.catch(err, host);
@@ -116,8 +126,32 @@ describe('AllExceptionsFilter', () => {
   });
 
   it('does not log via Logger for HttpException', () => {
-    const { host } = buildHost();
+    const { host } = buildHttpHost();
     filter.catch(new BadRequestException('nope'), host);
     expect(errorSpy).not.toHaveBeenCalled();
+  });
+
+  describe('non-HTTP context (e.g. Telegraf RPC)', () => {
+    it('logs the error without attempting to write an HTTP response', () => {
+      const host = buildRpcHost();
+      const err = new Error('rpc-error');
+
+      expect(() => filter.catch(err, host)).not.toThrow();
+
+      expect(errorSpy).toHaveBeenCalledTimes(1);
+      const [msg, stack] = errorSpy.mock.calls[0];
+      expect(msg).toContain('rpc');
+      expect(typeof stack).toBe('string');
+      expect(stack).toContain('rpc-error');
+    });
+
+    it('does not throw when a non-Error is thrown in a non-HTTP context', () => {
+      const host = buildRpcHost();
+
+      expect(() => filter.catch('plain string exception', host)).not.toThrow();
+
+      expect(errorSpy).toHaveBeenCalledTimes(1);
+      expect(errorSpy.mock.calls[0][1]).toBe('plain string exception');
+    });
   });
 });

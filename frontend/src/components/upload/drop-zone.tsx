@@ -41,6 +41,7 @@ export function DropZone({
         <button
           type="button"
           onClick={onPick}
+          aria-label="Upload a selfie"
           className="flex w-full flex-col items-center justify-center gap-4 px-6 py-10 text-center md:py-14"
         >
           <div className="relative">
@@ -57,7 +58,7 @@ export function DropZone({
               JPEG · PNG · HEIC · up to 10 MB
             </div>
           </div>
-          <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-[var(--color-fg-subtle)]">
+          <div className="hidden flex-wrap items-center justify-center gap-2 text-xs text-[var(--color-fg-subtle)] md:flex">
             <span className="rounded-full border border-[var(--color-border)] px-2.5 py-1">
               <kbd className="font-mono">Drag & drop</kbd>
             </span>

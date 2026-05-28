@@ -1,9 +1,14 @@
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { PackCard } from "./pack-card";
+import { EmptyPackState } from "./empty-pack-state";
 import type { DashboardPack } from "./data";
 
 export function PackList({ packs }: { packs: DashboardPack[] }) {
+  if (packs.length === 0) {
+    return <EmptyPackState />;
+  }
+
   return (
     <section
       className="snap-section reveal mt-10 scroll-mt-20"

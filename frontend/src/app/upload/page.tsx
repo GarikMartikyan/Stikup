@@ -83,8 +83,10 @@ export default function UploadPage() {
 
         <div className="mt-6 grid gap-5 md:mt-8 md:grid-cols-[1.4fr_1fr]">
           <div className="reveal" style={{ animationDelay: "80ms" }}>
-            {/* Dropzone: desktop primary affordance — hidden on mobile where drag/paste don't apply */}
-            <div className="hidden md:block">
+            {/* Dropzone: desktop primary affordance — hidden on mobile where
+                drag/paste don't apply. Once a file is ready its preview card is
+                useful on mobile too, so reveal it there as the uploaded-photo preview. */}
+            <div className={fileReady ? "block" : "hidden md:block"}>
               <DropZone
                 state={state}
                 dragOver={dragOver}
@@ -129,7 +131,6 @@ export default function UploadPage() {
               onPickGallery={() => galleryRef.current?.click()}
               onPickCamera={() => cameraRef.current?.click()}
               onSubmit={submit}
-              onReset={reset}
             />
 
             <PrivacyNote className="mt-5 hidden md:block" />

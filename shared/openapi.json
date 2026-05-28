@@ -46,9 +46,35 @@
                     "avatarUrl": {
                       "type": "string",
                       "nullable": true
+                    },
+                    "channels": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "channel": {
+                            "type": "string"
+                          },
+                          "username": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "displayName": {
+                            "type": "string",
+                            "nullable": true
+                          }
+                        },
+                        "required": ["channel", "username", "displayName"]
+                      }
                     }
                   },
-                  "required": ["userId", "email", "displayName", "avatarUrl"]
+                  "required": [
+                    "userId",
+                    "email",
+                    "displayName",
+                    "avatarUrl",
+                    "channels"
+                  ]
                 }
               }
             }
@@ -68,6 +94,69 @@
           },
           "401": {
             "description": ""
+          }
+        },
+        "tags": ["auth"]
+      }
+    },
+    "/auth/link/telegram/start": {
+      "post": {
+        "operationId": "AuthController_linkTelegramStart",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["url"]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": ""
+          }
+        },
+        "tags": ["auth"]
+      }
+    },
+    "/auth/link/telegram": {
+      "delete": {
+        "operationId": "AuthController_unlinkTelegram",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": "Telegram identity unlinked"
+          },
+          "401": {
+            "description": ""
+          },
+          "409": {
+            "description": "Cannot remove the last remaining login method"
+          }
+        },
+        "tags": ["auth"]
+      }
+    },
+    "/auth/link/google": {
+      "delete": {
+        "operationId": "AuthController_unlinkGoogle",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": "Google identity unlinked"
+          },
+          "401": {
+            "description": ""
+          },
+          "409": {
+            "description": "Cannot remove the last remaining login method"
           }
         },
         "tags": ["auth"]
@@ -170,6 +259,39 @@
           }
         },
         "tags": ["auth"]
+      }
+    },
+    "/auth/link/google/start": {
+      "get": {
+        "operationId": "AuthController_linkGoogleStart",
+        "parameters": [],
+        "responses": {
+          "302": {
+            "description": "Redirect to Google OAuth or /login"
+          }
+        },
+        "tags": ["auth"]
+      }
+    },
+    "/telegram/avatar/{channelUserId}": {
+      "get": {
+        "operationId": "TelegramAvatarController_getAvatar",
+        "parameters": [
+          {
+            "name": "channelUserId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["TelegramAvatar"]
       }
     },
     "/packs/bot-url": {

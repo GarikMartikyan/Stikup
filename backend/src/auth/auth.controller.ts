@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 
 import {
   Body,
+  ConflictException,
   Controller,
   Delete,
   Get,
@@ -16,6 +17,7 @@ import {
 import type { ConfigType } from '@nestjs/config';
 import {
   ApiBody,
+  ApiNoContentResponse,
   ApiOkResponse,
   ApiQuery,
   ApiResponse,
@@ -28,6 +30,7 @@ import type { CookieOptions, Request, Response } from 'express';
 import { frontendConfig } from '../config/frontend.config';
 import { sessionConfig } from '../config/session.config';
 import { TelegramMessageService } from '../telegram/telegram-message.service';
+import { BOT_SENDER, type BotSender } from './channel/bot-sender';
 import { EmailAdapter } from './channel/email-adapter';
 import { GoogleAdapter } from './channel/google-adapter';
 import { EmailAuthDto } from './dto/email-auth.dto';
@@ -36,6 +39,7 @@ import { SessionService } from './session.service';
 import { TokenService } from './token.service';
 
 const OAUTH_STATE_COOKIE = 'oauth_state';
+const OAUTH_LINK_COOKIE = 'oauth_link';
 const OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
 const OAUTH_STATE_BYTES = 16;
 
@@ -53,6 +57,8 @@ export class AuthController {
     private readonly frontend: ConfigType<typeof frontendConfig>,
     @Inject(sessionConfig.KEY)
     private readonly session: ConfigType<typeof sessionConfig>,
+    @Inject(BOT_SENDER)
+    private readonly botSender: BotSender,
   ) {}
 
   @Throttle({ default: { limit: 5, ttl: 60000 } })
@@ -108,8 +114,20 @@ export class AuthController {
         email: { type: 'string', nullable: true },
         displayName: { type: 'string', nullable: true },
         avatarUrl: { type: 'string', nullable: true },
+        channels: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              channel: { type: 'string' },
+              username: { type: 'string', nullable: true },
+              displayName: { type: 'string', nullable: true },
+            },
+            required: ['channel', 'username', 'displayName'],
+          },
+        },
       },
-      required: ['userId', 'email', 'displayName', 'avatarUrl'],
+      required: ['userId', 'email', 'displayName', 'avatarUrl', 'channels'],
     },
   })
   @ApiUnauthorizedResponse()
@@ -121,6 +139,11 @@ export class AuthController {
     email: string | null;
     displayName: string | null;
     avatarUrl: string | null;
+    channels: Array<{
+      channel: string;
+      username: string | null;
+      displayName: string | null;
+    }>;
   }> {
     const cookies = (req.cookies ?? {}) as Record<string, string | undefined>;
     const sid = cookies[this.session.cookieName];
@@ -147,6 +170,7 @@ export class AuthController {
       email: user.email,
       displayName: user.displayName,
       avatarUrl: user.avatarUrl,
+      channels: user.channels,
     };
   }
 
@@ -163,6 +187,59 @@ export class AuthController {
     await this.sessions.deleteUser(session.userId);
     res.clearCookie(this.session.cookieName, this.cookieOptions(new Date(0)));
     res.status(204).send();
+  }
+
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Post('link/telegram/start')
+  @ApiOkResponse({
+    schema: {
+      properties: { url: { type: 'string' } },
+      required: ['url'],
+    },
+  })
+  @ApiUnauthorizedResponse()
+  async linkTelegramStart(@Req() req: Request): Promise<{ url: string }> {
+    const cookies = (req.cookies ?? {}) as Record<string, string | undefined>;
+    const sid = cookies[this.session.cookieName];
+    const session = await this.sessions.resolve(sid);
+    if (!session) throw new UnauthorizedException();
+    const token = await this.tokens.mintLink(session.userId);
+    const botUrl = await this.botSender.getBotUrl();
+    return { url: `${botUrl}?start=link_${token}` };
+  }
+
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Delete('link/telegram')
+  @HttpCode(204)
+  @ApiNoContentResponse({ description: 'Telegram identity unlinked' })
+  @ApiResponse({
+    status: 409,
+    description: 'Cannot remove the last remaining login method',
+  })
+  @ApiUnauthorizedResponse()
+  async unlinkTelegram(@Req() req: Request): Promise<void> {
+    const cookies = (req.cookies ?? {}) as Record<string, string | undefined>;
+    const sid = cookies[this.session.cookieName];
+    const session = await this.sessions.resolve(sid);
+    if (!session) throw new UnauthorizedException();
+    await this.identity.unlinkChannel(session.userId, 'telegram');
+  }
+
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Delete('link/google')
+  @HttpCode(204)
+  @ApiNoContentResponse({ description: 'Google identity unlinked' })
+  @ApiResponse({
+    status: 409,
+    description: 'Cannot remove the last remaining login method',
+  })
+  @ApiUnauthorizedResponse()
+  async unlinkGoogle(@Req() req: Request): Promise<void> {
+    const cookies = (req.cookies ?? {}) as Record<string, string | undefined>;
+    const sid = cookies[this.session.cookieName];
+    const session = await this.sessions.resolve(sid);
+    if (!session) throw new UnauthorizedException();
+    await this.identity.unlinkChannel(session.userId, 'google');
   }
 
   @Post('logout')
@@ -240,29 +317,90 @@ export class AuthController {
     @Res() res: Response,
   ): Promise<void> {
     const loginFailedUrl = `${this.frontend.publicAppUrl}/auth/login-failed`;
+    const settingsUrl = (status: string) =>
+      `${this.frontend.publicAppUrl}/settings?link=google&status=${status}`;
 
     const cookies = (req.cookies ?? {}) as Record<string, string | undefined>;
     const savedState = cookies[OAUTH_STATE_COOKIE];
+    const linkMode = cookies[OAUTH_LINK_COOKIE] === '1';
 
     res.clearCookie(OAUTH_STATE_COOKIE, { path: '/' });
+    res.clearCookie(OAUTH_LINK_COOKIE, { path: '/' });
 
     if (!code || !state || !savedState || state !== savedState) {
-      res.redirect(302, loginFailedUrl);
+      if (linkMode) {
+        res.redirect(302, settingsUrl('error'));
+      } else {
+        res.redirect(302, loginFailedUrl);
+      }
       return;
     }
 
     try {
       const event = await this.googleAdapter.exchangeCode(code);
-      const { userId } = await this.identity.resolveOrCreate(event);
-      const { sid, expiresAt } = await this.sessions.issue(userId, 'google');
-      res.cookie(this.session.cookieName, sid, this.cookieOptions(expiresAt));
-      res.redirect(
-        302,
-        `${this.frontend.publicAppUrl}${this.session.postLoginPath}`,
-      );
-    } catch {
-      res.redirect(302, loginFailedUrl);
+
+      if (linkMode) {
+        const sid = cookies[this.session.cookieName];
+        const session = await this.sessions.resolve(sid);
+        if (!session) {
+          res.redirect(302, settingsUrl('error'));
+          return;
+        }
+        await this.identity.linkChannel(session.userId, event);
+        res.redirect(302, settingsUrl('connected'));
+      } else {
+        const { userId } = await this.identity.resolveOrCreate(event);
+        const { sid, expiresAt } = await this.sessions.issue(userId, 'google');
+        res.cookie(this.session.cookieName, sid, this.cookieOptions(expiresAt));
+        res.redirect(
+          302,
+          `${this.frontend.publicAppUrl}${this.session.postLoginPath}`,
+        );
+      }
+    } catch (err) {
+      if (linkMode) {
+        if (err instanceof ConflictException) {
+          res.redirect(302, settingsUrl('taken'));
+        } else {
+          res.redirect(302, settingsUrl('error'));
+        }
+      } else {
+        res.redirect(302, loginFailedUrl);
+      }
     }
+  }
+
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @Get('link/google/start')
+  @ApiResponse({
+    status: 302,
+    description: 'Redirect to Google OAuth or /login',
+  })
+  async linkGoogleStart(
+    @Req() req: Request,
+    @Res() res: Response,
+  ): Promise<void> {
+    const cookies = (req.cookies ?? {}) as Record<string, string | undefined>;
+    const sid = cookies[this.session.cookieName];
+    const session = await this.sessions.resolve(sid);
+    if (!session) {
+      res.redirect(302, `${this.frontend.publicAppUrl}/login`);
+      return;
+    }
+
+    const state = randomBytes(OAUTH_STATE_BYTES).toString('base64url');
+    const stateExpires = new Date(Date.now() + OAUTH_STATE_TTL_MS);
+    const cookieOpts = {
+      httpOnly: true,
+      secure: this.session.cookieSecure,
+      sameSite: 'lax' as const,
+      expires: stateExpires,
+      path: '/',
+    };
+
+    res.cookie(OAUTH_STATE_COOKIE, state, cookieOpts);
+    res.cookie(OAUTH_LINK_COOKIE, '1', cookieOpts);
+    res.redirect(302, this.googleAdapter.buildAuthorizationUrl(state));
   }
 
   private cookieOptions(expires: Date): CookieOptions {

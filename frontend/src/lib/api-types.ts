@@ -14,3 +14,6 @@ export type ClaimFreeResponse =
 
 export type BotUrlResponse =
   paths["/packs/bot-url"]["get"]["responses"]["200"]["content"]["application/json"];
+
+export type TelegramLinkStartResponse =
+  paths["/auth/link/telegram/start"]["post"]["responses"]["200"]["content"]["application/json"];

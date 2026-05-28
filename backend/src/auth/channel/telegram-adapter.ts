@@ -5,7 +5,7 @@ import type { ChannelEvent } from './channel-event';
 
 @Injectable()
 export class TelegramAdapter {
-  fromContext(ctx: Context): ChannelEvent | null {
+  async fromContext(ctx: Context): Promise<ChannelEvent | null> {
     const from = ctx.from;
     if (!from) return null;
 
@@ -14,16 +14,23 @@ export class TelegramAdapter {
       .join(' ')
       .trim();
 
+    let avatarUrl: string | undefined;
+    try {
+      const photos = await ctx.telegram.getUserProfilePhotos(from.id, 0, 1);
+      if (photos.total_count > 0) {
+        avatarUrl = `/api/telegram/avatar/${String(from.id)}`;
+      }
+    } catch {
+      // Treat any failure to fetch profile photos as no photo available.
+    }
+
     return {
       channel: 'telegram',
       channelUserId: String(from.id),
       profile: {
         displayName: displayName || undefined,
         username: from.username,
-        // Telegram avatar URLs embed the bot token and expire after ~1h, so we
-        // can't safely persist them as-is. Wire this through a backend image
-        // proxy (resolve file_id → fresh URL on demand) before populating.
-        avatarUrl: undefined,
+        avatarUrl,
       },
     };
   }

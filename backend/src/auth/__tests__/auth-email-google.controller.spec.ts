@@ -10,6 +10,7 @@ import { frontendConfig } from '../../config/frontend.config';
 import { sessionConfig } from '../../config/session.config';
 import { TelegramMessageService } from '../../telegram/telegram-message.service';
 import { AuthController } from '../auth.controller';
+import { BOT_SENDER } from '../channel/bot-sender';
 import { EmailAdapter } from '../channel/email-adapter';
 import { GoogleAdapter } from '../channel/google-adapter';
 import { IdentityService } from '../identity.service';
@@ -39,7 +40,14 @@ async function buildController(): Promise<AuthController> {
   const moduleRef = await Test.createTestingModule({
     controllers: [AuthController],
     providers: [
-      { provide: TokenService, useValue: { consume: jest.fn() } },
+      {
+        provide: TokenService,
+        useValue: {
+          consume: jest.fn(),
+          mintLink: jest.fn(),
+          consumeLink: jest.fn(),
+        },
+      },
       {
         provide: SessionService,
         useValue: {
@@ -52,7 +60,11 @@ async function buildController(): Promise<AuthController> {
       },
       {
         provide: IdentityService,
-        useValue: { resolveOrCreate: jest.fn() },
+        useValue: {
+          resolveOrCreate: jest.fn(),
+          linkChannel: jest.fn(),
+          unlinkChannel: jest.fn(),
+        },
       },
       {
         provide: EmailAdapter,
@@ -70,6 +82,12 @@ async function buildController(): Promise<AuthController> {
         useValue: {
           deleteMessage: jest.fn().mockResolvedValue(undefined),
           deleteMessages: jest.fn().mockResolvedValue(undefined),
+        },
+      },
+      {
+        provide: BOT_SENDER,
+        useValue: {
+          getBotUrl: jest.fn().mockResolvedValue('https://t.me/stikup_bot'),
         },
       },
       { provide: frontendConfig.KEY, useValue: FRONTEND_STUB },
@@ -196,7 +214,7 @@ describe('AuthController — email/google endpoints', () => {
   });
 
   describe('GET /auth/me', () => {
-    it('returns userId and email for a valid session', async () => {
+    it('returns userId, email, and channels for a valid session', async () => {
       const controller = await buildController();
       const sessions = (
         controller as unknown as { sessions: jest.Mocked<SessionService> }
@@ -208,6 +226,7 @@ describe('AuthController — email/google endpoints', () => {
         email: 'user@example.com',
         displayName: 'user',
         avatarUrl: null,
+        channels: [{ channel: 'email', username: null, displayName: 'user' }],
       });
 
       const req = {
@@ -222,6 +241,7 @@ describe('AuthController — email/google endpoints', () => {
         email: 'user@example.com',
         displayName: 'user',
         avatarUrl: null,
+        channels: [{ channel: 'email', username: null, displayName: 'user' }],
       });
       expect(res.clearCookie).not.toHaveBeenCalled();
     });
@@ -238,6 +258,13 @@ describe('AuthController — email/google endpoints', () => {
         email: null,
         displayName: 'Ada Lovelace',
         avatarUrl: 'https://lh3.googleusercontent.com/a/ada',
+        channels: [
+          {
+            channel: 'google',
+            username: 'ada@gmail.com',
+            displayName: 'Ada Lovelace',
+          },
+        ],
       });
 
       const req = {
@@ -252,6 +279,13 @@ describe('AuthController — email/google endpoints', () => {
         email: null,
         displayName: 'Ada Lovelace',
         avatarUrl: 'https://lh3.googleusercontent.com/a/ada',
+        channels: [
+          {
+            channel: 'google',
+            username: 'ada@gmail.com',
+            displayName: 'Ada Lovelace',
+          },
+        ],
       });
     });
 
@@ -653,6 +687,441 @@ describe('AuthController — email/google endpoints', () => {
       expect(telegramMessages.deleteMessages).toHaveBeenCalledWith(
         BigInt(987654321),
         [99, undefined],
+      );
+    });
+  });
+
+  describe('POST /auth/link/telegram/start', () => {
+    it('throws UnauthorizedException when no valid session', async () => {
+      const controller = await buildController();
+      const sessions = (
+        controller as unknown as { sessions: jest.Mocked<SessionService> }
+      ).sessions;
+
+      (sessions.resolve as jest.Mock).mockResolvedValueOnce(null);
+
+      const req = { cookies: {} } as unknown as import('express').Request;
+      await expect(controller.linkTelegramStart(req)).rejects.toBeInstanceOf(
+        UnauthorizedException,
+      );
+    });
+
+    it('returns a deep-link url for an authenticated user', async () => {
+      const controller = await buildController();
+      const sessions = (
+        controller as unknown as { sessions: jest.Mocked<SessionService> }
+      ).sessions;
+      const tokens = (
+        controller as unknown as { tokens: jest.Mocked<TokenService> }
+      ).tokens;
+
+      (sessions.resolve as jest.Mock).mockResolvedValueOnce({
+        userId: 'u-link',
+      });
+      (tokens.mintLink as jest.Mock).mockResolvedValueOnce('link-token-abc');
+
+      const req = {
+        cookies: { sid: 'valid-sid' },
+      } as unknown as import('express').Request;
+
+      const result = await controller.linkTelegramStart(req);
+
+      expect(tokens.mintLink).toHaveBeenCalledWith('u-link');
+      expect(result).toEqual({
+        url: 'https://t.me/stikup_bot?start=link_link-token-abc',
+      });
+    });
+  });
+
+  describe('DELETE /auth/link/telegram', () => {
+    it('throws UnauthorizedException when no valid session', async () => {
+      const controller = await buildController();
+      const sessions = (
+        controller as unknown as { sessions: jest.Mocked<SessionService> }
+      ).sessions;
+
+      (sessions.resolve as jest.Mock).mockResolvedValueOnce(null);
+
+      const req = { cookies: {} } as unknown as import('express').Request;
+      await expect(controller.unlinkTelegram(req)).rejects.toBeInstanceOf(
+        UnauthorizedException,
+      );
+    });
+
+    it('calls unlinkChannel with telegram and returns undefined (204)', async () => {
+      const controller = await buildController();
+      const sessions = (
+        controller as unknown as { sessions: jest.Mocked<SessionService> }
+      ).sessions;
+      const identity = (
+        controller as unknown as { identity: jest.Mocked<IdentityService> }
+      ).identity;
+
+      (sessions.resolve as jest.Mock).mockResolvedValueOnce({
+        userId: 'u-unlink',
+      });
+      (identity.unlinkChannel as jest.Mock).mockResolvedValueOnce(undefined);
+
+      const req = {
+        cookies: { sid: 'valid-sid' },
+      } as unknown as import('express').Request;
+
+      await expect(controller.unlinkTelegram(req)).resolves.toBeUndefined();
+      expect(identity.unlinkChannel).toHaveBeenCalledWith(
+        'u-unlink',
+        'telegram',
+      );
+    });
+
+    it('propagates ConflictException from unlinkChannel (last_login_method)', async () => {
+      const controller = await buildController();
+      const sessions = (
+        controller as unknown as { sessions: jest.Mocked<SessionService> }
+      ).sessions;
+      const identity = (
+        controller as unknown as { identity: jest.Mocked<IdentityService> }
+      ).identity;
+
+      (sessions.resolve as jest.Mock).mockResolvedValueOnce({
+        userId: 'u-last',
+      });
+      (identity.unlinkChannel as jest.Mock).mockRejectedValueOnce(
+        new ConflictException('last_login_method'),
+      );
+
+      const req = {
+        cookies: { sid: 'valid-sid' },
+      } as unknown as import('express').Request;
+
+      await expect(controller.unlinkTelegram(req)).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+    });
+  });
+
+  describe('GET /auth/link/google/start', () => {
+    it('redirects to /login when no valid session', async () => {
+      const controller = await buildController();
+      const sessions = (
+        controller as unknown as { sessions: jest.Mocked<SessionService> }
+      ).sessions;
+
+      (sessions.resolve as jest.Mock).mockResolvedValueOnce(null);
+
+      const req = { cookies: {} } as unknown as import('express').Request;
+      const res = buildResMock();
+
+      await controller.linkGoogleStart(req, res);
+
+      expect(res.redirect).toHaveBeenCalledWith(
+        302,
+        'http://localhost:3000/login',
+      );
+      expect(res.cookie).not.toHaveBeenCalled();
+    });
+
+    it('sets both cookies and redirects to Google auth URL when session is valid', async () => {
+      const controller = await buildController();
+      const sessions = (
+        controller as unknown as { sessions: jest.Mocked<SessionService> }
+      ).sessions;
+      const googleAdapter = (
+        controller as unknown as { googleAdapter: jest.Mocked<GoogleAdapter> }
+      ).googleAdapter;
+
+      (sessions.resolve as jest.Mock).mockResolvedValueOnce({
+        userId: 'u-link',
+      });
+      (googleAdapter.buildAuthorizationUrl as jest.Mock).mockReturnValueOnce(
+        'https://accounts.google.com/o/oauth2/v2/auth?client_id=x',
+      );
+
+      const req = {
+        cookies: { sid: 'valid-sid' },
+      } as unknown as import('express').Request;
+      const res = buildResMock();
+
+      await controller.linkGoogleStart(req, res);
+
+      expect(res.cookie).toHaveBeenCalledWith(
+        'oauth_state',
+        expect.stringMatching(/^[A-Za-z0-9_-]+$/),
+        expect.objectContaining({ httpOnly: true, path: '/' }),
+      );
+      expect(res.cookie).toHaveBeenCalledWith(
+        'oauth_link',
+        '1',
+        expect.objectContaining({ httpOnly: true, path: '/' }),
+      );
+      expect(res.redirect).toHaveBeenCalledWith(
+        302,
+        'https://accounts.google.com/o/oauth2/v2/auth?client_id=x',
+      );
+    });
+  });
+
+  describe('GET /auth/google/callback (link mode)', () => {
+    it('calls linkChannel and redirects to /settings?link=google&status=connected on success', async () => {
+      const controller = await buildController();
+      const googleAdapter = (
+        controller as unknown as { googleAdapter: jest.Mocked<GoogleAdapter> }
+      ).googleAdapter;
+      const identity = (
+        controller as unknown as { identity: jest.Mocked<IdentityService> }
+      ).identity;
+      const sessions = (
+        controller as unknown as { sessions: jest.Mocked<SessionService> }
+      ).sessions;
+
+      const event = {
+        channel: 'google' as const,
+        channelUserId: 'google-sub',
+        profile: { displayName: 'Alice', username: 'alice@gmail.com' },
+      };
+      (googleAdapter.exchangeCode as jest.Mock).mockResolvedValueOnce(event);
+      // resolve is called once for the session lookup inside link mode
+      (sessions.resolve as jest.Mock).mockResolvedValueOnce({
+        userId: 'u-linked',
+      });
+      (identity.linkChannel as jest.Mock).mockResolvedValueOnce({
+        status: 'linked',
+      });
+
+      const res = buildResMock();
+      const req = {
+        cookies: {
+          oauth_state: 'state-link',
+          oauth_link: '1',
+          sid: 'valid-sid',
+        },
+      } as unknown as import('express').Request;
+
+      await controller.googleCallback('authcode', 'state-link', req, res);
+
+      expect(identity.linkChannel).toHaveBeenCalledWith('u-linked', event);
+      expect(identity.resolveOrCreate).not.toHaveBeenCalled();
+      expect(res.redirect).toHaveBeenCalledWith(
+        302,
+        'http://localhost:3000/settings?link=google&status=connected',
+      );
+    });
+
+    it('redirects to status=taken when linkChannel throws ConflictException', async () => {
+      const controller = await buildController();
+      const googleAdapter = (
+        controller as unknown as { googleAdapter: jest.Mocked<GoogleAdapter> }
+      ).googleAdapter;
+      const identity = (
+        controller as unknown as { identity: jest.Mocked<IdentityService> }
+      ).identity;
+      const sessions = (
+        controller as unknown as { sessions: jest.Mocked<SessionService> }
+      ).sessions;
+
+      (googleAdapter.exchangeCode as jest.Mock).mockResolvedValueOnce({
+        channel: 'google' as const,
+        channelUserId: 'taken-sub',
+        profile: { displayName: 'Bob', username: 'bob@gmail.com' },
+      });
+      (sessions.resolve as jest.Mock).mockResolvedValueOnce({ userId: 'u-b' });
+      (identity.linkChannel as jest.Mock).mockRejectedValueOnce(
+        new ConflictException('channel_taken'),
+      );
+
+      const res = buildResMock();
+      const req = {
+        cookies: { oauth_state: 'state-t', oauth_link: '1', sid: 'valid-sid' },
+      } as unknown as import('express').Request;
+
+      await controller.googleCallback('code', 'state-t', req, res);
+
+      expect(res.redirect).toHaveBeenCalledWith(
+        302,
+        'http://localhost:3000/settings?link=google&status=taken',
+      );
+    });
+
+    it('redirects to status=error when session is missing in link mode', async () => {
+      const controller = await buildController();
+      const googleAdapter = (
+        controller as unknown as { googleAdapter: jest.Mocked<GoogleAdapter> }
+      ).googleAdapter;
+      const sessions = (
+        controller as unknown as { sessions: jest.Mocked<SessionService> }
+      ).sessions;
+
+      (googleAdapter.exchangeCode as jest.Mock).mockResolvedValueOnce({
+        channel: 'google' as const,
+        channelUserId: 'some-sub',
+        profile: { displayName: 'X', username: 'x@gmail.com' },
+      });
+      (sessions.resolve as jest.Mock).mockResolvedValueOnce(null);
+
+      const res = buildResMock();
+      const req = {
+        cookies: { oauth_state: 'state-ns', oauth_link: '1' },
+      } as unknown as import('express').Request;
+
+      await controller.googleCallback('code', 'state-ns', req, res);
+
+      expect(res.redirect).toHaveBeenCalledWith(
+        302,
+        'http://localhost:3000/settings?link=google&status=error',
+      );
+    });
+
+    it('redirects to status=error when exchange throws in link mode', async () => {
+      const controller = await buildController();
+      const googleAdapter = (
+        controller as unknown as { googleAdapter: jest.Mocked<GoogleAdapter> }
+      ).googleAdapter;
+
+      (googleAdapter.exchangeCode as jest.Mock).mockRejectedValueOnce(
+        new Error('network error'),
+      );
+
+      const res = buildResMock();
+      const req = {
+        cookies: { oauth_state: 'state-ex', oauth_link: '1', sid: 'valid-sid' },
+      } as unknown as import('express').Request;
+
+      await controller.googleCallback('code', 'state-ex', req, res);
+
+      expect(res.redirect).toHaveBeenCalledWith(
+        302,
+        'http://localhost:3000/settings?link=google&status=error',
+      );
+    });
+
+    it('redirects to status=error on state mismatch in link mode', async () => {
+      const controller = await buildController();
+
+      const res = buildResMock();
+      const req = {
+        cookies: { oauth_state: 'state-abc', oauth_link: '1' },
+      } as unknown as import('express').Request;
+
+      await controller.googleCallback('code', 'wrong-state', req, res);
+
+      expect(res.redirect).toHaveBeenCalledWith(
+        302,
+        'http://localhost:3000/settings?link=google&status=error',
+      );
+    });
+  });
+
+  describe('GET /auth/google/callback (normal login mode — regression)', () => {
+    it('issues session and redirects to post-login path (unchanged behavior)', async () => {
+      const controller = await buildController();
+      const googleAdapter = (
+        controller as unknown as { googleAdapter: jest.Mocked<GoogleAdapter> }
+      ).googleAdapter;
+      const identity = (
+        controller as unknown as { identity: jest.Mocked<IdentityService> }
+      ).identity;
+      const sessions = (
+        controller as unknown as { sessions: jest.Mocked<SessionService> }
+      ).sessions;
+
+      const event = {
+        channel: 'google' as const,
+        channelUserId: 'google-sub-reg',
+        profile: { displayName: 'Carol', username: 'carol@gmail.com' },
+      };
+      (googleAdapter.exchangeCode as jest.Mock).mockResolvedValueOnce(event);
+      (identity.resolveOrCreate as jest.Mock).mockResolvedValueOnce({
+        userId: 'u-reg',
+      });
+      (sessions.issue as jest.Mock).mockResolvedValueOnce({
+        sid: 'sess-reg',
+        expiresAt: new Date(Date.now() + 60_000),
+      });
+
+      const res = buildResMock();
+      // No oauth_link cookie — normal login flow
+      const req = {
+        cookies: { oauth_state: 'state-reg' },
+      } as unknown as import('express').Request;
+
+      await controller.googleCallback('authcode-reg', 'state-reg', req, res);
+
+      expect(identity.resolveOrCreate).toHaveBeenCalledWith(event);
+      expect(identity.linkChannel).not.toHaveBeenCalled();
+      expect(sessions.issue).toHaveBeenCalledWith('u-reg', 'google');
+      expect(res.cookie).toHaveBeenCalledWith(
+        'sid',
+        'sess-reg',
+        expect.any(Object),
+      );
+      expect(res.redirect).toHaveBeenCalledWith(
+        302,
+        'http://localhost:3000/my-stickers',
+      );
+    });
+  });
+
+  describe('DELETE /auth/link/google', () => {
+    it('throws UnauthorizedException when no valid session', async () => {
+      const controller = await buildController();
+      const sessions = (
+        controller as unknown as { sessions: jest.Mocked<SessionService> }
+      ).sessions;
+
+      (sessions.resolve as jest.Mock).mockResolvedValueOnce(null);
+
+      const req = { cookies: {} } as unknown as import('express').Request;
+      await expect(controller.unlinkGoogle(req)).rejects.toBeInstanceOf(
+        UnauthorizedException,
+      );
+    });
+
+    it('calls unlinkChannel with google and returns undefined (204)', async () => {
+      const controller = await buildController();
+      const sessions = (
+        controller as unknown as { sessions: jest.Mocked<SessionService> }
+      ).sessions;
+      const identity = (
+        controller as unknown as { identity: jest.Mocked<IdentityService> }
+      ).identity;
+
+      (sessions.resolve as jest.Mock).mockResolvedValueOnce({
+        userId: 'u-unlink-g',
+      });
+      (identity.unlinkChannel as jest.Mock).mockResolvedValueOnce(undefined);
+
+      const req = {
+        cookies: { sid: 'valid-sid' },
+      } as unknown as import('express').Request;
+
+      await expect(controller.unlinkGoogle(req)).resolves.toBeUndefined();
+      expect(identity.unlinkChannel).toHaveBeenCalledWith(
+        'u-unlink-g',
+        'google',
+      );
+    });
+
+    it('propagates ConflictException from unlinkChannel (last_login_method)', async () => {
+      const controller = await buildController();
+      const sessions = (
+        controller as unknown as { sessions: jest.Mocked<SessionService> }
+      ).sessions;
+      const identity = (
+        controller as unknown as { identity: jest.Mocked<IdentityService> }
+      ).identity;
+
+      (sessions.resolve as jest.Mock).mockResolvedValueOnce({
+        userId: 'u-last-g',
+      });
+      (identity.unlinkChannel as jest.Mock).mockRejectedValueOnce(
+        new ConflictException('last_login_method'),
+      );
+
+      const req = {
+        cookies: { sid: 'valid-sid' },
+      } as unknown as import('express').Request;
+
+      await expect(controller.unlinkGoogle(req)).rejects.toBeInstanceOf(
+        ConflictException,
       );
     });
   });

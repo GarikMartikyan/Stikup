@@ -356,6 +356,36 @@
       "section_description": "Preferred interface language for this device.",
       "radio_label": "Language"
     },
+    "telegram": {
+      "section_title": "Telegram",
+      "section_description": "Connect your Telegram account so you can sign in and receive stickers through the bot.",
+      "connected": "Connected",
+      "connected_as": "Connected as {handle}",
+      "connect_button": "Connect Telegram",
+      "connecting": "Opening Telegram…",
+      "disconnect_button": "Disconnect",
+      "disconnecting": "Disconnecting…",
+      "connect_hint": "We'll open Telegram. Tap Start in the bot, then come back here.",
+      "last_method_hint": "You can't disconnect your only sign-in method. Add another first.",
+      "error_failed": "Something went wrong. Please try again.",
+      "error_last_method": "You can't disconnect your only sign-in method."
+    },
+    "google": {
+      "section_title": "Google",
+      "section_description": "Connect your Google account to sign in with Google as well.",
+      "connected": "Connected",
+      "connected_as": "Connected as {handle}",
+      "connect_button": "Connect Google",
+      "disconnect_button": "Disconnect",
+      "disconnecting": "Disconnecting…",
+      "connect_hint": "Sign in with your Google account to link it to this profile.",
+      "last_method_hint": "You can't disconnect your only sign-in method. Add another first.",
+      "result_connected": "Google account connected.",
+      "result_taken": "That Google account is already linked to a different Stikup account.",
+      "result_error": "Couldn't connect your Google account. Please try again.",
+      "error_failed": "Something went wrong. Please try again.",
+      "error_last_method": "You can't disconnect your only sign-in method."
+    },
     "delete_account": {
       "section_title": "Delete account",
       "section_description": "Cascading delete — your packs, stickers, and uploads are removed. GDPR-compliant.",

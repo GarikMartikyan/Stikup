@@ -12,5 +12,11 @@
   },
   "queue": {
     "working_on_it": "⏳ Working on it. I'll send the stickers as soon as they're ready."
+  },
+  "link": {
+    "success": "✅ Your Telegram account is now connected to Stikup.",
+    "conflict": "This Telegram account is already linked to a different Stikup account.",
+    "expired": "This connection request has expired or is invalid. Please try again from the app.",
+    "failed": "Sorry, something went wrong connecting your account. Please try again."
   }
 }

@@ -146,6 +146,13 @@ input, textarea, [contenteditable="true"], [contenteditable="true"] * {
   animation: gradient-shift 7s ease-in-out infinite;
 }
 
+/* Continuous attention pulse for the primary "Generate" CTA — shifting
+   gradient + radiating ring so the single button reads as the next step. */
+.cta-pulse {
+  background-size: 200% 200%;
+  animation: gradient-shift 4s ease-in-out infinite, pulse-ring 2.2s ease-out infinite;
+}
+
 .shimmer { position: relative; overflow: hidden; }
 .shimmer::after {
   content: "";

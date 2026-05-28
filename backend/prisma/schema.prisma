@@ -14,6 +14,11 @@ enum Channel {
   google
 }
 
+enum TokenPurpose {
+  login
+  link
+}
+
 model User {
   id           String   @id @default(uuid()) @db.Uuid
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -45,15 +50,16 @@ model ChannelIdentity {
 }
 
 model LoginToken {
-  token             String    @id
-  userId            String    @map("user_id") @db.Uuid
-  issuedVia         Channel   @map("issued_via")
-  expiresAt         DateTime  @map("expires_at") @db.Timestamptz(6)
-  consumedAt        DateTime? @map("consumed_at") @db.Timestamptz(6)
-  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  telegramChatId        BigInt?   @map("telegram_chat_id")
-  telegramMessageId     Int?      @map("telegram_message_id")
-  telegramUserMessageId Int?      @map("telegram_user_message_id")
+  token             String       @id
+  userId            String       @map("user_id") @db.Uuid
+  issuedVia         Channel      @map("issued_via")
+  purpose           TokenPurpose @default(login) @map("purpose")
+  expiresAt         DateTime     @map("expires_at") @db.Timestamptz(6)
+  consumedAt        DateTime?    @map("consumed_at") @db.Timestamptz(6)
+  createdAt         DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  telegramChatId        BigInt?  @map("telegram_chat_id")
+  telegramMessageId     Int?     @map("telegram_message_id")
+  telegramUserMessageId Int?     @map("telegram_user_message_id")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

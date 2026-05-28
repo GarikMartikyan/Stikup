@@ -26,6 +26,7 @@ function buildPrismaMock() {
 
 describe('TokenService', () => {
   const FIVE_MIN_MS = 5 * 60 * 1000;
+  const TEN_MIN_MS = 10 * 60 * 1000;
 
   describe('mint', () => {
     it('returns a base64url string of the expected length and writes a row', async () => {
@@ -46,9 +47,37 @@ describe('TokenService', () => {
       expect(arg.data.token).toBe(token);
       expect(arg.data.userId).toBe('user-1');
       expect(arg.data.issuedVia).toBe(Channel.telegram);
+      expect(arg.data.purpose).toBe('login');
 
       const expectedMin = before + FIVE_MIN_MS;
       const expectedMax = after + FIVE_MIN_MS;
+      const expiresAtMs = (arg.data.expiresAt as Date).getTime();
+      expect(expiresAtMs).toBeGreaterThanOrEqual(expectedMin - 5);
+      expect(expiresAtMs).toBeLessThanOrEqual(expectedMax + 5);
+    });
+  });
+
+  describe('mintLink', () => {
+    it('returns a base64url token with purpose=link and 10-minute TTL', async () => {
+      const prisma = buildPrismaMock();
+      const service = new TokenService(prisma);
+
+      const before = Date.now();
+      const token = await service.mintLink('user-link');
+      const after = Date.now();
+
+      expect(typeof token).toBe('string');
+      expect(token).toHaveLength(43);
+      expect(token).toMatch(/^[A-Za-z0-9_-]+$/);
+
+      expect(prisma.loginToken.create).toHaveBeenCalledTimes(1);
+      const arg = (prisma.loginToken.create as jest.Mock).mock.calls[0][0];
+      expect(arg.data.token).toBe(token);
+      expect(arg.data.userId).toBe('user-link');
+      expect(arg.data.purpose).toBe('link');
+
+      const expectedMin = before + TEN_MIN_MS;
+      const expectedMax = after + TEN_MIN_MS;
       const expiresAtMs = (arg.data.expiresAt as Date).getTime();
       expect(expiresAtMs).toBeGreaterThanOrEqual(expectedMin - 5);
       expect(expiresAtMs).toBeLessThanOrEqual(expectedMax + 5);
@@ -85,6 +114,58 @@ describe('TokenService', () => {
       const result = await service.consume('missing-token');
 
       expect(result).toBeNull();
+    });
+
+    it('SQL includes AND purpose = login guard', async () => {
+      const prisma = buildPrismaMock();
+      (prisma.$queryRaw as jest.Mock).mockResolvedValueOnce([]);
+      const service = new TokenService(prisma);
+
+      await service.consume('some-token');
+
+      const call = (prisma.$queryRaw as jest.Mock).mock.calls[0];
+      // The tagged template strings array is the first argument; join them to
+      // check the static SQL text contains the purpose guard.
+      const sqlParts = (call[0] as TemplateStringsArray).join('?');
+      expect(sqlParts).toContain("purpose = 'login'");
+    });
+  });
+
+  describe('consumeLink', () => {
+    it('returns { userId } when $queryRaw returns one row', async () => {
+      const prisma = buildPrismaMock();
+      (prisma.$queryRaw as jest.Mock).mockResolvedValueOnce([
+        { user_id: 'user-link-42' },
+      ]);
+      const service = new TokenService(prisma);
+
+      const result = await service.consumeLink('link-tok-xyz');
+
+      expect(result).toEqual({ userId: 'user-link-42' });
+      const call = (prisma.$queryRaw as jest.Mock).mock.calls[0];
+      expect(call.slice(1)).toContain('link-tok-xyz');
+    });
+
+    it('returns null when $queryRaw returns an empty array', async () => {
+      const prisma = buildPrismaMock();
+      (prisma.$queryRaw as jest.Mock).mockResolvedValueOnce([]);
+      const service = new TokenService(prisma);
+
+      const result = await service.consumeLink('expired-token');
+
+      expect(result).toBeNull();
+    });
+
+    it('SQL includes AND purpose = link guard (rejects a login-purpose token at the DB level)', async () => {
+      const prisma = buildPrismaMock();
+      (prisma.$queryRaw as jest.Mock).mockResolvedValueOnce([]);
+      const service = new TokenService(prisma);
+
+      await service.consumeLink('some-token');
+
+      const call = (prisma.$queryRaw as jest.Mock).mock.calls[0];
+      const sqlParts = (call[0] as TemplateStringsArray).join('?');
+      expect(sqlParts).toContain("purpose = 'link'");
     });
   });
 });

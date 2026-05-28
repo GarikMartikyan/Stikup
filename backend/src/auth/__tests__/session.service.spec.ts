@@ -133,12 +133,19 @@ describe('SessionService', () => {
       expect(result).toBeNull();
     });
 
-    it('returns userId, email, displayName, and avatarUrl when user exists', async () => {
+    it('returns userId, email, displayName, avatarUrl, and channels when user exists', async () => {
       const prisma = buildPrismaMock();
       (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
         id: 'user-7',
         email: 'hello@example.com',
-        identities: [{ displayName: 'hello', avatarUrl: null }],
+        identities: [
+          {
+            displayName: 'hello',
+            avatarUrl: null,
+            channel: 'email',
+            username: null,
+          },
+        ],
       });
       const service = new SessionService(prisma);
 
@@ -149,6 +156,7 @@ describe('SessionService', () => {
         email: 'hello@example.com',
         displayName: 'hello',
         avatarUrl: null,
+        channels: [{ channel: 'email', username: null, displayName: 'hello' }],
       });
       expect(prisma.user.findUnique).toHaveBeenCalledWith({
         where: { id: 'user-7' },
@@ -156,8 +164,13 @@ describe('SessionService', () => {
           id: true,
           email: true,
           identities: {
-            select: { displayName: true, avatarUrl: true },
-            orderBy: { createdAt: 'desc' },
+            select: {
+              displayName: true,
+              avatarUrl: true,
+              channel: true,
+              username: true,
+            },
+            orderBy: { createdAt: 'asc' },
           },
         },
       });
@@ -165,16 +178,24 @@ describe('SessionService', () => {
 
     it('coalesces displayName/avatarUrl from the newest identity that has each', async () => {
       const prisma = buildPrismaMock();
-      // identities ordered newest-first: a freshly linked Telegram identity
-      // (no avatar) should not shadow an earlier Google identity's avatar.
+      // identities ordered oldest-first (createdAt asc): a freshly linked
+      // Telegram identity (no avatar) should not shadow an earlier Google
+      // identity's avatar.
       (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
         id: 'user-10',
         email: 'multi@example.com',
         identities: [
-          { displayName: 'Tg User', avatarUrl: null },
           {
             displayName: 'Ada Lovelace',
             avatarUrl: 'https://lh3.googleusercontent.com/a/ada',
+            channel: 'google',
+            username: null,
+          },
+          {
+            displayName: 'Tg User',
+            avatarUrl: null,
+            channel: 'telegram',
+            username: 'tguser',
           },
         ],
       });
@@ -187,6 +208,10 @@ describe('SessionService', () => {
         email: 'multi@example.com',
         displayName: 'Tg User',
         avatarUrl: 'https://lh3.googleusercontent.com/a/ada',
+        channels: [
+          { channel: 'google', username: null, displayName: 'Ada Lovelace' },
+          { channel: 'telegram', username: 'tguser', displayName: 'Tg User' },
+        ],
       });
     });
 
@@ -199,6 +224,8 @@ describe('SessionService', () => {
           {
             displayName: 'Ada Lovelace',
             avatarUrl: 'https://lh3.googleusercontent.com/a/ada',
+            channel: 'google',
+            username: 'ada@gmail.com',
           },
         ],
       });
@@ -211,10 +238,17 @@ describe('SessionService', () => {
         email: null,
         displayName: 'Ada Lovelace',
         avatarUrl: 'https://lh3.googleusercontent.com/a/ada',
+        channels: [
+          {
+            channel: 'google',
+            username: 'ada@gmail.com',
+            displayName: 'Ada Lovelace',
+          },
+        ],
       });
     });
 
-    it('returns null displayName and avatarUrl when no identity exists', async () => {
+    it('returns null displayName and avatarUrl and empty channels when no identity exists', async () => {
       const prisma = buildPrismaMock();
       (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
         id: 'user-9',
@@ -230,6 +264,7 @@ describe('SessionService', () => {
         email: null,
         displayName: null,
         avatarUrl: null,
+        channels: [],
       });
     });
   });

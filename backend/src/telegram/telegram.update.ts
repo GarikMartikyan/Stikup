@@ -1,6 +1,12 @@
 import { resolve } from 'node:path';
 
-import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import {
+  ConflictException,
+  Inject,
+  Injectable,
+  Logger,
+  OnModuleInit,
+} from '@nestjs/common';
 import type { ConfigType } from '@nestjs/config';
 import { I18nService } from 'nestjs-i18n';
 import { Command, Ctx, InjectBot, Start, Update } from 'nestjs-telegraf';
@@ -67,7 +73,46 @@ export class TelegramUpdate implements OnModuleInit {
     this.logger.log(
       `/start from telegram user ${ctx.from?.id ?? 'unknown'} language_code=${ctx.from?.language_code ?? 'unknown'}`,
     );
+
+    // Parse the deep-link payload from the message text (format: "/start <payload>").
+    const text = ctx.message && 'text' in ctx.message ? ctx.message.text : '';
+    const parts = text.split(' ');
+    const payload = parts.length > 1 ? parts[1] : '';
+
+    if (payload.startsWith('link_')) {
+      await this.handleLinkPayload(ctx, payload.slice('link_'.length));
+      return;
+    }
+
     await this.sendLoginLink(ctx, 'start');
+  }
+
+  private async handleLinkPayload(ctx: Context, token: string): Promise<void> {
+    const link = await this.tokens.consumeLink(token);
+    if (!link) {
+      await ctx.reply(this.t(ctx, 'telegram.link.expired'));
+      return;
+    }
+
+    const event = await this.telegramAdapter.fromContext(ctx);
+    if (!event) {
+      await ctx.reply(this.t(ctx, 'telegram.errors.no_profile'));
+      return;
+    }
+
+    try {
+      await this.identity.linkChannel(link.userId, event);
+      await ctx.reply(this.t(ctx, 'telegram.link.success'));
+    } catch (err) {
+      if (err instanceof ConflictException) {
+        await ctx.reply(this.t(ctx, 'telegram.link.conflict'));
+      } else {
+        this.logger.error(
+          `linkChannel failed for userId=${link.userId}: ${err instanceof Error ? err.message : String(err)}`,
+        );
+        await ctx.reply(this.t(ctx, 'telegram.link.failed'));
+      }
+    }
   }
 
   @Command('login')
@@ -79,7 +124,7 @@ export class TelegramUpdate implements OnModuleInit {
     ctx: Context,
     source: 'start' | 'login',
   ): Promise<void> {
-    const event = this.telegramAdapter.fromContext(ctx);
+    const event = await this.telegramAdapter.fromContext(ctx);
     if (!event) {
       await ctx.reply(this.t(ctx, 'telegram.errors.no_profile'));
       return;

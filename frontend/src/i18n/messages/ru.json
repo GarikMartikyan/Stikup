@@ -356,6 +356,36 @@
       "section_description": "Предпочитаемый язык интерфейса на этом устройстве.",
       "radio_label": "Язык"
     },
+    "telegram": {
+      "section_title": "Telegram",
+      "section_description": "Привяжите Telegram-аккаунт, чтобы входить через него и получать стикеры через бота.",
+      "connected": "Подключён",
+      "connected_as": "Подключён как {handle}",
+      "connect_button": "Подключить Telegram",
+      "connecting": "Открываем Telegram…",
+      "disconnect_button": "Отключить",
+      "disconnecting": "Отключаем…",
+      "connect_hint": "Мы откроем Telegram. Нажмите «Начать» в боте, затем вернитесь сюда.",
+      "last_method_hint": "Нельзя отключить единственный способ входа. Сначала добавьте другой.",
+      "error_failed": "Что-то пошло не так. Попробуйте ещё раз.",
+      "error_last_method": "Нельзя отключить единственный способ входа."
+    },
+    "google": {
+      "section_title": "Google",
+      "section_description": "Привяжите Google-аккаунт, чтобы входить через него тоже.",
+      "connected": "Подключён",
+      "connected_as": "Подключён как {handle}",
+      "connect_button": "Подключить Google",
+      "disconnect_button": "Отключить",
+      "disconnecting": "Отключаем…",
+      "connect_hint": "Войдите через Google, чтобы привязать аккаунт к этому профилю.",
+      "last_method_hint": "Нельзя отключить единственный способ входа. Сначала добавьте другой.",
+      "result_connected": "Google-аккаунт подключён.",
+      "result_taken": "Этот Google-аккаунт уже привязан к другому аккаунту Stikup.",
+      "result_error": "Не удалось подключить Google-аккаунт. Попробуйте ещё раз.",
+      "error_failed": "Что-то пошло не так. Попробуйте ещё раз.",
+      "error_last_method": "Нельзя отключить единственный способ входа."
+    },
     "delete_account": {
       "section_title": "Удалить аккаунт",
       "section_description": "Каскадное удаление — ваши паки, стикеры и загрузки будут удалены. Соответствует GDPR.",

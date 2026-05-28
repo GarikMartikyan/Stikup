@@ -1,6 +1,6 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
-import type { AuthMeResponse } from "@/lib/api-types";
+import type { AuthMeResponse, TelegramLinkStartResponse } from "@/lib/api-types";
 
 export const authApi = createApi({
   reducerPath: "authApi",
@@ -35,6 +35,17 @@ export const authApi = createApi({
       query: () => ({ url: "auth/me", method: "DELETE" }),
       invalidatesTags: ["Me"],
     }),
+    startTelegramLink: builder.mutation<TelegramLinkStartResponse, void>({
+      query: () => ({ url: "auth/link/telegram/start", method: "POST" }),
+    }),
+    unlinkTelegram: builder.mutation<void, void>({
+      query: () => ({ url: "auth/link/telegram", method: "DELETE" }),
+      invalidatesTags: ["Me"],
+    }),
+    unlinkGoogle: builder.mutation<void, void>({
+      query: () => ({ url: "auth/link/google", method: "DELETE" }),
+      invalidatesTags: ["Me"],
+    }),
   }),
 });
 
@@ -44,4 +55,7 @@ export const {
   useRegisterMutation,
   useLogoutMutation,
   useDeleteMeMutation,
+  useStartTelegramLinkMutation,
+  useUnlinkTelegramMutation,
+  useUnlinkGoogleMutation,
 } = authApi;

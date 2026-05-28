@@ -15,7 +15,6 @@ type UploadActionsProps = {
   onPickGallery: () => void;
   onPickCamera: () => void;
   onSubmit: () => void;
-  onReset: () => void;
 };
 
 export function UploadActions({
@@ -24,7 +23,6 @@ export function UploadActions({
   onPickGallery,
   onPickCamera,
   onSubmit,
-  onReset,
 }: UploadActionsProps) {
   const t = useT();
 
@@ -59,7 +57,7 @@ export function UploadActions({
         type="button"
         onClick={onSubmit}
         disabled={submitting}
-        className="shimmer group inline-flex items-center gap-2 overflow-hidden rounded-full bg-gradient-to-r from-[var(--color-brand)] via-[#ff5e72] to-[var(--color-brand-2)] px-7 py-3.5 text-base font-bold text-white shadow-[0_18px_40px_-12px_rgba(224,52,154,0.55)] transition hover:-translate-y-0.5 disabled:cursor-wait disabled:opacity-80"
+        className="shimmer cta-pulse group inline-flex items-center gap-2 overflow-hidden rounded-full bg-gradient-to-r from-[var(--color-brand)] via-[#ff5e72] to-[var(--color-brand-2)] px-7 py-3.5 text-base font-bold text-white shadow-[0_18px_40px_-12px_rgba(224,52,154,0.55)] transition hover:-translate-y-0.5 disabled:cursor-wait disabled:opacity-80"
       >
         {submitting ? (
           <RefreshCw className="h-4 w-4 animate-spin" />
@@ -70,13 +68,6 @@ export function UploadActions({
         {!submitting && (
           <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
         )}
-      </button>
-      <button
-        type="button"
-        onClick={onReset}
-        className="inline-flex items-center gap-2 rounded-full border border-[var(--color-border-strong)] bg-[var(--color-bg-elev)] px-5 py-3.5 text-sm font-bold text-[var(--color-fg)] hover:bg-[var(--color-bg-sunk)]"
-      >
-        <RefreshCw className="h-4 w-4" /> {t("upload.actions.choose_another")}
       </button>
     </div>
   );

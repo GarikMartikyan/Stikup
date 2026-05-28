@@ -1,10 +1,12 @@
 "use client";
 
-import { Languages, Palette, Trash2 } from "lucide-react";
+import { KeyRound, Languages, Palette, Send, Trash2 } from "lucide-react";
 
 import { DeleteAccountSetting } from "@/components/settings/delete-account-setting";
+import { GoogleConnectionSetting } from "@/components/settings/google-connection-setting";
 import { LanguageSetting } from "@/components/settings/language-setting";
 import { SettingSection } from "@/components/settings/setting-section";
+import { TelegramConnectionSetting } from "@/components/settings/telegram-connection-setting";
 import { ThemeSetting } from "@/components/settings/theme-setting";
 import { useT } from "@/components/language-provider";
 
@@ -37,6 +39,22 @@ export function SettingsContent({ email }: { email: string | null }) {
           description={t("settings.language.section_description")}
         >
           <LanguageSetting />
+        </SettingSection>
+
+        <SettingSection
+          icon={Send}
+          title={t("settings.telegram.section_title")}
+          description={t("settings.telegram.section_description")}
+        >
+          <TelegramConnectionSetting />
+        </SettingSection>
+
+        <SettingSection
+          icon={KeyRound}
+          title={t("settings.google.section_title")}
+          description={t("settings.google.section_description")}
+        >
+          <GoogleConnectionSetting />
         </SettingSection>
 
         <SettingSection

@@ -8,6 +8,7 @@ import type { Response } from 'express';
 
 import { frontendConfig } from '../../config/frontend.config';
 import { sessionConfig } from '../../config/session.config';
+import { ReferralService } from '../../referral/referral.service';
 import { TelegramMessageService } from '../../telegram/telegram-message.service';
 import { AuthController } from '../auth.controller';
 import { BOT_SENDER } from '../channel/bot-sender';
@@ -90,6 +91,10 @@ async function buildController(): Promise<AuthController> {
           getBotUrl: jest.fn().mockResolvedValue('https://t.me/stikup_bot'),
         },
       },
+      {
+        provide: ReferralService,
+        useValue: { attribute: jest.fn().mockResolvedValue(undefined) },
+      },
       { provide: frontendConfig.KEY, useValue: FRONTEND_STUB },
       { provide: sessionConfig.KEY, useValue: SESSION_STUB },
     ],
@@ -122,9 +127,11 @@ describe('AuthController — email/google endpoints', () => {
         expiresAt: new Date(Date.now() + 60_000),
       });
 
+      const req = { cookies: {} } as unknown as import('express').Request;
       const res = buildResMock();
       await controller.register(
         { email: 'test@example.com', password: 'password123' },
+        req,
         res,
       );
 
@@ -151,10 +158,12 @@ describe('AuthController — email/google endpoints', () => {
         new ConflictException('Email already registered'),
       );
 
+      const req = { cookies: {} } as unknown as import('express').Request;
       const res = buildResMock();
       await expect(
         controller.register(
           { email: 'dup@example.com', password: 'password123' },
+          req,
           res,
         ),
       ).rejects.toBeInstanceOf(ConflictException);
@@ -501,6 +510,7 @@ describe('AuthController — email/google endpoints', () => {
       (googleAdapter.exchangeCode as jest.Mock).mockResolvedValueOnce(event);
       (identity.resolveOrCreate as jest.Mock).mockResolvedValueOnce({
         userId: 'u3',
+        created: false,
       });
       (sessions.issue as jest.Mock).mockResolvedValueOnce({
         sid: 'sess789',
@@ -1031,6 +1041,7 @@ describe('AuthController — email/google endpoints', () => {
       (googleAdapter.exchangeCode as jest.Mock).mockResolvedValueOnce(event);
       (identity.resolveOrCreate as jest.Mock).mockResolvedValueOnce({
         userId: 'u-reg',
+        created: false,
       });
       (sessions.issue as jest.Mock).mockResolvedValueOnce({
         sid: 'sess-reg',

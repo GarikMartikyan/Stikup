@@ -24,9 +24,6 @@ export function GreetingStrip({
         <h1 className="mt-3 font-[family-name:var(--font-display)] text-4xl font-extrabold tracking-[-0.02em] md:text-5xl">
           {t("dashboard.greeting.title")}
         </h1>
-        <div className="mt-1 font-mono text-xs text-[var(--color-fg-subtle)]">
-          {t("dashboard.greeting.subtitle")} · {shortId}
-        </div>
       </div>
       <Link
         href="/upload"

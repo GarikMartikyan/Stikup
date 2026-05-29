@@ -19,15 +19,27 @@ enum TokenPurpose {
   link
 }
 
-model User {
-  id           String   @id @default(uuid()) @db.Uuid
-  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  email        String?  @unique
-  passwordHash String?  @map("password_hash")
+enum PackStatus {
+  generating
+  ready
+  failed
+}
 
-  identities   ChannelIdentity[]
-  loginTokens  LoginToken[]
-  sessions     Session[]
+model User {
+  id                 String    @id @default(uuid()) @db.Uuid
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  email              String?   @unique
+  passwordHash       String?   @map("password_hash")
+  referralCode       String?   @unique @map("referral_code")
+  fullPackUnlockedAt DateTime? @map("full_pack_unlocked_at") @db.Timestamptz(6)
+  generationsUsed    Int       @default(0) @map("generations_used")
+
+  identities       ChannelIdentity[]
+  loginTokens      LoginToken[]
+  sessions         Session[]
+  packs            Pack[]
+  referralsMade    Referral[]        @relation("referrer")
+  referralReceived Referral?         @relation("referred")
 
   @@map("users")
 }
@@ -92,4 +104,45 @@ model PackClaim {
   @@id([packId, userId])
   @@index([userId])
   @@map("pack_claims")
+}
+
+model Pack {
+  id        String     @id @default(uuid()) @db.Uuid
+  userId    String     @map("user_id") @db.Uuid
+  status    PackStatus @default(ready)
+  createdAt DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stickers Sticker[]
+
+  @@index([userId])
+  @@map("packs")
+}
+
+model Sticker {
+  id        String   @id @default(uuid()) @db.Uuid
+  packId    String   @map("pack_id") @db.Uuid
+  index     Int
+  url       String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  pack Pack @relation(fields: [packId], references: [id], onDelete: Cascade)
+
+  @@unique([packId, index])
+  @@index([packId])
+  @@map("stickers")
+}
+
+model Referral {
+  id             String   @id @default(uuid()) @db.Uuid
+  referrerId     String   @map("referrer_id") @db.Uuid
+  referredUserId String   @unique @map("referred_user_id") @db.Uuid
+  channel        Channel
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  referrer User @relation("referrer", fields: [referrerId], references: [id], onDelete: Cascade)
+  referred User @relation("referred", fields: [referredUserId], references: [id], onDelete: Cascade)
+
+  @@index([referrerId])
+  @@map("referrals")
 }

@@ -5,8 +5,9 @@ import { LanguageProvider } from "@/components/language-provider";
 import enMessages from "@/i18n/messages/en.json";
 
 const mockPush = vi.fn();
+const mockRefresh = vi.fn();
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: mockPush }),
+  useRouter: () => ({ push: mockPush, refresh: mockRefresh }),
 }));
 
 const mockLogin = vi.fn();
@@ -50,6 +51,20 @@ describe("LoginForm", () => {
         password: "password123",
       });
       expect(mockPush).toHaveBeenCalledWith("/my-stickers");
+    });
+  });
+
+  it("refreshes the server layout after login so the header updates", async () => {
+    mockLogin.mockReturnValue({ unwrap: () => Promise.resolve(undefined) });
+    const user = userEvent.setup();
+    await setup();
+
+    await user.type(screen.getByLabelText(enMessages.auth.common.email_label), "test@example.com");
+    await user.type(screen.getByLabelText(enMessages.auth.common.password_label), "password123");
+    await user.click(screen.getByRole("button", { name: enMessages.auth.login.sign_in }));
+
+    await waitFor(() => {
+      expect(mockRefresh).toHaveBeenCalled();
     });
   });
 

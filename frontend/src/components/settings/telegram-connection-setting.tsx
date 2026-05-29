@@ -125,7 +125,7 @@ export function TelegramConnectionSetting() {
         type="button"
         onClick={handleConnect}
         disabled={isConnecting}
-        className="inline-flex items-center justify-center rounded-full border border-[var(--color-border-strong)] bg-[var(--color-bg-elev)] px-4 py-2 text-sm font-bold text-[var(--color-fg)] transition hover:bg-[var(--color-bg-sunk)] disabled:cursor-not-allowed disabled:opacity-50"
+        className="connect-pulse inline-flex items-center justify-center rounded-full border border-[var(--color-border-strong)] bg-[var(--color-bg-elev)] px-4 py-2 text-sm font-bold text-[var(--color-fg)] transition hover:bg-[var(--color-bg-sunk)] disabled:cursor-not-allowed disabled:opacity-50"
       >
         {isConnecting
           ? t("settings.telegram.connecting")

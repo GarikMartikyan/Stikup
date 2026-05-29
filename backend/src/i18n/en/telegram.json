@@ -18,5 +18,8 @@
     "conflict": "This Telegram account is already linked to a different Stikup account.",
     "expired": "This connection request has expired or is invalid. Please try again from the app.",
     "failed": "Sorry, something went wrong connecting your account. Please try again."
+  },
+  "referral": {
+    "unlocked": "🎉 Someone joined through your link — all 12 stickers in your pack are now unlocked!"
   }
 }

@@ -5,8 +5,9 @@ import { LanguageProvider } from "@/components/language-provider";
 import enMessages from "@/i18n/messages/en.json";
 
 const mockPush = vi.fn();
+const mockRefresh = vi.fn();
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: mockPush }),
+  useRouter: () => ({ push: mockPush, refresh: mockRefresh }),
 }));
 
 const mockRegister = vi.fn();
@@ -63,6 +64,22 @@ describe("RegisterForm", () => {
 
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith("/my-stickers");
+    });
+  });
+
+  it("refreshes the server layout after registration so the header updates", async () => {
+    mockRegister.mockReturnValue({ unwrap: () => Promise.resolve(undefined) });
+    const user = userEvent.setup();
+    await setup();
+
+    await user.type(screen.getByLabelText(enMessages.auth.common.email_label), "new@example.com");
+    await user.type(screen.getByLabelText(enMessages.auth.common.password_label), "password123");
+    await user.type(screen.getByLabelText(enMessages.auth.register.confirm_password_label), "password123");
+    await user.click(screen.getByRole("checkbox"));
+    await user.click(screen.getByRole("button", { name: enMessages.auth.register.create_account }));
+
+    await waitFor(() => {
+      expect(mockRefresh).toHaveBeenCalled();
     });
   });
 

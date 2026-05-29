@@ -3,30 +3,44 @@ import { PackList } from '@/components/dashboard/pack-list';
 import { StatsRow } from '@/components/dashboard/stats-row';
 import type { DashboardPack } from '@/components/dashboard/data';
 import { requireSession } from '@/lib/auth/require-session';
+import { serverFetch } from '@/lib/api';
 
-type PageProps = {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
+type PackSummary = {
+  id: string;
+  createdAt: string;
+  status: string;
+  unlocked: boolean;
+  freeCount: number;
+  packSize: number;
+  stickers: { index: number; url: string }[];
 };
 
-export default async function MyStickersPage({ searchParams }: PageProps) {
-  const session = await requireSession();
-  const params = await searchParams;
+function formatDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+}
 
-  // Real packs come from the API once the backend endpoint exists.
-  // For now: no packs by default so fresh accounts see the empty state.
-  // Add ?demo=1 to the URL to preview the demo card (e.g. during development).
-  const packs: DashboardPack[] =
-    params.demo === '1'
-      ? [
-          {
-            id: 'demo-001',
-            name: 'stikup_you_demo',
-            createdAt: '2026-05-24',
-            status: 'ready',
-            regenLeft: 1,
-          },
-        ]
-      : [];
+export default async function MyStickersPage() {
+  const session = await requireSession();
+
+  // The user's real generated packs (most recent first). serverFetch forwards
+  // the session cookie; returns null on any non-2xx — treat as no packs.
+  const summaries = (await serverFetch<PackSummary[]>('/packs')) ?? [];
+
+  const packs: DashboardPack[] = summaries.map((p) => ({
+    id: p.id,
+    createdAtLabel: formatDate(p.createdAt),
+    status: p.status,
+    unlocked: p.unlocked,
+    freeCount: p.freeCount,
+    packSize: p.packSize,
+    stickers: p.stickers,
+  }));
 
   const shortId = session.userId.slice(0, 8);
 

@@ -6,6 +6,7 @@ import { LanguageProvider } from "@/components/language-provider";
 import { ThemeProvider } from "@/components/theme-provider";
 import { StoreProvider } from "@/lib/store/providers";
 import { hasSession } from "@/lib/auth/has-session";
+import { ReferralCapture } from "@/components/referral-capture";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -60,6 +61,7 @@ export default async function RootLayout({
         <ThemeProvider>
           <LanguageProvider>
             <StoreProvider>
+              <ReferralCapture />
               <AppHeader loggedIn={loggedIn} />
               {children}
             </StoreProvider>

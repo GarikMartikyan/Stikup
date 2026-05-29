@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { DropZone } from "@/components/upload/drop-zone";
 import { ErrorBanner } from "@/components/upload/error-banner";
 import { PrivacyNote, TipsPanel } from "@/components/upload/tips-panel";
@@ -20,6 +21,7 @@ export default function UploadPage() {
   const [dragOver, setDragOver] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const t = useT();
+  const router = useRouter();
 
   const acceptFile = useCallback((file: File) => {
     if (!ACCEPTED.includes(file.type) && !/\.heic$|\.heif$/i.test(file.name)) {
@@ -65,14 +67,53 @@ export default function UploadPage() {
     if (cameraRef.current) cameraRef.current.value = "";
   }, [state]);
 
-  const submit = useCallback(() => {
+  const submit = useCallback(async () => {
     if (state.kind !== "ready") return;
     setSubmitting(true);
-    // TODO: wire to backend upload + generation kick-off; for now navigate to demo result.
-    setTimeout(() => {
-      window.location.href = "/result/demo";
-    }, 600);
-  }, [state]);
+
+    try {
+      const form = new FormData();
+      form.append("image", state.file);
+
+      const res = await fetch("/api/packs", {
+        method: "POST",
+        body: form,
+        credentials: "include",
+      });
+
+      if (res.status === 401) {
+        router.push("/login");
+        return;
+      }
+
+      if (res.status === 403) {
+        setState({
+          kind: "error",
+          message: t("upload.error.no_generations"),
+        });
+        setSubmitting(false);
+        return;
+      }
+
+      if (!res.ok) {
+        setState({
+          kind: "error",
+          message: t("upload.error.generation_failed"),
+        });
+        setSubmitting(false);
+        return;
+      }
+
+      const { packId } = (await res.json()) as { packId: string };
+      router.push(`/result/${packId}`);
+    } catch {
+      setState({
+        kind: "error",
+        message: t("upload.error.generation_failed"),
+      });
+      setSubmitting(false);
+    }
+  }, [state, router, t]);
 
   const fileReady = state.kind === "ready";
 

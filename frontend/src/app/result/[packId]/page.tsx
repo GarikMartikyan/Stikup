@@ -1,10 +1,33 @@
 "use client";
 
 import { use, useEffect, useState } from "react";
-import { ActionsRow } from "@/components/result/actions-row";
 import { ResultHeader } from "@/components/result/result-header";
-import { SidePanel } from "@/components/result/side-panel";
 import { StickerGrid } from "@/components/result/sticker-grid";
+import { PackActions } from "@/components/result/pack-actions";
+import { ALL_STICKERS, FREE_COUNT, PACK_SIZE } from "@/components/result/data";
+import type { StickerItem } from "@/components/result/sticker-grid";
+
+type Pack = {
+  id: string;
+  status: "generating" | "ready" | "failed";
+  unlocked: boolean;
+  freeCount: number;
+  packSize: number;
+  stickers: StickerItem[];
+  regensLeft: number;
+};
+
+function buildDemoPack(packId: string): Pack {
+  return {
+    id: packId,
+    status: "ready",
+    unlocked: false,
+    freeCount: FREE_COUNT,
+    packSize: PACK_SIZE,
+    stickers: ALL_STICKERS.map((s, i) => ({ index: i, url: s.src })),
+    regensLeft: 1,
+  };
+}
 
 export default function ResultPage({
   params,
@@ -12,79 +35,82 @@ export default function ResultPage({
   params: Promise<{ packId: string }>;
 }) {
   const { packId } = use(params);
-  const [selected, setSelected] = useState<number | null>(null);
-  const [claiming, setClaiming] = useState(false);
-  const [botUrl, setBotUrl] = useState<string | null>(null);
+  const [pack, setPack] = useState<Pack | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/packs/bot-url", { credentials: "include" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data: { botUrl?: string } | null) => {
-        if (!cancelled && data?.botUrl) setBotUrl(data.botUrl);
+
+    fetch(`/api/packs/${encodeURIComponent(packId)}`, { credentials: "include" })
+      .then(async (res) => {
+        if (cancelled) return;
+        if (res.status === 404 || res.status === 403) {
+          setPack(buildDemoPack(packId));
+          return;
+        }
+        if (!res.ok) {
+          setPack(buildDemoPack(packId));
+          return;
+        }
+        const data = (await res.json()) as {
+          id: string;
+          status: "generating" | "ready" | "failed";
+          unlocked: boolean;
+          freeCount: number;
+          packSize: number;
+          stickers: Array<{ index: number; url: string }>;
+          regensLeft: number;
+        };
+        setPack({
+          id: data.id,
+          status: data.status,
+          unlocked: data.unlocked,
+          freeCount: data.freeCount,
+          packSize: data.packSize,
+          stickers: data.stickers,
+          regensLeft: data.regensLeft ?? 1,
+        });
       })
-      .catch(() => {});
+      .catch(() => {
+        if (!cancelled) setPack(buildDemoPack(packId));
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
     return () => {
       cancelled = true;
     };
-  }, []);
-
-  const claimFree = () => {
-    if (claiming) return;
-    setClaiming(true);
-
-    // Fire-and-forget the claim request. `keepalive: true` lets it finish on
-    // the backend even after we navigate away to the Telegram universal link.
-    void fetch(`/api/packs/${encodeURIComponent(packId)}/claim-free`, {
-      method: "POST",
-      credentials: "include",
-      keepalive: true,
-    }).catch(() => {});
-
-    // Mobile (iOS especially) only opens the Telegram app when navigation
-    // happens synchronously inside the click's user-gesture context. If the
-    // bot URL hasn't prefetched yet, fall back to awaiting the claim response.
-    if (botUrl) {
-      window.location.href = botUrl;
-      return;
-    }
-
-    void (async () => {
-      try {
-        const res = await fetch(
-          `/api/packs/${encodeURIComponent(packId)}/claim-free`,
-          { method: "POST", credentials: "include" },
-        );
-        if (res.status === 401) {
-          window.location.href = "/";
-          return;
-        }
-        if (!res.ok) throw new Error(`claim-free failed: ${res.status}`);
-        const { botUrl: url } = (await res.json()) as {
-          delivered: boolean;
-          botUrl: string;
-        };
-        window.location.href = url;
-      } catch (err) {
-        setClaiming(false);
-        console.error(err);
-      }
-    })();
-  };
+  }, [packId]);
 
   return (
     <div className="relative flex flex-1 flex-col">
-      <main className="relative mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center px-5 py-6 md:py-10">
+      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center px-5 py-6 md:py-10">
         <ResultHeader />
 
-        <div className="mt-6 grid gap-6 md:mt-8 md:grid-cols-[1.4fr_1fr]">
-          <section className="reveal" style={{ animationDelay: "100ms" }}>
-            <StickerGrid selected={selected} onSelect={setSelected} />
-            <ActionsRow claiming={claiming} onClaim={claimFree} />
-          </section>
-
-          <SidePanel selected={selected} />
-        </div>
+        <section className="reveal mt-6 md:mt-8" style={{ animationDelay: "100ms" }}>
+          {loading ? (
+            <div className="flex items-center justify-center rounded-[2rem] border border-[var(--color-border)] bg-[var(--color-bg-elev)] p-20 shadow-[var(--shadow-card)]">
+              <div className="h-8 w-8 animate-spin rounded-full border-[3px] border-[var(--color-brand)]/30 border-t-[var(--color-brand)]" />
+            </div>
+          ) : pack ? (
+            <>
+              <StickerGrid
+                stickers={pack.stickers}
+                freeCount={pack.freeCount}
+                unlocked={pack.unlocked}
+              />
+              <PackActions
+                packId={packId}
+                packSize={pack.packSize}
+                unlocked={pack.unlocked}
+                stickers={pack.stickers}
+                freeCount={pack.freeCount}
+                regensLeft={pack.regensLeft}
+              />
+            </>
+          ) : null}
+        </section>
       </main>
     </div>
   );

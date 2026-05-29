@@ -44,7 +44,7 @@ export const STEPS: { icon: IconType; eyebrow: string; title: string; body: stri
     icon: Sparkles,
     eyebrow: "03",
     title: "Get 3 free, unlock 12",
-    body: "Your full pack of 12 generates upfront. Take the 3 free ones — or pay once to unlock all 12 and have the bot install it.",
+    body: "Your full pack of 12 generates upfront. Take the 3 free — refer a friend who signs up to unlock all 12 free, or pay $5 to unlock and get 10 more generations.",
   },
 ];
 
@@ -74,15 +74,15 @@ export const FEATURES: { icon: IconType; title: string; body: string }[] = [
 export const FAQS: { q: string; a: string }[] = [
   {
     q: "How does it actually work?",
-    a: "You message our Telegram bot. It opens a webpage where you upload one selfie. About 1–3 minutes later, you see all 12 stickers — 3 are free to take, and the other 9 are visibly locked. Pay once to unlock the whole pack and the bot installs it to your Telegram.",
+    a: "You message our Telegram bot. It opens a webpage where you upload one selfie. About 1–3 minutes later, you see all 12 stickers — 3 are free to take, and the other 9 are visibly locked. Refer a friend who signs up to unlock the whole pack free, or pay $5 — the bot installs it to your Telegram.",
   },
   {
     q: "What’s included when I pay?",
-    a: "All 12 stickers unlock instantly — no second wait. The bot creates a real Telegram sticker set you own and DMs you the install link. You also get one regeneration of that pack in case the result isn’t quite right.",
+    a: "All 12 stickers unlock instantly — no second wait. The bot creates a real Telegram sticker set you own and DMs you the install link. You also get 10 more generations to make new packs or re-roll.",
   },
   {
     q: "Can I make more than one pack?",
-    a: "Yes — each pack is a separate purchase. After your first paid pack, you can upload a new photo and run the flow again. No subscription, no surprise charges.",
+    a: "Yes — each pack is a separate purchase. A $5 unlock includes 10 more generations, so you can run new packs without paying again. Referrals also unlock free. No subscription, no surprise charges.",
   },
   {
     q: "What about my photo?",

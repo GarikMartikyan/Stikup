@@ -108,10 +108,13 @@ export function PackShowcase({ loggedIn }: { loggedIn: boolean }) {
                     <span className="text-[var(--color-fg-muted)]">{t("landing.pack_showcase.stickers_locked")}</span>
                   </div>
                   <Link
-                    href={ctaHref}
-                    className="rounded-full bg-gradient-to-r from-[var(--color-brand)] to-[var(--color-brand-2)] px-3.5 py-1.5 text-xs font-bold text-white shadow-sm"
+                    href="/subscribe"
+                    className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-[var(--color-brand)] to-[var(--color-brand-2)] px-3.5 py-1.5 text-xs font-bold text-white shadow-sm"
                   >
                     {loggedIn ? t("landing.pack_showcase.unlock_authenticated") : t("landing.pack_showcase.unlock_anonymous")}
+                    <span className="inline-flex items-center rounded-full border border-current/40 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider">
+                      {t("common.coming_soon")}
+                    </span>
                   </Link>
                 </div>
               </div>

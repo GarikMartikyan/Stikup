@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Check } from "lucide-react";
-import { uploadCtaHref } from "@/lib/auth/cta-href";
+import { Check } from "lucide-react";
 import { useT } from "@/components/language-provider";
+import { PRICE_LABEL } from "@/components/result/data";
 
 const PRICING_BULLET_KEYS = [
   "landing.pricing.bullets.b1",
@@ -49,7 +49,7 @@ export function Pricing({ loggedIn }: { loggedIn: boolean }) {
                 </div>
                 <div className="mt-4 flex items-baseline gap-2">
                   <span className="font-[family-name:var(--font-display)] text-6xl font-black tracking-[-0.04em] md:text-7xl">
-                    $5.99
+                    {PRICE_LABEL}
                   </span>
                   <span className="text-[var(--color-fg-muted)]">{t("landing.pricing.one_time")}</span>
                 </div>
@@ -58,11 +58,13 @@ export function Pricing({ loggedIn }: { loggedIn: boolean }) {
                 </div>
               </div>
               <Link
-                href={uploadCtaHref(loggedIn)}
+                href="/subscribe"
                 className="inline-flex items-center gap-2 rounded-full bg-[var(--color-fg)] px-6 py-3.5 text-base font-bold text-[var(--color-bg)] transition hover:opacity-90"
               >
                 {loggedIn ? t("landing.pricing.cta_authenticated") : t("landing.pricing.cta_anonymous")}
-                <ArrowRight className="h-4 w-4" />
+                <span className="inline-flex items-center rounded-full border border-current/40 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider">
+                  {t("common.coming_soon")}
+                </span>
               </Link>
             </div>
 
@@ -86,6 +88,9 @@ export function Pricing({ loggedIn }: { loggedIn: boolean }) {
 
         <p className="mt-6 text-xs text-[var(--color-fg-subtle)]">
           {t("landing.pricing.payment_methods")}
+        </p>
+        <p className="mt-3 text-xs text-[var(--color-fg-subtle)]">
+          {t("landing.pricing.referral_note")}
         </p>
       </div>
     </section>

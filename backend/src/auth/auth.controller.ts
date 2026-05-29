@@ -29,6 +29,7 @@ import type { CookieOptions, Request, Response } from 'express';
 
 import { frontendConfig } from '../config/frontend.config';
 import { sessionConfig } from '../config/session.config';
+import { ReferralService } from '../referral/referral.service';
 import { TelegramMessageService } from '../telegram/telegram-message.service';
 import { BOT_SENDER, type BotSender } from './channel/bot-sender';
 import { EmailAdapter } from './channel/email-adapter';
@@ -40,6 +41,7 @@ import { TokenService } from './token.service';
 
 const OAUTH_STATE_COOKIE = 'oauth_state';
 const OAUTH_LINK_COOKIE = 'oauth_link';
+const REF_COOKIE = 'stikup_ref';
 const OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
 const OAUTH_STATE_BYTES = 16;
 
@@ -53,6 +55,7 @@ export class AuthController {
     private readonly emailAdapter: EmailAdapter,
     private readonly googleAdapter: GoogleAdapter,
     private readonly telegramMessages: TelegramMessageService,
+    private readonly referrals: ReferralService,
     @Inject(frontendConfig.KEY)
     private readonly frontend: ConfigType<typeof frontendConfig>,
     @Inject(sessionConfig.KEY)
@@ -260,12 +263,19 @@ export class AuthController {
   @ApiResponse({ status: 409, description: 'Email already registered' })
   async register(
     @Body() dto: EmailAuthDto,
+    @Req() req: Request,
     @Res() res: Response,
   ): Promise<void> {
     const { userId } = await this.emailAdapter.register(
       dto.email,
       dto.password,
     );
+    const cookies = (req.cookies ?? {}) as Record<string, string | undefined>;
+    const ref = cookies[REF_COOKIE];
+    await this.referrals.attribute(userId, ref, 'email');
+    if (ref) {
+      res.clearCookie(REF_COOKIE, { path: '/' });
+    }
     const { sid, expiresAt } = await this.sessions.issue(userId, 'email');
     res.cookie(this.session.cookieName, sid, this.cookieOptions(expiresAt));
     res.status(204).send();
@@ -349,7 +359,14 @@ export class AuthController {
         await this.identity.linkChannel(session.userId, event);
         res.redirect(302, settingsUrl('connected'));
       } else {
-        const { userId } = await this.identity.resolveOrCreate(event);
+        const { userId, created } = await this.identity.resolveOrCreate(event);
+        if (created) {
+          const ref = cookies[REF_COOKIE];
+          await this.referrals.attribute(userId, ref, 'google');
+          if (ref) {
+            res.clearCookie(REF_COOKIE, { path: '/' });
+          }
+        }
         const { sid, expiresAt } = await this.sessions.issue(userId, 'google');
         res.cookie(this.session.cookieName, sid, this.cookieOptions(expiresAt));
         res.redirect(

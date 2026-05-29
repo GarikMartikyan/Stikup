@@ -1,18 +1,18 @@
 # Stikup — Product Requirements Document
 
 **Status:** Draft for review
-**Last updated:** 2026-05-26
+**Last updated:** 2026-05-29
 **Owner:** Product
 
 ---
 
 ## 1. Vision
 
-Turn a single selfie into a personalized cartoon sticker pack and deliver it straight into the user's Telegram in under three minutes. Sticker packs are how Gen Z expresses themselves in chat — Stikup makes that expression unmistakably *theirs*.
+Turn a single selfie into a personalized cartoon sticker pack and deliver it straight into the user's Telegram in under three minutes. Sticker packs are how Gen Z expresses themselves in chat — Stikup makes that expression unmistakably _theirs_.
 
 ## 2. Problem & Opportunity
 
-Telegram sticker packs are universal, but the ones available today are generic. Users want stickers of *themselves* but the existing path (find an artist, commission, format for Telegram, upload via Stickers bot) is too slow and expensive. AI image generation has crossed the quality threshold where a usable likeness can be generated from one photo in seconds at a sub-dollar cost.
+Telegram sticker packs are universal, but the ones available today are generic. Users want stickers of _themselves_ but the existing path (find an artist, commission, format for Telegram, upload via Stickers bot) is too slow and expensive. AI image generation has crossed the quality threshold where a usable likeness can be generated from one photo in seconds at a sub-dollar cost.
 
 The opportunity is to package that into a one-tap consumer flow inside Telegram, where the users already live.
 
@@ -22,11 +22,11 @@ The opportunity is to package that into a one-tap consumer flow inside Telegram,
 
 **Geography:** Launch markets are Russia/CIS (Russian) and global English. Language is selected by IP geolocation, with a manual override; default fallback is English.
 
-**Willingness to pay:** Impulse range ($3–8 one-time). Price is configurable.
+**Willingness to pay:** Impulse range ($3–8 one-time); the unlock is priced at **$5** by default. Price is configurable. Users who don't want to pay can unlock for free by referring a friend who registers.
 
 ## 4. Core Value Proposition
 
-> "A sticker pack of *you*, in your Telegram, in three minutes."
+> "A sticker pack of _you_, in your Telegram, in three minutes."
 
 Three things define the product:
 
@@ -43,12 +43,14 @@ At MVP, every user gets the same single style. Style choice and tiered packs are
 The Telegram bot is the **primary** entry point. The direct web app at `stikup.app` is a secondary entry for users who arrive via search, ads, or a referral link. Both converge on the same web app and the same account record.
 
 **A. Telegram Bot → Web app (primary)**
+
 1. User finds or is referred to the Stikup bot.
 2. Sends `/start`; bot replies with a "Make your stickers" button (URL button containing a single-use login token).
 3. Tapping the button opens `stikup.app/auth/exchange?t=<token>` in the in-app browser; backend consumes the token, sets a session cookie, and redirects the user into the upload flow already authenticated.
 4. Account is keyed by Telegram user ID via the channel-identity model in `docs/architecture/login-structure.md`.
 
 **B. Direct web (stikup.app, secondary)**
+
 1. User lands on the marketing page.
 2. Signs up via Google OAuth, email + verification, or Telegram Login Widget.
 3. Lands in the upload flow.
@@ -61,37 +63,39 @@ Both flows share the same backend; account records are unified through the `chan
 1. **Upload** — user selects a single image; client-side check requires a visible face and minimum resolution (512px+). Accepted formats: JPEG, PNG, HEIC. Max 10MB.
 2. **Validate** — server runs face detection + NSFW classifier; rejects with a clear error if it fails.
 3. **Generate the full 12-sticker pack** — backend issues a **single AI call** that returns one 3×4 grid image containing all 12 stickers in the default style. The Python post-processor splits the grid into 12 individual WebPs (background removed, Telegram-spec encoded). UI shows progress; total wait ~1–3 min.
-4. **Show the pack with paywall in-place** — the user lands on a single results screen showing all 12 sticker cards in a grid. **3 cards are fully unlocked** and downloadable; **9 cards are visibly rendered but show a blurred preview with a lock overlay** (the underlying WebPs are real — they exist on the server, just gated by the UI/API). The screen has three primary actions:
+4. **Show the pack with paywall in-place** — the user lands on a single results screen showing all 12 sticker cards in a grid. **3 cards are fully unlocked** and downloadable; **9 cards are visibly rendered but show a blurred preview with a lock overlay** (the underlying WebPs are real — they exist on the server, just gated by the UI/API). The screen presents **two ways to unlock all 12 stickers** plus other actions:
    - **Take the 3 free stickers** — bot delivers a free 3-sticker pack to Telegram (or download as PNG/WebP if not yet TG-linked).
-   - **Unlock all 12 stickers** — opens Stripe Checkout. On success, the 9 locked cards reveal instantly (no new AI call), and the bot delivers the full 12-sticker pack via `createNewStickerSet`.
-   - **Regenerate** — re-rolls a fresh 12-sticker pack from the same uploaded photo. Consumes the user's regeneration quota (see §5.3).
-5. **Pay** — Stripe Checkout (cards + Apple Pay + Google Pay). On success, backend marks the pack as unlocked, unlocks the 9 cards in the UI, and triggers Telegram delivery.
+   - **Unlock all 12 stickers** — two paths to the same result, both surfaced on the paywall:
+     - **Refer a friend (free unlock)** — share a unique referral link. As soon as a referred friend **registers** on the platform, the 9 locked cards reveal and the bot delivers the full 12-sticker pack. No payment required.
+     - **Pay $5 (instant unlock + 10 generations)** — opens Stripe Checkout. On success, the 9 locked cards reveal instantly (no new AI call), the bot delivers the full 12-sticker pack via `createNewStickerSet`, and the user is credited **10 additional generations** for creating more packs.
+   - **Regenerate** — re-rolls a fresh 12-sticker pack from the same uploaded photo. Consumes one generation credit (see §5.3).
+5. **Pay** — Stripe Checkout (cards + Apple Pay + Google Pay) for the **$5 unlock**. On success, backend marks the pack as unlocked, unlocks the 9 cards in the UI, credits the user **10 additional generations**, and triggers Telegram delivery.
 6. **Deliver to Telegram** — backend asks Telegram Bot API to `createNewStickerSet` owned by the user's Telegram user ID. Bot DMs the user the `t.me/addstickers/<pack_name>` install link. Web app also shows the install link and a "share" CTA.
 
 ### 5.3 Edge flows
 
-- **Free-plan quota** — each user gets **1 generation + 1 regeneration**, lifetime, on the free plan. The regeneration consumes the second slot. After that, the user can only keep the 3 free stickers from whichever of the two generations they prefer — to unlock all 12, they must pay.
-- **Paid-cycle quota** — every paid pack grants the user **a fresh cycle**: 1 new generation (with a new uploaded photo) + 1 regeneration of that pack. To unlock all 12 stickers of any subsequent pack, the user pays again. There is no subscription and no "unlimited" mode — each pack is its own purchase.
+- **Free-plan quota** — each user gets **1 generation + 1 regeneration**, lifetime, on the free plan. The regeneration consumes the second slot. After that, the user can only keep the 3 free stickers from whichever of the two generations they prefer — to unlock all 12, they must either **refer a friend who registers** on the platform (free unlock) or **pay the $5 unlock**.
+- **Paid unlock + generation credits** — the one-time **$5 unlock** reveals all 12 stickers of the current pack and credits the user **10 additional generations**. Each credit produces a fresh 12-sticker pack (from a new photo) or re-rolls an existing one; packs generated with paid credits are delivered fully unlocked, no second payment needed. There is no subscription and no recurring billing — the $5 is a one-time bundle, and once the 10 credits are used the user buys another $5 unlock to continue.
 - **Refund** — refunds are issued only when generation failed technically or output is unusable. Email support handles requests case-by-case.
-- **Pack expansion** — the referral reward adds 2 additional emotion stickers to an existing paid pack via `addStickerToSet`. Themed expansion packs are post-MVP.
-- **Multiple packs** — users can create unlimited packs over time, but each pack requires its own payment.
+- **Referral unlock** — each user has a unique referral link. When a referred friend **registers** on the platform, the referrer's current locked pack unlocks for free — the 9 locked cards reveal and the bot delivers the full 12-sticker pack via `createNewStickerSet`. This is an alternative to the $5 unlock, not a generation top-up. Themed expansion packs are post-MVP.
+- **Multiple packs** — users create more packs over time using their generation credits (10 per $5 unlock). When credits run out, another $5 unlock both reveals the current pack and refills 10 generations.
 
 ## 6. Features — MVP Scope
 
-| Feature | Description |
-|---|---|
-| Authentication | Three methods: Google OAuth, email + magic link/verification, Telegram (Login Widget for direct web, single-use token exchange for bot-initiated entry). All link to a single account record. Telegram link is required before bot delivery (auto if entered via bot). |
-| i18n | Russian + English. Auto-detect from IP geolocation; user can override. All copy externalized. |
-| Photo upload | Single image, face required, server-side face + NSFW detection. |
-| 12-sticker pack generation | Single AI call returns a 3×4 grid image; Python post-processor splits into 12 Telegram-spec WebPs. One default style at MVP. No watermark on any sticker. |
-| Locked-card paywall | All 12 generated stickers are shown in a single grid: 3 fully unlocked + 9 with a blurred preview and lock overlay. Unlock count is config-driven. |
-| Paywall + Stripe checkout | Single one-time payment unlocks all 12 stickers of the current pack. Stripe handles cards, Apple Pay, Google Pay. |
-| Bot delivery | Bot creates a Telegram sticker set owned by the user via `createNewStickerSet`, DMs install link. Free-plan users get a 3-sticker set; paid users get a 12-sticker set. |
-| Regeneration | Re-rolls a fresh 12-sticker pack from the same uploaded photo. Free plan: 1 regen lifetime. Paid: 1 regen per paid pack. |
-| Referral | Each user gets a unique referral link. When a referee signs up *and* completes a paid purchase, the referrer's existing paid pack expands by 2 additional emotion stickers (free). |
-| Social share + download | "Share to Instagram / TikTok / Twitter" buttons surface sample stickers. Users can also download stickers (PNG/WebP) for use outside Telegram. |
-| Notifications (transactional) | Email: receipt, password/security. Telegram DM: pack ready, payment confirmed, referral credited. |
-| Account management | View past packs, request regeneration (within paid quota), request refund, delete account + data (GDPR). |
+| Feature                       | Description                                                                                                                                                                                                                                                            |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Authentication                | Three methods: Google OAuth, email + magic link/verification, Telegram (Login Widget for direct web, single-use token exchange for bot-initiated entry). All link to a single account record. Telegram link is required before bot delivery (auto if entered via bot). |
+| i18n                          | Russian + English. Auto-detect from IP geolocation; user can override. All copy externalized.                                                                                                                                                                          |
+| Photo upload                  | Single image, face required, server-side face + NSFW detection.                                                                                                                                                                                                        |
+| 12-sticker pack generation    | Single AI call returns a 3×4 grid image; Python post-processor splits into 12 Telegram-spec WebPs. One default style at MVP. No watermark on any sticker.                                                                                                              |
+| Locked-card paywall           | All 12 generated stickers are shown in a single grid: 3 fully unlocked + 9 with a blurred preview and lock overlay. Unlock count is config-driven.                                                                                                                     |
+| Paywall + Stripe checkout     | One-time **$5** payment unlocks all 12 stickers of the current pack **and credits 10 additional generations**. Stripe handles cards, Apple Pay, Google Pay.                                                                                                            |
+| Bot delivery                  | Bot creates a Telegram sticker set owned by the user via `createNewStickerSet`, DMs install link. Free-plan users get a 3-sticker set; unlocked users get a 12-sticker set.                                                                                            |
+| Regeneration                  | Re-rolls a fresh 12-sticker pack from the same uploaded photo. Free plan: 1 regen lifetime. After a $5 unlock: each re-roll consumes one of the 10 generation credits.                                                                                                 |
+| Referral                      | Each user gets a unique referral link. When a referred friend **registers** on the platform, the referrer's current pack unlocks for free (all 12 stickers) — a no-cost alternative to the $5 unlock.                                                                  |
+| Social share + download       | "Share to Instagram / TikTok / Twitter" buttons surface sample stickers. Users can also download stickers (PNG/WebP) for use outside Telegram.                                                                                                                         |
+| Notifications (transactional) | Email: receipt, password/security. Telegram DM: pack ready, payment confirmed, referral credited.                                                                                                                                                                      |
+| Account management            | View past packs, request regeneration (within paid quota), request refund, delete account + data (GDPR).                                                                                                                                                               |
 
 ## 7. Out of Scope (Phase 2 and Beyond)
 
@@ -112,10 +116,11 @@ Priority order based on roadmap input. **Subscription is explicitly out — Stik
 
 ## 9. Pricing & Monetization
 
-- **Model:** Pure one-time impulse. Single tier per pack. **No subscription, ever** — not at MVP, not later.
-- **Price point:** Single price per pack, defined in config (initial target range $4.99–$7.99 USD). Regional pricing supported via a config table keyed off geolocation/currency (CIS markets priced lower in local currency).
-- **What the payment unlocks:** All 12 stickers of the current pack (the 9 locked cards reveal instantly, no new generation needed) + 1 included regeneration of that pack + Telegram delivery via `createNewStickerSet`.
-- **What requires another purchase:** Every additional pack generated for a different photo. There is no "unlimited" mode and no recurring billing.
+- **Model:** Pure one-time impulse. A single **$5 unlock** that bundles the current pack plus 10 generation credits. **No subscription, ever** — not at MVP, not later.
+- **Price point:** Single unlock price, defined in config (**default $5 USD**). Regional pricing supported via a config table keyed off geolocation/currency (CIS markets priced lower in local currency).
+- **What the payment unlocks:** All 12 stickers of the current pack (the 9 locked cards reveal instantly, no new generation needed) + **10 additional generations** (each produces a fully unlocked pack or a re-roll) + Telegram delivery via `createNewStickerSet`.
+- **Free unlock alternative:** Users can unlock a pack at no cost by referring a friend who **registers** on the platform — a growth lever and a price-sensitive escape hatch.
+- **What requires another purchase:** Another $5 unlock once the 10 generation credits are used up. There is no "unlimited" mode and no recurring billing.
 - **Payment provider:** Stripe (cards + Apple Pay + Google Pay). Currency selection per market.
 
 ## 10. Content Moderation
@@ -135,15 +140,15 @@ Priority order based on roadmap input. **Subscription is explicitly out — Stik
 
 Transactional only at MVP. Marketing emails are post-MVP and require explicit opt-in.
 
-| Event | Channel | Notes |
-|---|---|---|
-| Sign-up confirmation | Email | If signed up via email/Google |
-| Free preview ready | In-app (no push) | Sync UX, user is waiting |
-| Payment receipt | Email + Telegram DM | |
-| Full pack ready | Telegram DM (with install link) + in-app | Primary success moment |
-| Regeneration ready | Telegram DM + in-app | |
-| Referral credited (you earned 2 stickers) | Telegram DM + email | |
-| Account / password security | Email | |
+| Event                                     | Channel                                  | Notes                         |
+| ----------------------------------------- | ---------------------------------------- | ----------------------------- |
+| Sign-up confirmation                      | Email                                    | If signed up via email/Google |
+| Free preview ready                        | In-app (no push)                         | Sync UX, user is waiting      |
+| Payment receipt                           | Email + Telegram DM                      |                               |
+| Full pack ready                           | Telegram DM (with install link) + in-app | Primary success moment        |
+| Regeneration ready                        | Telegram DM + in-app                     |                               |
+| Referral credited (your pack is unlocked) | Telegram DM + email                      |                               |
+| Account / password security               | Email                                    |                               |
 
 ## 13. Support
 
@@ -155,15 +160,15 @@ Transactional only at MVP. Marketing emails are post-MVP and require explicit op
 
 All limits live in a config file; the values below are MVP defaults.
 
-| Limit | Default | Why |
-|---|---|---|
-| Free-plan generations per account | 1 lifetime | Each free user gets exactly one initial 12-sticker generation |
-| Free-plan regenerations per account | 1 lifetime | Each free user gets one re-roll on top of their initial generation |
-| Generations per paid pack | 1 + 1 regen | Each payment grants one fresh generation cycle (new image) + one regen of that pack |
-| New accounts per IP per day | 3 | Prevents account-creation farming behind the lifetime free quota |
-| Max pack size | 12 stickers (MVP) / 30 (Telegram ceiling) | MVP fixed at 12; Telegram allows up to 30 if expanded later |
-| Max upload size | 10 MB | |
-| Allowed image formats | JPEG, PNG, HEIC | |
+| Limit                               | Default                                   | Why                                                                                                   |
+| ----------------------------------- | ----------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Free-plan generations per account   | 1 lifetime                                | Each free user gets exactly one initial 12-sticker generation                                         |
+| Free-plan regenerations per account | 1 lifetime                                | Each free user gets one re-roll on top of their initial generation                                    |
+| Generations per $5 unlock           | 10                                        | Each $5 unlock reveals the current pack and credits 10 additional generations (new packs or re-rolls) |
+| New accounts per IP per day         | 3                                         | Prevents account-creation farming behind the lifetime free quota                                      |
+| Max pack size                       | 12 stickers (MVP) / 30 (Telegram ceiling) | MVP fixed at 12; Telegram allows up to 30 if expanded later                                           |
+| Max upload size                     | 10 MB                                     |                                                                                                       |
+| Allowed image formats               | JPEG, PNG, HEIC                           |                                                                                                       |
 
 Paid generations are not rate-limited at the account level beyond reasonable abuse-prevention thresholds (e.g., Stripe disputes, anomalous purchase velocity).
 
@@ -173,10 +178,10 @@ These parameters MUST live in a config file and be changeable without a deploy:
 
 - Pack size (default 12 stickers, generated as a 3×4 grid)
 - Free unlocked sticker count (default 3 of 12)
-- Price points per region/currency (single tier per pack)
-- Referral reward count (default 2 extra stickers added to the referrer's paid pack)
+- Price points per region/currency (default $5 unlock, single tier)
+- Referral unlock (default: a referred friend registering unlocks the referrer's current pack — all 12 stickers — for free)
 - Free-plan quota (default: 1 generation + 1 regeneration per account, lifetime)
-- Paid-pack quota (default: 1 generation + 1 regeneration per paid pack)
+- Paid unlock credits (default: 10 generations per $5 unlock)
 - Rate limits (see §14)
 - Emotion set (list of 12 emotions/poses generated per pack)
 - AI provider + model
@@ -184,10 +189,12 @@ These parameters MUST live in a config file and be changeable without a deploy:
 ## 16. Success Metrics
 
 **North-star:** **Paid conversion rate** = % of users who complete a free preview and then complete a paid purchase.
+
 - MVP target: 8–15%
 - Reported daily and weekly
 
 **Secondary:**
+
 - Time to pack delivery (P50, P95) — UX health
 - Free-to-paid funnel: signup → upload → preview → checkout → paid
 - Regeneration request rate — quality signal
@@ -218,9 +225,9 @@ The MVP is ready to launch when:
 4. Russian + English locales render fully.
 5. NSFW + face detection block the documented bad inputs.
 6. The 12-sticker generation + locked-card paywall renders correctly: 3 unlocked + 9 with a clear lock overlay; locked cards reveal instantly on successful payment with no second AI call.
-7. Stripe payments are live; a successful purchase unlocks all 12 stickers and triggers `createNewStickerSet` delivery.
-8. Free-plan quota (1 generate + 1 regen lifetime) and paid-cycle quota (1 generate + 1 regen per paid pack) are enforced server-side.
-9. Referrals credit correctly end-to-end and `addStickerToSet` extends the referrer's paid pack by 2 stickers.
+7. Stripe payments are live; a successful $5 purchase unlocks all 12 stickers, credits 10 additional generations, and triggers `createNewStickerSet` delivery.
+8. Free-plan quota (1 generate + 1 regen lifetime) and paid generation credits (10 per $5 unlock) are enforced server-side.
+9. Referrals credit correctly end-to-end: a referred friend registering unlocks the referrer's current pack (all 12 stickers) for free.
 10. Account deletion removes all user data.
 11. Email + Telegram support inboxes are monitored.
 
@@ -231,8 +238,9 @@ The MVP is ready to launch when:
 - **AI cost on free users.** Because we generate all 12 stickers upfront for every free user, free-tier AI cost is identical to paid-tier AI cost. At low conversion rates this can dominate unit economics. Mitigation: enforce the 1-generation lifetime free quota strictly, and monitor blended cost per paying customer closely.
 - **Telegram sticker pack name uniqueness.** Pack names must be globally unique on Telegram and end in `_by_<bot>`. Naming scheme (e.g., `stikup_<userhash>_<n>`) is decided in implementation.
 - **AI provider cost variance.** Per-image cost drives unit economics. Pricing must leave margin under worst-case provider costs.
-- **Refund disputes.** "Quality clearly bad" is subjective. We will codify rejection criteria in the FAQ and lean on the included regeneration to deflect most issues.
+- **Refund disputes.** "Quality clearly bad" is subjective. We will codify rejection criteria in the FAQ and lean on the included generation credits to deflect most issues.
+- **Referral-unlock abuse.** A free unlock triggered by a friend _registering_ (no purchase required) is cheap to game with throwaway accounts. Mitigation: count a referral only once per uniquely-verified new account, reuse the per-IP new-account cap (§14), and consider requiring the referee to complete their own free preview before the unlock credits. Exact qualifying conditions are an open question for implementation.
 
 ---
 
-*Decisions deferred to the technical implementation plan: hosting providers, database choice, object storage, analytics tooling, exact rate-limit infrastructure, observability stack.*
+_Decisions deferred to the technical implementation plan: hosting providers, database choice, object storage, analytics tooling, exact rate-limit infrastructure, observability stack._

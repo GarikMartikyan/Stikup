@@ -1,9 +1,11 @@
 export type DashboardPack = {
   id: string;
-  name: string;
-  createdAt: string;
-  status: "ready";
-  regenLeft: number;
+  createdAtLabel: string;
+  status: string;
+  unlocked: boolean;
+  freeCount: number;
+  packSize: number;
+  stickers: { index: number; url: string }[];
 };
 
 export const ALL_STICKERS = Array.from({ length: 12 }, (_, i) => ({

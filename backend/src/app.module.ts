@@ -18,6 +18,7 @@ import { JobsModule } from './jobs/jobs.module';
 import { PackModule } from './pack/pack.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { QueueModule } from './queue/queue.module';
+import { ReferralModule } from './referral/referral.module';
 import { TelegramModule } from './telegram/telegram.module';
 
 @Module({
@@ -47,6 +48,7 @@ import { TelegramModule } from './telegram/telegram.module';
     QueueModule,
     TelegramModule,
     PackModule,
+    ReferralModule,
     JobsModule,
     HealthModule,
   ],

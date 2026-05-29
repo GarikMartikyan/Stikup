@@ -26,6 +26,9 @@ export function LoginForm({ next }: { next?: string }) {
     try {
       await login({ email, password }).unwrap();
       router.push(safeNextPath(next));
+      // Re-run the server layout so hasSession() recomputes and the header
+      // swaps the Sign in button for the account drawer (mirrors logout).
+      router.refresh();
     } catch {
       setError(t("auth.login.error_invalid"));
     }

@@ -9,7 +9,9 @@ import type { ChannelEvent } from './channel/channel-event';
 export class IdentityService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async resolveOrCreate(event: ChannelEvent): Promise<{ userId: string }> {
+  async resolveOrCreate(
+    event: ChannelEvent,
+  ): Promise<{ userId: string; created: boolean }> {
     const existing = await this.prisma.channelIdentity.findUnique({
       where: {
         channel_channelUserId: {
@@ -34,7 +36,7 @@ export class IdentityService {
           avatarUrl: event.profile.avatarUrl,
         },
       });
-      return { userId: existing.userId };
+      return { userId: existing.userId, created: false };
     }
 
     const user = await this.prisma.user.create({
@@ -52,7 +54,7 @@ export class IdentityService {
       select: { id: true },
     });
 
-    return { userId: user.id };
+    return { userId: user.id, created: true };
   }
 
   async linkChannel(

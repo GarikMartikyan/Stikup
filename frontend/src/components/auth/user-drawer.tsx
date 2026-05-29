@@ -8,6 +8,7 @@ import { createPortal } from 'react-dom';
 
 import { initialFor, pickDisplayName } from '@/lib/auth/user-display';
 import { useGetMeQuery, useLogoutMutation } from '@/lib/store/auth-api';
+import { useConnectionStatus } from '@/lib/hooks/use-connection-status';
 import { useT } from '@/components/language-provider';
 import { UserAvatar } from '@/components/auth/user-avatar';
 
@@ -23,6 +24,7 @@ export function UserDrawer({ fallback = null }: UserDrawerProps = {}) {
   const pathname = usePathname();
   const t = useT();
   const { data: me, error: meError } = useGetMeQuery();
+  const { hasUnconnected } = useConnectionStatus();
   const [logout, { isLoading: loggingOut }] = useLogoutMutation();
 
   const [open, setOpen] = useState(false);
@@ -73,21 +75,30 @@ export function UserDrawer({ fallback = null }: UserDrawerProps = {}) {
 
   return (
     <>
-      <button
-        type="button"
-        aria-label={open ? t('header.close_account_menu') : t('header.open_account_menu')}
-        aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}
-        className="overflow-hidden rounded-full transition hover:opacity-90"
-        title={fullLabel}
-      >
-        <UserAvatar
-          src={me.avatarUrl}
-          initial={initial}
-          alt={fullLabel}
-          className="h-9 w-9 text-[0.75rem]"
-        />
-      </button>
+      <div className="relative">
+        <button
+          type="button"
+          aria-label={open ? t('header.close_account_menu') : t('header.open_account_menu')}
+          aria-expanded={open}
+          onClick={() => setOpen((v) => !v)}
+          className="block overflow-hidden rounded-full transition hover:opacity-90"
+          title={fullLabel}
+        >
+          <UserAvatar
+            src={me.avatarUrl}
+            initial={initial}
+            alt={fullLabel}
+            className="h-9 w-9 text-[0.75rem]"
+          />
+          {hasUnconnected && <span className="sr-only">{t('header.connect_reminder')}</span>}
+        </button>
+        {hasUnconnected && (
+          <span
+            aria-hidden="true"
+            className="connect-dot pointer-events-none absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-[var(--color-bg-elev)]"
+          />
+        )}
+      </div>
 
       {mounted &&
         createPortal(
@@ -163,6 +174,12 @@ export function UserDrawer({ fallback = null }: UserDrawerProps = {}) {
                             aria-hidden="true"
                           />
                           {label}
+                          {hasUnconnected && href === '/settings' && (
+                            <span
+                              aria-hidden="true"
+                              className="connect-dot ml-auto h-2 w-2 shrink-0 rounded-full"
+                            />
+                          )}
                         </Link>
                       </li>
                     );

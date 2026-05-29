@@ -16,6 +16,11 @@ export class TelegramBotSender implements BotSender {
     await this.bot.telegram.sendSticker(chatId, Input.fromLocalFile(filePath));
   }
 
+  async sendMessage(channelUserId: string, text: string): Promise<void> {
+    const chatId = Number(channelUserId);
+    await this.bot.telegram.sendMessage(chatId, text);
+  }
+
   async getBotUrl(): Promise<string> {
     const username = await this.getBotUsername();
     return `https://t.me/${username}`;

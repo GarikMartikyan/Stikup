@@ -58,7 +58,7 @@ describe('IdentityService', () => {
 
       const result = await service.resolveOrCreate(event);
 
-      expect(result).toEqual({ userId: 'user-new' });
+      expect(result).toEqual({ userId: 'user-new', created: true });
       expect(prisma.user.create).toHaveBeenCalledTimes(1);
       expect(prisma.user.create).toHaveBeenCalledWith({
         data: {
@@ -86,7 +86,7 @@ describe('IdentityService', () => {
 
       const result = await service.resolveOrCreate(event);
 
-      expect(result).toEqual({ userId: 'user-existing' });
+      expect(result).toEqual({ userId: 'user-existing', created: false });
       expect(prisma.user.create).not.toHaveBeenCalled();
       expect(prisma.channelIdentity.update).toHaveBeenCalledTimes(1);
       expect(prisma.channelIdentity.update).toHaveBeenCalledWith({

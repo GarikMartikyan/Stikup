@@ -5,6 +5,8 @@
     "cancel": "Cancel",
     "close": "Close",
     "or": "or",
+    "back": "Back",
+    "coming_soon": "Coming soon",
     "back_to_home": "Back to home",
     "signing_out": "Signing out…",
     "sign_out": "Sign out",
@@ -22,7 +24,8 @@
     "nav_faq": "FAQ",
     "brand_home_label": "Stikup home",
     "switch_to_light": "Switch to light theme",
-    "switch_to_dark": "Switch to dark theme"
+    "switch_to_dark": "Switch to dark theme",
+    "connect_reminder": "Connect your accounts"
   },
   "auth": {
     "common": {
@@ -113,7 +116,7 @@
         "step_02_title": "Drop one selfie",
         "step_02_body": "Front-facing photo, good light, one face. We check it instantly and tell you if anything looks off.",
         "step_03_title": "Get 3 free, unlock 12",
-        "step_03_body": "Your full pack of 12 generates upfront. Take the 3 free ones — or pay once to unlock all 12 and have the bot install it."
+        "step_03_body": "Your full pack of 12 generates upfront. Take the 3 free — refer a friend who signs up to unlock all 12 free, or pay $5 to unlock and get 10 more generations."
       }
     },
     "pack_showcase": {
@@ -130,8 +133,8 @@
         "b1": "12 expressive emotions, hand-curated",
         "b2": "Real Telegram sticker set you own",
         "b3": "Free 3 stickers — no payment required",
-        "b4": "Pay once to unlock all 12, no subscription",
-        "b5": "One regeneration included with every paid pack"
+        "b4": "Unlock all 12 for $5 — or free when a friend signs up",
+        "b5": "10 more generations with every $5 unlock"
       }
     },
     "features": {
@@ -153,17 +156,18 @@
       "eyebrow": "Pricing",
       "title": "One pack. One price.",
       "title_suffix": "No subscription. Ever.",
-      "description": "Try the 3-sticker preview free. Pay once to unlock the full pack — keep it forever.",
+      "description": "Try the 3-sticker preview free. Pay once to unlock all 12 — or refer a friend who signs up to unlock free.",
       "full_pack_badge": "Full pack of 12",
       "one_time": "one-time",
       "regional_pricing": "Regional pricing — pay in your own currency.",
       "cta_authenticated": "Start free pack",
       "cta_anonymous": "Sign in to start",
       "payment_methods": "Stripe · Apple Pay · Google Pay · CIS, EU, US currency support",
+      "referral_note": "No budget? Refer a friend who registers and all 12 unlock free.",
       "bullets": {
         "b1": "All 12 stickers (3 free + 9 unlocked)",
         "b2": "Real Telegram sticker set you own",
-        "b3": "1 free regeneration of the pack",
+        "b3": "10 more generations included",
         "b4": "PNG + WebP downloads",
         "b5": "Bot delivers it for you in seconds",
         "b6": "No watermark. No subscription. No catch."
@@ -174,11 +178,11 @@
       "title": "Questions, answered.",
       "items": {
         "q1": "How does it actually work?",
-        "a1": "You message our Telegram bot. It opens a webpage where you upload one selfie. About 1–3 minutes later, you see all 12 stickers — 3 are free to take, and the other 9 are visibly locked. Pay once to unlock the whole pack and the bot installs it to your Telegram.",
+        "a1": "You message our Telegram bot. It opens a webpage where you upload one selfie. About 1–3 minutes later, you see all 12 stickers — 3 are free to take, and the other 9 are visibly locked. Refer a friend who signs up to unlock the whole pack free, or pay $5 — the bot installs it to your Telegram.",
         "q2": "What's included when I pay?",
-        "a2": "All 12 stickers unlock instantly — no second wait. The bot creates a real Telegram sticker set you own and DMs you the install link. You also get one regeneration of that pack in case the result isn't quite right.",
+        "a2": "All 12 stickers unlock instantly — no second wait. The bot creates a real Telegram sticker set you own and DMs you the install link. You also get 10 more generations to make new packs or re-roll.",
         "q3": "Can I make more than one pack?",
-        "a3": "Yes — each pack is a separate purchase. After your first paid pack, you can upload a new photo and run the flow again. No subscription, no surprise charges.",
+        "a3": "Yes — each pack is a separate purchase. A $5 unlock includes 10 more generations, so you can run new packs without paying again. Referrals also unlock free. No subscription, no surprise charges.",
         "q4": "What about my photo?",
         "a4": "Stored only while your account exists. Delete your account from settings — the photo, the pack, the generated files all cascade out. GDPR-ready from day one.",
         "q5": "Why are 9 stickers locked instead of just hidden?",
@@ -215,9 +219,9 @@
       "packs_hint": "lifetime",
       "stickers_label": "Stickers owned",
       "stickers_hint": "across all packs",
-      "regens_label": "Regenerations",
-      "regens_value": "1 / pack",
-      "regens_hint": "paid-pack quota",
+      "regens_label": "Generations",
+      "regens_value": "10 / unlock",
+      "regens_hint": "per $5 unlock",
       "subscription_label": "Subscription",
       "subscription_value": "None",
       "subscription_hint": "never — one-time only"
@@ -227,15 +231,15 @@
       "pack_singular": "pack",
       "pack_plural": "packs",
       "make_another": "Make another pack",
-      "make_another_body": "Different photo. Fresh 12 stickers. One payment."
+      "make_another_body": "Different photo, fresh 12 stickers. Your $5 unlock includes 10 generations."
     },
     "pack_card": {
-      "stickers_count": "12/12 stickers",
+      "title": "Your sticker pack",
       "ready": "ready",
-      "install": "Install",
-      "regens_left": "Regenerations: {count} left",
-      "regenerate": "Regenerate",
-      "view": "View"
+      "unlocked": "Unlocked",
+      "locked_count": "{count} locked",
+      "sticker_total": "{count} stickers",
+      "view": "View pack"
     },
     "empty_state": {
       "title": "No sticker packs yet",
@@ -282,14 +286,16 @@
       "tip_light": "Even, natural light",
       "tip_camera": "Phone-camera resolution or higher",
       "free_preview_label": "Free preview",
-      "free_preview_title": "3 stickers free. Unlock 9 more for $5.99.",
-      "free_preview_body": "Your full pack of 12 generates upfront. After you see it, you decide whether to take the 3 free, unlock all 12, or regenerate.",
+      "free_preview_title": "3 stickers free. Unlock 9 more for $5.",
+      "free_preview_body": "Your full pack of 12 generates upfront. After you see it, take the 3 free, unlock all 12 ($5 — includes 10 more generations), or refer a friend to unlock free.",
       "privacy_note": "We never share or sell your photo. It's stored only while your account exists and removed instantly when you delete it."
     },
     "error": {
       "photo_not_accepted": "Photo not accepted",
       "invalid_format": "Use a JPEG, PNG, or HEIC photo.",
-      "too_large": "File is over 10 MB. Try a smaller export."
+      "too_large": "File is over 10 MB. Try a smaller export.",
+      "generation_failed": "Generation failed. Please try again.",
+      "no_generations": "You've used all your generations."
     }
   },
   "result": {
@@ -303,42 +309,38 @@
       "unlocked": "{count} unlocked",
       "locked": "{count} locked",
       "sticker_n": "Sticker {n}",
-      "locked_sticker": "Locked sticker",
-      "locked_note": "Locked stickers are real — they're already generated. Unlock instantly reveals all 9 with no second wait."
+      "locked_sticker": "Locked sticker"
+    },
+    "lightbox": {
+      "label": "Sticker preview",
+      "close": "Close preview",
+      "prev": "Previous sticker",
+      "next": "Next sticker"
     },
     "actions": {
       "unlock_all": "Unlock all {count}",
+      "unlocked": "Unlocked",
+      "get_stickers": "Get stickers",
+      "regenerate": "Regenerate",
       "take_free": "Take {count} free",
       "install_telegram": "Install to Telegram",
       "sending_telegram": "Sending to Telegram…",
-      "regenerate": "Regenerate",
       "regen_left": "1 free regen left",
-      "recommended": "Recommended"
+      "recommended": "Recommended",
+      "link_copied": "Link copied!",
+      "copying_link": "Copying link…",
+      "no_regens": "No regenerations left"
     },
-    "preview_panel": {
-      "preview_label": "Preview",
-      "sticker_n": "Sticker {n}",
-      "tap_to_preview": "Tap a sticker to preview it large",
+    "get_stickers_modal": {
+      "title": "Get your stickers",
+      "get_in_telegram": "Get in Telegram",
+      "get_in_telegram_desc": "The bot will install the pack straight into your Telegram.",
       "download": "Download",
-      "share": "Share"
-    },
-    "paywall": {
-      "unlock_badge": "Unlock the pack",
-      "one_time": "one-time",
-      "unlock_cta": "Unlock all 12 — {price}",
-      "payment_methods": "Stripe · Apple Pay · Google Pay",
-      "bullets": {
-        "b1": "All 12 stickers — locked ones reveal instantly",
-        "b2": "Bot installs the Telegram pack for you",
-        "b3": "1 free regeneration included",
-        "b4": "Download as PNG / WebP"
-      }
-    },
-    "quota": {
-      "title": "Quota",
-      "generations": "Generations",
-      "regenerations": "Regenerations",
-      "note": "Each paid pack grants you a fresh cycle: new photo, 12 new stickers, 1 more regen."
+      "downloading": "Downloading…",
+      "download_desc": "Save each sticker as a .webp file to your device.",
+      "connect_telegram_prompt": "Connect your Telegram account in Settings to receive stickers via bot.",
+      "go_to_settings": "Go to Settings",
+      "close": "Close"
     }
   },
   "settings": {
@@ -417,10 +419,10 @@
     "share_tiktok_body": "Drop a sticker into a video and tag #stikup. Your pack travels.",
     "share_tiktok_cta": "Open share",
     "invite_title": "Invite a friend",
-    "invite_body": "They make a paid pack → you get 2 bonus stickers added to yours.",
+    "invite_body": "When they register, all 12 of your stickers unlock — free.",
     "invite_cta": "Copy referral link",
     "make_another_title": "Make another",
-    "make_another_body": "Different photo, fresh 12 stickers. Single $5.99 — no subscription.",
+    "make_another_body": "Different photo, fresh 12 stickers. Your $5 unlock includes 10 generations — no subscription.",
     "make_another_cta": "Start new pack",
     "thanks": "Thanks for trying Stikup.",
     "go_to_stickers": "Go to my stickers"
@@ -446,6 +448,13 @@
       "body_1": "A full help centre is being prepared. For now, the fastest way to get help is to email us directly.",
       "body_3": "We aim to respond within one business day.",
       "back_home": "Back to home"
+    },
+    "subscribe": {
+      "eyebrow": "Subscription",
+      "badge": "Coming soon",
+      "title": "Subscriptions are on the way",
+      "body": "Subscriptions aren't available just yet. We're putting the finishing touches on flexible plans so you can keep making packs without limits.",
+      "note": "We'll let you know the moment they go live."
     }
   },
   "errors": {

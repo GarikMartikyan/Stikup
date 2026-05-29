@@ -113,6 +113,10 @@ input, textarea, [contenteditable="true"], [contenteditable="true"] * {
   60%  { opacity: 1; transform: scale(1.08) rotate(var(--r, 0deg)); }
   100% { transform: scale(1) rotate(var(--r, 0deg)); }
 }
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
 @keyframes drift {
   0%, 100% { transform: translate(0, 0) scale(1); }
   33%      { transform: translate(24px, -18px) scale(1.05); }
@@ -151,6 +155,23 @@ input, textarea, [contenteditable="true"], [contenteditable="true"] * {
 .cta-pulse {
   background-size: 200% 200%;
   animation: gradient-shift 4s ease-in-out infinite, pulse-ring 2.2s ease-out infinite;
+}
+
+/* Small brand-pink dot with a radiating ring — flags an account that still
+   needs Telegram/Google linked. Sits absolutely inside a `relative` parent. */
+@keyframes connect-dot-ring {
+  0%   { box-shadow: 0 0 0 0 rgba(224, 52, 154, 0.5); }
+  100% { box-shadow: 0 0 0 8px rgba(224, 52, 154, 0); }
+}
+.connect-dot {
+  background-color: var(--color-brand);
+  animation: connect-dot-ring 2s ease-out infinite;
+}
+
+/* Persistent pulse-ring on a Settings "Connect" button, drawing the eye to
+   the provider that still needs linking. */
+.connect-pulse {
+  animation: pulse-ring 2.2s ease-out infinite;
 }
 
 .shimmer { position: relative; overflow: hidden; }

@@ -133,6 +133,9 @@ export class TelegramUpdate implements OnModuleInit {
     const userMessageId = ctx.message?.message_id ?? null;
 
     const { userId } = await this.identity.resolveOrCreate(event);
+    // Note: `created` flag is available here if attribution is needed in the
+    // Telegram flow. Currently Telegram-channel registration is not attributed
+    // via web-cookie referrals (no web cookie context in the bot).
     const token = await this.tokens.mint(userId, 'telegram');
     const url = `${this.frontend.publicAppUrl}/auth/exchange?t=${token}`;
     this.logger.log(

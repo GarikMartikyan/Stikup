@@ -8,5 +8,6 @@ import { PackService } from './pack.service';
   imports: [AuthModule],
   controllers: [PackController],
   providers: [PackService],
+  exports: [PackService],
 })
 export class PackModule {}

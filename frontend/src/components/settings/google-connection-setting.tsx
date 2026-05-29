@@ -178,7 +178,7 @@ export function GoogleConnectionSetting() {
       </div>
       <a
         href="/auth/link/google/start"
-        className="inline-flex items-center justify-center gap-2 rounded-full border border-[var(--color-border-strong)] bg-[var(--color-bg-elev)] px-4 py-2 text-sm font-bold text-[var(--color-fg)] transition hover:bg-[var(--color-bg-sunk)]"
+        className="connect-pulse inline-flex items-center justify-center gap-2 rounded-full border border-[var(--color-border-strong)] bg-[var(--color-bg-elev)] px-4 py-2 text-sm font-bold text-[var(--color-fg)] transition hover:bg-[var(--color-bg-sunk)]"
       >
         <GoogleLogo />
         {t("settings.google.connect_button")}

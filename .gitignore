@@ -21,9 +21,11 @@ Thumbs.db
 .vscode/
 *.swp
 
-# Env (root-level secrets)
+# Env: real secrets are ignored; per-env templates (.env.development,
+# .env.production, .env.example) are committed with PLACEHOLDERS only.
 .env
-.env.*
+.env.local
+.env.*.local
 !.env.example
 
 # Logs

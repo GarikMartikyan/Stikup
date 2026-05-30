@@ -10,6 +10,8 @@ import {
   validateSync,
 } from 'class-validator';
 
+import { getEnvProfile, resolveAppEnv } from './environment';
+
 function getLanIPv4(): string | undefined {
   const interfaces = networkInterfaces();
   for (const name of Object.keys(interfaces)) {
@@ -54,7 +56,7 @@ function toBool(raw: string | undefined, fallback: boolean): boolean {
 export const frontendConfig = registerAs(
   'frontend',
   (): FrontendConfigSchema => {
-    const isDev = process.env.NODE_ENV !== 'production';
+    const isDev = resolveAppEnv() !== 'production';
     const host = process.env.FRONTEND_HOST || undefined;
     const port = toInt(process.env.FRONTEND_PORT, 3000);
     const useHttps = toBool(process.env.FRONTEND_USE_HTTPS, false);
@@ -93,6 +95,20 @@ export const frontendConfig = registerAs(
           errors.map((e) => e.toString()).join('\n'),
       );
     }
+
+    if (getEnvProfile().strictSecrets) {
+      const url = instance.publicAppUrl;
+      if (
+        !url.startsWith('https://') ||
+        url.includes('YOUR_DOMAIN') ||
+        url.includes('localhost')
+      ) {
+        throw new Error(
+          `PUBLIC_APP_URL must be a real https:// URL in production, got: ${url}`,
+        );
+      }
+    }
+
     return instance;
   },
 );

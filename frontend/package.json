@@ -6,10 +6,10 @@
     "node": ">=22"
   },
   "scripts": {
-    "dev": "NODE_OPTIONS=--max-old-space-size=4096 dotenv -e ../.env -- sh -c 'next dev -p ${FRONTEND_PORT:-3000}'",
-    "dev:webpack": "NODE_OPTIONS=--max-old-space-size=4096 dotenv -e ../.env -- sh -c 'next dev --webpack -p ${FRONTEND_PORT:-3000}'",
-    "build": "NODE_ENV=production dotenv -e ../.env -- next build",
-    "start": "dotenv -e ../.env -- next start",
+    "dev": "NODE_OPTIONS=--max-old-space-size=4096 dotenv -e ../.env.development.local -e ../.env.development -e ../.env -- sh -c 'next dev -p ${FRONTEND_PORT:-3000}'",
+    "dev:webpack": "NODE_OPTIONS=--max-old-space-size=4096 dotenv -e ../.env.development.local -e ../.env.development -e ../.env -- sh -c 'next dev --webpack -p ${FRONTEND_PORT:-3000}'",
+    "build": "NODE_ENV=production dotenv -e ../.env.production.local -e ../.env.production -e ../.env -- next build",
+    "start": "dotenv -e ../.env.production.local -e ../.env.production -e ../.env -- next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

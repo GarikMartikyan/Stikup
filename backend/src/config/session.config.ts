@@ -8,6 +8,8 @@ import {
   validateSync,
 } from 'class-validator';
 
+import { getEnvProfile } from './environment';
+
 export class SessionConfigSchema {
   @IsString()
   @IsNotEmpty()
@@ -31,10 +33,14 @@ function toBool(raw: string | undefined, fallback: boolean): boolean {
 }
 
 export const sessionConfig = registerAs('session', (): SessionConfigSchema => {
+  const profile = getEnvProfile();
   const raw = {
     cookieName: process.env.SESSION_COOKIE_NAME || 'sid',
     cookieDomain: process.env.SESSION_COOKIE_DOMAIN || undefined,
-    cookieSecure: toBool(process.env.SESSION_COOKIE_SECURE, false),
+    cookieSecure: toBool(
+      process.env.SESSION_COOKIE_SECURE,
+      profile.cookieSecureDefault,
+    ),
     postLoginPath: process.env.POST_LOGIN_PATH || '/my-stickers',
   };
 
@@ -45,5 +51,12 @@ export const sessionConfig = registerAs('session', (): SessionConfigSchema => {
       'Invalid SESSION config:\n' + errors.map((e) => e.toString()).join('\n'),
     );
   }
+
+  if (profile.strictSecrets && !instance.cookieSecure) {
+    throw new Error(
+      'SESSION_COOKIE_SECURE must be true in production (app runs behind HTTPS).',
+    );
+  }
+
   return instance;
 });

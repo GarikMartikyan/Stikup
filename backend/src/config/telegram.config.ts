@@ -1,10 +1,11 @@
 import { registerAs } from '@nestjs/config';
 import { plainToInstance } from 'class-transformer';
-import { IsNotEmpty, IsString, validateSync } from 'class-validator';
+import { IsString, validateSync } from 'class-validator';
+
+import { getEnvProfile, isPlaceholder } from './environment';
 
 export class TelegramConfigSchema {
   @IsString()
-  @IsNotEmpty()
   botToken!: string;
 }
 
@@ -23,6 +24,13 @@ export const telegramConfig = registerAs(
           errors.map((e) => e.toString()).join('\n'),
       );
     }
+
+    if (getEnvProfile().strictSecrets && isPlaceholder(instance.botToken)) {
+      throw new Error(
+        'TELEGRAM_BOT_TOKEN must be set to a real value in production.',
+      );
+    }
+
     return instance;
   },
 );

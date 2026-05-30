@@ -21,6 +21,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Generate Prisma client
+        # tsc needs the generated client types; npm ci doesn't generate them.
+        run: cd backend && npx prisma generate
+
       - name: Typecheck
         run: npm run typecheck
 

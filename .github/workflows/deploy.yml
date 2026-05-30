@@ -37,6 +37,10 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
+      - name: Generate Prisma client
+        # tsc needs the generated client types (Prisma namespace, Channel model,
+        # etc.). `npm ci` doesn't run this; the Docker build does it explicitly.
+        run: cd backend && npx prisma generate
       - name: Typecheck
         run: npm run typecheck
       - name: Lint

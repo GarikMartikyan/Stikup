@@ -13,8 +13,9 @@ This guide is the human checklist. Each step says who does it.
 
 - [x] **Step 1** — dev/prod config split (`APP_ENV`, per-env `.env`, env-aware logic). _(code)_
 - [x] **Step 2** — prod Docker stack + Caddy + dev infra compose. _(code)_
+- [x] **Step 4 scripts prepared** — `scripts/server-bootstrap.sh`, `scripts/deploy.sh`. _(code)_
 - [ ] **Step 3** — create DO droplet + claim name.com domain + DNS. _(you, below)_
-- [ ] **Step 4** — server bootstrap + first deploy. _(you run a provided script)_
+- [ ] **Step 4** — run bootstrap + first deploy on the droplet. _(you run, after Step 3)_
 - [ ] **Step 5** — CI/CD: build → GHCR → deploy on tag. _(code + you add GH secrets)_
 - [ ] **Step 6+** — features: real AI, DO Spaces, Stripe, Telegram delivery.
 
@@ -33,9 +34,9 @@ cat ~/.ssh/id_ed25519.pub   # copy this — you'll paste it into DigitalOcean
 
 ### 3b. Activate the Student Pack credit
 
-1. Go to https://education.github.com/pack → find **DigitalOcean** → get the
-   credit code (usually $200 / 12 months).
-2. Create a DO account, redeem the code under **Billing → referral/credit**.
+1. https://education.github.com/pack → **DigitalOcean** → get the credit code
+   (usually $200 / 12 months).
+2. Create a DO account, redeem the code under **Billing**.
 3. Confirm the credit shows in your billing balance.
 
 ### 3c. Create the droplet
@@ -87,7 +88,63 @@ dig +short YOUR_DOMAIN      # should print YOUR_DROPLET_IP
 2. The **droplet IP**.
 3. Confirmation `dig +short YOUR_DOMAIN` returns that IP.
 
-Then we do **Step 4** (server bootstrap + first deploy) together.
+Then Claude wires the domain into the configs and you run **Step 4**.
+
+---
+
+## Step 4 — bootstrap + first deploy (YOU run on the droplet)
+
+Prerequisite: Step 3 done, and Claude has committed your real domain into
+`.env.production`.
+
+> If the GitHub repo is **private**, the droplet can't clone over HTTPS without
+> auth. Easiest: keep the repo public, or add a read-only **deploy key**
+> (generate `ssh-keygen` on the droplet, add the `.pub` under repo →
+> Settings → Deploy keys) and set `REPO_URL` to the SSH URL.
+
+### 4a. Bootstrap the server (one time)
+
+SSH in as root and run:
+
+```bash
+ssh root@YOUR_DROPLET_IP
+curl -fsSL https://raw.githubusercontent.com/GarikMartikyan/Stikup/main/scripts/server-bootstrap.sh -o bootstrap.sh
+bash bootstrap.sh
+```
+
+This installs Docker + compose, enables the UFW firewall (SSH/80/443), clones
+the repo to `/opt/stikup`, and writes a secrets stub at
+`/opt/stikup/.env.production.local`.
+
+### 4b. Fill in production secrets
+
+```bash
+nano /opt/stikup/.env.production.local
+```
+
+Set real values for: `POSTGRES_PASSWORD`, `TELEGRAM_BOT_TOKEN`,
+`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `ACME_EMAIL`.
+
+### 4c. Deploy
+
+```bash
+cd /opt/stikup && bash scripts/deploy.sh
+```
+
+It builds the images and brings the stack up. Watch Caddy obtain the TLS cert:
+
+```bash
+docker compose --env-file .env.production --env-file .env.production.local \
+  -f docker-compose.prod.yml logs -f caddy
+```
+
+After ~30s, visit `https://YOUR_DOMAIN`. The skeleton app should load over HTTPS.
+
+### 4d. Post-deploy wiring (external services)
+
+- **Telegram:** @BotFather → `/setdomain` → your domain (enables Telegram login).
+- **Google OAuth:** Cloud Console → add `https://YOUR_DOMAIN/auth/google/callback`
+  to the authorized redirect URIs.
 
 ---
 
@@ -108,10 +165,9 @@ Put real dev secrets (Telegram bot token, Google OAuth) in
 `.env.development.local` (gitignored). Everything else has a safe default in the
 committed `.env.development`.
 
-## Reference: production deploy command (used in Step 4)
+## Reference: production deploy command
 
-On the droplet, from the repo directory, with a populated
-`.env.production.local`:
+On the droplet, from `/opt/stikup`, with a populated `.env.production.local`:
 
 ```bash
 docker compose \

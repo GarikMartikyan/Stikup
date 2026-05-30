@@ -2,8 +2,8 @@ name: CI
 
 on:
   pull_request:
-  push:
-    branches: [main]
+  # Pushes to main are validated by the Deploy workflow's `test` job
+  # (.github/workflows/deploy.yml), so CI isn't double-run here.
 
 jobs:
   ci:

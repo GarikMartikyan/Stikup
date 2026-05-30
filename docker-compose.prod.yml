@@ -8,6 +8,11 @@
 #  reachable on the internal compose network. Only Caddy exposes
 #  ports (80/443) to the internet.
 #
+#  Secret hygiene: only the BACKEND needs the secret-bearing env files
+#  (.env.production[.local]). The frontend receives just the handful of
+#  non-secret runtime vars it actually reads, so a frontend compromise
+#  can never leak the bot token, Google secret, or DB password.
+#
 #  Deploy (on the server):
 #    docker compose \
 #      --env-file .env.production \
@@ -55,6 +60,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    # The backend legitimately needs the full secret set.
     env_file:
       - .env.production
       - path: .env.production.local
@@ -86,13 +92,14 @@ services:
     depends_on:
       backend:
         condition: service_healthy
-    env_file:
-      - .env.production
-      - path: .env.production.local
-        required: false
+    # NO env_file here — the frontend must not receive backend secrets.
+    # Only the non-secret vars it reads at runtime are passed explicitly.
     environment:
+      NODE_ENV: production
       # Server-side SSR/rewrites talk to the backend over the compose network.
       BACKEND_URL: http://backend:3131
+      # Name of the session cookie the frontend looks for (non-secret).
+      SESSION_COOKIE_NAME: ${SESSION_COOKIE_NAME:-sid}
     healthcheck:
       test:
         - CMD

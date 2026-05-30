@@ -9,6 +9,11 @@
 #    npm run dev                                         # run the apps
 #    docker compose -f docker-compose.dev.yml down       # stop
 #
+#  Ports are bound to 127.0.0.1 only — reachable from the host (for
+#  `npm run dev`) but never exposed to the LAN or the internet. The
+#  weak default credentials are acceptable precisely because nothing
+#  off-host can reach these services.
+#
 #  Values fall back to sane defaults, so it works without an env file.
 #  To mirror your .env.development exactly:
 #    docker compose --env-file .env.development -f docker-compose.dev.yml up -d
@@ -26,7 +31,8 @@ services:
     volumes:
       - stickup-dev-postgres:/var/lib/postgresql/data
     ports:
-      - '${POSTGRES_PORT:-5432}:5432'
+      # Loopback-only: the host can reach it at localhost:5432, the LAN cannot.
+      - '127.0.0.1:${POSTGRES_PORT:-5432}:5432'
     healthcheck:
       test:
         [
@@ -41,7 +47,8 @@ services:
     image: redis:7-alpine
     restart: unless-stopped
     ports:
-      - '6379:6379'
+      # Loopback-only.
+      - '127.0.0.1:6379:6379'
     healthcheck:
       test: ['CMD', 'redis-cli', 'ping']
       interval: 5s

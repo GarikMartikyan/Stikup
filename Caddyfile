@@ -1,0 +1,28 @@
+# =====================================================================
+#  Caddy reverse proxy — automatic HTTPS via Let's Encrypt.
+#
+#  DOMAIN and ACME_EMAIL are injected from .env.production by
+#  docker-compose.prod.yml. Caddy obtains + renews the TLS cert for
+#  DOMAIN automatically on first boot (port 80/443 must be open).
+#
+#  All traffic goes to the Next.js frontend, which itself proxies
+#  /auth/* and /api/* to the backend over the internal network
+#  (see frontend/next.config.ts rewrites). The backend is never
+#  exposed directly to the internet.
+# =====================================================================
+
+{
+	email {$ACME_EMAIL}
+}
+
+{$DOMAIN} {
+	encode gzip zstd
+
+	reverse_proxy frontend:3000 {
+		# Preserve the original host/scheme so the backend builds correct
+		# absolute URLs (OAuth redirects, Telegram login links) behind TLS.
+		header_up Host {host}
+		header_up X-Forwarded-Proto {scheme}
+		header_up X-Forwarded-For {remote_host}
+	}
+}

@@ -1,0 +1,52 @@
+# =====================================================================
+#  DEVELOPMENT infra — Postgres + Redis only.
+#
+#  The apps run on your host via `npm run dev` (hot reload). This file
+#  provides just the backing services they connect to on localhost.
+#
+#  Usage:
+#    docker compose -f docker-compose.dev.yml up -d      # start pg + redis
+#    npm run dev                                         # run the apps
+#    docker compose -f docker-compose.dev.yml down       # stop
+#
+#  Values fall back to sane defaults, so it works without an env file.
+#  To mirror your .env.development exactly:
+#    docker compose --env-file .env.development -f docker-compose.dev.yml up -d
+# =====================================================================
+name: stickup-dev
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-stickup}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-stickup}
+      POSTGRES_DB: ${POSTGRES_DB:-stickup}
+    volumes:
+      - stickup-dev-postgres:/var/lib/postgresql/data
+    ports:
+      - '${POSTGRES_PORT:-5432}:5432'
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'pg_isready -U ${POSTGRES_USER:-stickup} -d ${POSTGRES_DB:-stickup}',
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  stickup-dev-postgres:

@@ -11,11 +11,6 @@ export function Hero({ loggedIn }: { loggedIn: boolean }) {
   const t = useT();
   return (
     <section className="snap-section relative flex min-h-dvh scroll-mt-16 flex-col justify-center px-5 pt-20 pb-10 md:pt-14">
-      {/* TEMP — CI/CD smoke-test banner. Remove after verifying auto-deploy. */}
-      <div className="mx-auto mb-8 w-full max-w-6xl rounded-2xl bg-gradient-to-r from-[var(--color-brand)] via-[#ff5e72] to-[var(--color-brand-2)] px-6 py-4 text-center text-lg font-extrabold tracking-tight text-white shadow-[0_18px_40px_-12px_rgba(224,52,154,0.55)]">
-        🚀 Shipped automatically via CI/CD — if you can read this, the pipeline works.
-      </div>
-
       <div className="mx-auto grid w-full max-w-6xl items-start gap-10 md:grid-cols-[1.05fr_1fr]">
         <div>
           <span

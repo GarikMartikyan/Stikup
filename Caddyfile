@@ -15,6 +15,7 @@
 	email {$ACME_EMAIL}
 }
 
+# Canonical apex host — serves the app.
 {$DOMAIN} {
 	encode gzip zstd
 
@@ -25,4 +26,10 @@
 		header_up X-Forwarded-Proto {scheme}
 		header_up X-Forwarded-For {remote_host}
 	}
+}
+
+# Redirect www → apex so sessions/OAuth stay on one canonical origin.
+# (Caddy fetches a cert for www too; needs the www A record set.)
+www.{$DOMAIN} {
+	redir https://{$DOMAIN}{uri} permanent
 }

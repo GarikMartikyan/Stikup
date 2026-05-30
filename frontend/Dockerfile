@@ -15,7 +15,10 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 COPY backend/package.json ./backend/package.json
 COPY frontend/package.json ./frontend/package.json
-RUN npm ci
+# --include=dev: the build needs devDependencies (next build tooling,
+# dotenv-cli, typescript). Force them even if a `production`/NODE_ENV
+# setting leaks into the build env (npm would otherwise omit dev deps).
+RUN npm ci --include=dev
 
 # ---- build: compile Next.js ----
 FROM node:22-bookworm-slim AS build

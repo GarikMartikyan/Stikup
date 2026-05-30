@@ -18,7 +18,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-cert
 COPY package.json package-lock.json ./
 COPY backend/package.json ./backend/package.json
 COPY frontend/package.json ./frontend/package.json
-RUN npm ci
+# --include=dev: the build needs devDependencies (prisma, nest, typescript).
+# Force them even if a `production`/NODE_ENV setting leaks into the build env,
+# which would otherwise make npm omit dev deps and break the compile.
+RUN npm ci --include=dev
 
 # ---- build: generate Prisma client + compile Nest ----
 FROM node:22-bookworm-slim AS build

@@ -1,0 +1,29 @@
+# Build context = repo root (npm workspaces; single root package-lock.json).
+# Keep the context small: never ship installed deps, build output, VCS, or env.
+
+**/node_modules
+**/.next
+**/dist
+**/*.tsbuildinfo
+**/coverage
+
+.git
+.github
+.husky
+.idea
+.vscode
+.claude
+.playwright-mcp
+frontend/test-results
+frontend/e2e
+frontend/undefined
+
+**/*.cpuprofile
+*.png
+
+backups
+
+# Never bake env files into an image (secrets are injected at runtime).
+.env
+.env.*
+!.env.example

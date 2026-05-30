@@ -53,7 +53,9 @@ services:
 
   backend:
     image: ${BACKEND_IMAGE:-ghcr.io/garikmartikyan/stikup-backend:latest}
-    build: ./backend
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
     restart: unless-stopped
     depends_on:
       postgres:
@@ -83,7 +85,8 @@ services:
   frontend:
     image: ${FRONTEND_IMAGE:-ghcr.io/garikmartikyan/stikup-frontend:latest}
     build:
-      context: ./frontend
+      context: .
+      dockerfile: frontend/Dockerfile
       args:
         # Baked at build time: server-side origin + client-visible bot URL.
         BACKEND_URL: http://backend:3131

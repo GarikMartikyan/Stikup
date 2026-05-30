@@ -27,6 +27,34 @@ if [ "$(id -u)" -ne 0 ]; then
   exit 1
 fi
 
+# --- Swap -------------------------------------------------------------
+# On a 2 GB droplet the Next.js production build can spike past available
+# RAM and get OOM-killed. A swap file gives the build the headroom it
+# needs. Size is configurable; default 4 GB. Idempotent.
+SWAP_SIZE="${SWAP_SIZE:-4G}"
+SWAP_FILE="${SWAP_FILE:-/swapfile}"
+if ! swapon --show | grep -q "${SWAP_FILE}"; then
+  log "Creating ${SWAP_SIZE} swap file at ${SWAP_FILE}"
+  if fallocate -l "${SWAP_SIZE}" "${SWAP_FILE}" 2>/dev/null; then :; else
+    # fallocate can fail on some filesystems; fall back to dd.
+    sz_mb=$(( ${SWAP_SIZE%G} * 1024 ))
+    dd if=/dev/zero of="${SWAP_FILE}" bs=1M count="${sz_mb}" status=none
+  fi
+  chmod 600 "${SWAP_FILE}"
+  mkswap "${SWAP_FILE}"
+  swapon "${SWAP_FILE}"
+  if ! grep -q "${SWAP_FILE}" /etc/fstab; then
+    echo "${SWAP_FILE} none swap sw 0 0" >> /etc/fstab
+  fi
+  # Lower swappiness so swap is a safety net, not a first resort.
+  sysctl -w vm.swappiness=10 >/dev/null
+  if ! grep -q '^vm.swappiness' /etc/sysctl.conf; then
+    echo 'vm.swappiness=10' >> /etc/sysctl.conf
+  fi
+else
+  echo "Swap already active at ${SWAP_FILE} — skipping."
+fi
+
 log "Updating apt and installing base packages"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -y

@@ -1,39 +1,39 @@
 # =====================================================================
 #  Frontend image — build context is the REPO ROOT.
 #
-#  This is an npm-workspaces monorepo with a single root package-lock.json,
-#  so the Docker build must run from the repo root to see the lockfile.
-#  In docker-compose this is:
+#  npm-workspaces monorepo: a single root package-lock.json, and per-
+#  workspace binaries (next, dotenv-cli, ...) install into the
+#  workspace's own node_modules/.bin. We install AND build in the same
+#  stage so those binaries are present for `next build` (a cross-stage
+#  copy of only the root node_modules would drop them — that caused the
+#  earlier "dotenv: not found" failure).
+#
+#  In docker-compose:
 #      build:
 #        context: .
 #        dockerfile: frontend/Dockerfile
 # =====================================================================
 
-# ---- deps: reproducible install from the root lockfile ----
-FROM node:22-bookworm-slim AS deps
-WORKDIR /app
-COPY package.json package-lock.json ./
-COPY backend/package.json ./backend/package.json
-COPY frontend/package.json ./frontend/package.json
-# --include=dev: the build needs devDependencies (next build tooling,
-# dotenv-cli, typescript). Force them even if a `production`/NODE_ENV
-# setting leaks into the build env (npm would otherwise omit dev deps).
-RUN npm ci --include=dev
-
-# ---- build: compile Next.js ----
+# ---- build: install all deps + compile Next.js ----
 FROM node:22-bookworm-slim AS build
-# NEXT_PUBLIC_* and BACKEND_URL must be present at build time:
 # NEXT_PUBLIC_* is inlined into the client bundle; BACKEND_URL is read by next.config.
 ARG BACKEND_URL=http://backend:3131
 ENV BACKEND_URL=$BACKEND_URL
 ARG NEXT_PUBLIC_TELEGRAM_BOT_URL=https://t.me/stikup_bot
 ENV NEXT_PUBLIC_TELEGRAM_BOT_URL=$NEXT_PUBLIC_TELEGRAM_BOT_URL
 WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
 COPY package.json package-lock.json ./
+COPY backend/package.json ./backend/package.json
+COPY frontend/package.json ./frontend/package.json
+# `npm install` (not `npm ci`): the lockfile is generated on macOS, and
+# `npm ci` has a long-standing bug where it skips platform-specific
+# optional deps for a different OS/arch (npm/cli#4828). That drops the
+# Linux native Tailwind v4 engine (@tailwindcss/oxide-linux-*), breaking
+# `next build`. `npm install` re-resolves optional natives for the actual
+# build platform (amd64 on the droplet), pulling the correct binary.
+RUN npm install --include=dev --no-audit --no-fund
 # shared/ holds generated OpenAPI types imported by the frontend via a
-# repo-root relative path (frontend/src/lib/api-types.ts). It is NOT an
-# npm workspace — just a plain dir — so it must be copied explicitly.
+# repo-root relative path (frontend/src/lib/api-types.ts) — copy it too.
 COPY shared ./shared
 COPY frontend ./frontend
 RUN cd frontend && npm run build
@@ -44,6 +44,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/package.json ./package.json
+# Includes frontend/node_modules (workspace-local: next, dotenv-cli) + .next.
 COPY --from=build /app/frontend ./frontend
 EXPOSE 3000
 WORKDIR /app/frontend

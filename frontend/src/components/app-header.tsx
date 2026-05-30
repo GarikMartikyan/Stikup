@@ -15,7 +15,12 @@ export { LANDING_NAV_LINKS } from '@/lib/nav-links';
 
 // Routes whose marketing-style content includes the in-page anchor sections
 // referenced by LANDING_NAV_LINKS (#how, #pack, #pricing, #faq).
-const LANDING_NAV_ROUTES = new Set<string>(['/', '/privacy', '/terms', '/support']);
+const LANDING_NAV_ROUTES = new Set<string>([
+  '/',
+  '/privacy',
+  '/terms',
+  '/support',
+]);
 
 // Auth flow routes — hide the right-side CTA (Sign in / account drawer) since
 // the page itself is the auth action.
@@ -38,7 +43,10 @@ export function AppHeader({ navLinks, loggedIn, right }: AppHeaderProps) {
   const pathname = usePathname();
 
   const resolvedNavLinks =
-    navLinks ?? (pathname && LANDING_NAV_ROUTES.has(pathname) ? LANDING_NAV_LINKS : undefined);
+    navLinks ??
+    (pathname && LANDING_NAV_ROUTES.has(pathname)
+      ? LANDING_NAV_LINKS
+      : undefined);
 
   const onAuthRoute = Boolean(pathname && AUTH_ROUTES.has(pathname));
 
@@ -72,8 +80,8 @@ export function AppHeader({ navLinks, loggedIn, right }: AppHeaderProps) {
         )}
 
         <div className="flex items-center gap-3">
-          <LanguageToggle />
           <ThemeToggle />
+          <LanguageToggle />
           {rightContent}
         </div>
       </div>

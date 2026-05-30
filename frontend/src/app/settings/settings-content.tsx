@@ -26,22 +26,6 @@ export function SettingsContent({ email }: { email: string | null }) {
         </header>
 
         <SettingSection
-          icon={Palette}
-          title={t("settings.theme.section_title")}
-          description={t("settings.theme.section_description")}
-        >
-          <ThemeSetting />
-        </SettingSection>
-
-        <SettingSection
-          icon={Languages}
-          title={t("settings.language.section_title")}
-          description={t("settings.language.section_description")}
-        >
-          <LanguageSetting />
-        </SettingSection>
-
-        <SettingSection
           icon={Send}
           title={t("settings.telegram.section_title")}
           description={t("settings.telegram.section_description")}
@@ -55,6 +39,22 @@ export function SettingsContent({ email }: { email: string | null }) {
           description={t("settings.google.section_description")}
         >
           <GoogleConnectionSetting />
+        </SettingSection>
+
+        <SettingSection
+          icon={Palette}
+          title={t("settings.theme.section_title")}
+          description={t("settings.theme.section_description")}
+        >
+          <ThemeSetting />
+        </SettingSection>
+
+        <SettingSection
+          icon={Languages}
+          title={t("settings.language.section_title")}
+          description={t("settings.language.section_description")}
+        >
+          <LanguageSetting />
         </SettingSection>
 
         <SettingSection

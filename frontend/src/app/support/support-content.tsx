@@ -4,6 +4,10 @@ import Link from "next/link";
 import { SiteFooter } from "@/components/landing/site-footer";
 import { useT } from "@/components/language-provider";
 
+const SUPPORT_EMAIL = "garmailtest@gmail.com";
+
+const TOPICS = ["account", "stickers", "billing"] as const;
+
 export function SupportContent() {
   const t = useT();
   return (
@@ -15,18 +19,52 @@ export function SupportContent() {
         <h1 className="mt-2 font-[family-name:var(--font-display)] text-4xl font-extrabold tracking-[-0.02em]">
           {t("pages.support.title")}
         </h1>
-        <div className="mt-8 space-y-4 text-[var(--color-fg-muted)]">
-          <p>{t("pages.support.body_1")}</p>
-          <p>
-            <a
-              href="mailto:support@stikup.app"
-              className="font-semibold text-[var(--color-fg)] hover:underline"
-            >
-              support@stikup.app
-            </a>
+
+        <p className="mt-8 text-[var(--color-fg-muted)]">
+          {t("pages.support.intro")}
+        </p>
+
+        {/* Email card */}
+        <div className="mt-6 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-elev)] p-5">
+          <div className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-fg-subtle)]">
+            {t("pages.support.email_label")}
+          </div>
+          <a
+            href={`mailto:${SUPPORT_EMAIL}`}
+            className="mt-1 inline-block font-[family-name:var(--font-display)] text-2xl font-extrabold text-[var(--color-fg)] hover:underline"
+          >
+            {SUPPORT_EMAIL}
+          </a>
+          <p className="mt-2 text-sm text-[var(--color-fg-muted)]">
+            {t("pages.support.response_time")}
           </p>
-          <p>{t("pages.support.body_3")}</p>
         </div>
+
+        <section className="mt-10">
+          <h2 className="font-[family-name:var(--font-display)] text-xl font-bold">
+            {t("pages.support.topics_title")}
+          </h2>
+          <ul className="mt-3 space-y-3">
+            {TOPICS.map((id) => (
+              <li key={id} className="text-[var(--color-fg-muted)]">
+                <span className="font-semibold text-[var(--color-fg)]">
+                  {t(`pages.support.${id}_title`)}
+                </span>{" "}
+                — {t(`pages.support.${id}_body`)}
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <section className="mt-8">
+          <h2 className="font-[family-name:var(--font-display)] text-xl font-bold">
+            {t("pages.support.include_title")}
+          </h2>
+          <p className="mt-2 text-[var(--color-fg-muted)]">
+            {t("pages.support.include_body")}
+          </p>
+        </section>
+
         <div className="mt-10">
           <Link
             href="/"

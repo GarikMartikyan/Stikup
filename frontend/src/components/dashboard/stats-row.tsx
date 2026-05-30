@@ -76,7 +76,13 @@ function Stat({
   );
 }
 
-export function StatsRow({ packCount }: { packCount: number }) {
+export function StatsRow({
+  packCount,
+  regensLeft,
+}: {
+  packCount: number;
+  regensLeft: number;
+}) {
   const t = useT();
   return (
     <div className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
@@ -98,7 +104,7 @@ export function StatsRow({ packCount }: { packCount: number }) {
       />
       <Stat
         label={t("dashboard.stats.regens_label")}
-        value={t("dashboard.stats.regens_value")}
+        value={String(regensLeft)}
         hint={t("dashboard.stats.regens_hint")}
         icon={RefreshCw}
         accent={{ color: "#6366f1", soft: "color-mix(in oklab, #6366f1 14%, transparent)" }}

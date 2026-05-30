@@ -14,9 +14,6 @@ export function SiteFooter() {
           <Link href="/privacy" className="hover:text-[var(--color-fg)]">{t("landing.footer.privacy")}</Link>
           <Link href="/terms" className="hover:text-[var(--color-fg)]">{t("landing.footer.terms")}</Link>
           <Link href="/support" className="hover:text-[var(--color-fg)]">{t("landing.footer.support")}</Link>
-          <a href="mailto:support@stikup.app" className="hover:text-[var(--color-fg)]">
-            support@stikup.app
-          </a>
         </div>
         <div>{t("landing.footer.copyright")}</div>
       </div>

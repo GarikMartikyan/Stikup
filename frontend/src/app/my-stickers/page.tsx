@@ -12,6 +12,7 @@ type PackSummary = {
   unlocked: boolean;
   freeCount: number;
   packSize: number;
+  regensLeft: number;
   stickers: { index: number; url: string }[];
 };
 
@@ -32,6 +33,20 @@ export default async function MyStickersPage() {
   // the session cookie; returns null on any non-2xx — treat as no packs.
   const summaries = (await serverFetch<PackSummary[]>('/packs')) ?? [];
 
+  // Generations still available to the user (per-account, not per-pack); every
+  // summary carries the same value, so read it off the first pack. Only when
+  // there are no packs do we fall back to the offer config for the default
+  // allowance — fetched lazily (skipped entirely when packs exist) and
+  // defensively (a config-endpoint hiccup, e.g. while the backend is still
+  // warming up right after a deploy, must not 500 the whole dashboard).
+  let regensLeft = summaries[0]?.regensLeft;
+  if (regensLeft === undefined) {
+    const offer = await serverFetch<{ freeRegenerations: number }>(
+      '/config/offer',
+    ).catch(() => null);
+    regensLeft = 1 + (offer?.freeRegenerations ?? 0);
+  }
+
   const packs: DashboardPack[] = summaries.map((p) => ({
     id: p.id,
     createdAtLabel: formatDate(p.createdAt),
@@ -51,7 +66,7 @@ export default async function MyStickersPage() {
           shortId={shortId}
           username={session.displayName ?? session.email}
         />
-        <StatsRow packCount={packs.length} />
+        <StatsRow packCount={packs.length} regensLeft={regensLeft} />
         <PackList packs={packs} />
       </main>
     </div>

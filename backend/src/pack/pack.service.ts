@@ -57,6 +57,7 @@ export interface PackSummary {
   unlocked: boolean;
   freeCount: number;
   packSize: number;
+  regensLeft: number;
   stickers: Array<{ index: number; url: string }>;
 }
 
@@ -141,9 +142,14 @@ export class PackService {
 
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { fullPackUnlockedAt: true },
+      select: { fullPackUnlockedAt: true, generationsUsed: true },
     });
     const unlocked = user?.fullPackUnlockedAt != null;
+    const maxGenerations = 1 + this.offer.freeRegenerations;
+    const regensLeft = Math.max(
+      0,
+      maxGenerations - (user?.generationsUsed ?? 0),
+    );
 
     return packs.map((pack) => ({
       id: pack.id,
@@ -152,6 +158,7 @@ export class PackService {
       unlocked,
       freeCount: this.offer.freeStickerCount,
       packSize: this.offer.packSize,
+      regensLeft,
       stickers: pack.stickers,
     }));
   }

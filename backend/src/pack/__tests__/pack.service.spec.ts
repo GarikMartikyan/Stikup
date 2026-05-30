@@ -279,6 +279,7 @@ describe('PackService', () => {
       ]);
       (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
         fullPackUnlockedAt: null,
+        generationsUsed: 1,
       });
 
       const result = await service.listPacks('user-abc');
@@ -297,6 +298,7 @@ describe('PackService', () => {
           unlocked: false,
           freeCount: 3,
           packSize: 12,
+          regensLeft: 1,
           stickers: [{ index: 0, url: '/assets/sticker_1.webp' }],
         },
       ]);

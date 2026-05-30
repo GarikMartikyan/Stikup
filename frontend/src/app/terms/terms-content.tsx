@@ -4,6 +4,18 @@ import Link from "next/link";
 import { SiteFooter } from "@/components/landing/site-footer";
 import { useT } from "@/components/language-provider";
 
+const SUPPORT_EMAIL = "garmailtest@gmail.com";
+
+const SECTIONS = [
+  "use",
+  "content",
+  "acceptable",
+  "payments",
+  "disclaimer",
+  "liability",
+  "changes",
+] as const;
+
 export function TermsContent() {
   const t = useT();
   return (
@@ -15,19 +27,47 @@ export function TermsContent() {
         <h1 className="mt-2 font-[family-name:var(--font-display)] text-4xl font-extrabold tracking-[-0.02em]">
           {t("pages.terms.title")}
         </h1>
-        <div className="mt-8 space-y-4 text-[var(--color-fg-muted)]">
-          <p>{t("pages.terms.body_1")}</p>
-          <p>
-            {t("pages.terms.body_2")}{" "}
-            <a
-              href="mailto:support@stikup.app"
-              className="text-[var(--color-fg)] hover:underline"
-            >
-              support@stikup.app
-            </a>
-            .
-          </p>
+        <p className="mt-3 text-sm text-[var(--color-fg-subtle)]">
+          {t("pages.terms.last_updated")}
+        </p>
+
+        <div className="mt-6 rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-elev)] p-4 text-sm text-[var(--color-fg-muted)]">
+          {t("pages.terms.disclaimer_note")}
         </div>
+
+        <p className="mt-8 text-[var(--color-fg-muted)]">
+          {t("pages.terms.intro")}
+        </p>
+
+        <div className="mt-8 space-y-8">
+          {SECTIONS.map((id) => (
+            <section key={id}>
+              <h2 className="font-[family-name:var(--font-display)] text-xl font-bold">
+                {t(`pages.terms.${id}_title`)}
+              </h2>
+              <p className="mt-2 text-[var(--color-fg-muted)]">
+                {t(`pages.terms.${id}_body`)}
+              </p>
+            </section>
+          ))}
+
+          <section>
+            <h2 className="font-[family-name:var(--font-display)] text-xl font-bold">
+              {t("pages.terms.contact_title")}
+            </h2>
+            <p className="mt-2 text-[var(--color-fg-muted)]">
+              {t("pages.terms.contact_body")}{" "}
+              <a
+                href={`mailto:${SUPPORT_EMAIL}`}
+                className="font-semibold text-[var(--color-fg)] hover:underline"
+              >
+                {SUPPORT_EMAIL}
+              </a>
+              .
+            </p>
+          </section>
+        </div>
+
         <div className="mt-10">
           <Link
             href="/"

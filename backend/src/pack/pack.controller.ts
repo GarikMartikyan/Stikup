@@ -75,6 +75,7 @@ export class PackController {
           unlocked: { type: 'boolean' },
           freeCount: { type: 'integer' },
           packSize: { type: 'integer' },
+          regensLeft: { type: 'integer' },
           stickers: {
             type: 'array',
             items: {
@@ -94,6 +95,7 @@ export class PackController {
           'unlocked',
           'freeCount',
           'packSize',
+          'regensLeft',
           'stickers',
         ],
       },

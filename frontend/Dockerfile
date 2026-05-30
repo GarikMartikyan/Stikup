@@ -25,18 +25,17 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 COPY backend/package.json ./backend/package.json
 COPY frontend/package.json ./frontend/package.json
-# Tailwind v4's engine (@tailwindcss/oxide) ships its native binary as a
-# PLATFORM-SPECIFIC optional dependency. The committed package-lock.json
-# is generated on macOS/arm64, so it pins those optionals to darwin-arm64.
-# Both `npm ci` and `npm install` HONOR that locked tree when the lockfile
-# is present — so the linux-x64 native (oxide-linux-x64-gnu/*.node) is
-# never installed and `next build` crashes with "Cannot find module".
-# Removing the lockfile lets npm re-resolve optionals for THIS build
-# platform (amd64 on the droplet). Reproducibility within the image is
-# unaffected — we build one image per platform. Verified: this produces
-# @tailwindcss/oxide-linux-x64-gnu/tailwindcss-oxide.linux-x64-gnu.node.
-RUN rm -f package-lock.json \
- && npm install --include=dev --workspaces --include-workspace-root --no-audit --no-fund
+# Install the full dependency tree from the lockfile (integrity-checked).
+# Then add ONLY the platform-specific Tailwind v4 native engine: the
+# committed package-lock.json is generated on macOS/arm64, so npm ci
+# omits the linux-x64 optional (@tailwindcss/oxide-linux-x64-gnu), and
+# `next build` would crash with "Cannot find module
+# ./tailwindcss-oxide.linux-x64-gnu.node". Add the missing native for
+# this (amd64) build platform with --no-save, matching the version npm ci
+# installed, so the lockfile still governs the rest of the graph.
+RUN npm ci --include=dev --no-audit --no-fund \
+ && OXIDE_VERSION="$(node -p "require('/app/frontend/node_modules/@tailwindcss/oxide/package.json').version")" \
+ && npm install --no-save --no-audit --no-fund "@tailwindcss/oxide-linux-x64-gnu@${OXIDE_VERSION}"
 # shared/ holds generated OpenAPI types imported by the frontend via a
 # repo-root relative path (frontend/src/lib/api-types.ts) — copy it too.
 COPY shared ./shared

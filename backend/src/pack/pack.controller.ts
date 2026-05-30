@@ -211,8 +211,8 @@ export class PackController {
       properties: {
         delivered: { type: 'boolean' },
         botUrl: { type: 'string', format: 'uri' },
-        alreadyClaimed: { type: 'boolean', nullable: true },
         needsTelegram: { type: 'boolean', nullable: true },
+        stickerSetUrl: { type: 'string', format: 'uri', nullable: true },
       },
       required: ['delivered', 'botUrl'],
     },

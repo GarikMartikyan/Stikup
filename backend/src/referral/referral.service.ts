@@ -6,8 +6,10 @@ import type { Channel } from '@prisma/client';
 import { Prisma } from '@prisma/client';
 
 import { BOT_SENDER, type BotSender } from '../auth/channel/bot-sender';
+import { TelegramStickerService } from '../auth/channel/telegram-sticker.service';
 import { frontendConfig } from '../config/frontend.config';
 import { offerConfig } from '../config/offer.config';
+import { getPlaceholderFiles } from '../pack/sticker-assets';
 import { PrismaService } from '../prisma/prisma.service';
 
 const REFERRAL_CODE_BYTES = 6; // 6 bytes → 8 base62 chars
@@ -38,6 +40,7 @@ export class ReferralService {
     @Inject(frontendConfig.KEY)
     private readonly frontend: ConfigType<typeof frontendConfig>,
     @Inject(BOT_SENDER) private readonly botSender: BotSender,
+    private readonly telegramStickerService: TelegramStickerService,
   ) {}
 
   async getOrCreateReferralInfo(userId: string): Promise<{
@@ -109,15 +112,68 @@ export class ReferralService {
           data: { fullPackUnlockedAt: new Date() },
         });
 
-        // Best-effort: notify the referrer via Telegram if they have an identity.
+        // Best-effort: notify the referrer via Telegram if they have an identity,
+        // and top up any sticker sets that are below full size.
         const tgIdentity = await this.prisma.channelIdentity.findFirst({
           where: { userId: referrer.id, channel: 'telegram' },
-          select: { channelUserId: true },
+          select: { channelUserId: true, username: true },
         });
 
         if (tgIdentity) {
+          // Top-up packs that already have a sticker set but are below full size.
+          const packSize = this.offer.packSize;
+          const eligiblePacks = await this.prisma.pack.findMany({
+            where: {
+              userId: referrer.id,
+              telegramStickerSetName: { not: null },
+              telegramStickerCount: { lt: packSize },
+            },
+            select: { id: true, telegramStickerCount: true },
+          });
+
+          const setLinks: string[] = [];
+
+          if (eligiblePacks.length > 0) {
+            const files = getPlaceholderFiles(packSize);
+            if (files.length === 0) {
+              this.logger.warn(
+                `referral top-up: placeholder files unavailable for packSize=${packSize}; skipping top-up`,
+              );
+            }
+            const usernameOrFallback =
+              tgIdentity.username ?? `user${tgIdentity.channelUserId}`;
+
+            for (const pack of files.length > 0 ? eligiblePacks : []) {
+              try {
+                const result = await this.telegramStickerService.ensureSet({
+                  channelUserId: tgIdentity.channelUserId,
+                  packId: pack.id,
+                  usernameOrFallback,
+                  files,
+                });
+                await this.prisma.pack.update({
+                  where: { id: pack.id },
+                  data: { telegramStickerCount: result.count },
+                });
+                setLinks.push(result.shareUrl);
+              } catch (topUpErr: unknown) {
+                this.logger.warn(
+                  `referral top-up: ensureSet failed for pack ${pack.id}: ${topUpErr instanceof Error ? topUpErr.message : String(topUpErr)}`,
+                );
+              }
+            }
+          }
+
+          const linkText =
+            setLinks.length > 0
+              ? '\n\nYour updated pack(s):\n' + setLinks.join('\n')
+              : '';
+
           this.botSender
-            .sendMessage(tgIdentity.channelUserId, REFERRAL_UNLOCK_MESSAGE)
+            .sendMessage(
+              tgIdentity.channelUserId,
+              REFERRAL_UNLOCK_MESSAGE + linkText,
+            )
             .catch((err: unknown) => {
               this.logger.warn(
                 `referral unlock notification failed for user ${referrer.id}: ${err instanceof Error ? err.message : String(err)}`,

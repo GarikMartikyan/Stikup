@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client';
 
 import type { BotSender } from '../../auth/channel/bot-sender';
+import type { TelegramStickerService } from '../../auth/channel/telegram-sticker.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PackService } from '../pack.service';
 
@@ -11,6 +12,7 @@ function buildPrismaMock() {
       findUnique: jest.fn(),
       findMany: jest.fn(),
       delete: jest.fn(),
+      update: jest.fn().mockResolvedValue({}),
     },
     sticker: {
       findMany: jest.fn(),
@@ -48,6 +50,22 @@ function buildBotSenderMock(): jest.Mocked<BotSender> {
   };
 }
 
+function buildStickerServiceMock(): jest.Mocked<TelegramStickerService> {
+  return {
+    buildSetName: jest.fn().mockReturnValue('pabcdef_by_testbot'),
+    buildTitle: jest.fn().mockReturnValue('Alice Stickers by @TestBot'),
+    shareUrl: jest
+      .fn()
+      .mockReturnValue('https://t.me/addstickers/pabcdef_by_testbot'),
+    getBotUsername: jest.fn().mockResolvedValue('TestBot'),
+    ensureSet: jest.fn().mockResolvedValue({
+      name: 'pabcdef_by_testbot',
+      shareUrl: 'https://t.me/addstickers/pabcdef_by_testbot',
+      count: 3,
+    }),
+  } as unknown as jest.Mocked<TelegramStickerService>;
+}
+
 const OFFER_STUB = {
   packSize: 12,
   freeStickerCount: 3,
@@ -58,13 +76,20 @@ const OFFER_STUB = {
   priceLabel: '$5',
   priceAmountCents: 500,
   currency: 'USD',
+  stickerDefaultEmoji: '😀',
 };
 
 function buildService(
   prisma: jest.Mocked<PrismaService>,
   bot: jest.Mocked<BotSender>,
+  stickerSvc?: jest.Mocked<TelegramStickerService>,
 ) {
-  return new PackService(bot, prisma, OFFER_STUB);
+  return new PackService(
+    bot,
+    prisma,
+    OFFER_STUB,
+    stickerSvc ?? buildStickerServiceMock(),
+  );
 }
 
 describe('PackService', () => {
@@ -365,60 +390,64 @@ describe('PackService', () => {
   });
 
   describe('deliverTelegram', () => {
-    it('rolls back the claim and returns delivered:false when sendSticker throws mid-loop', async () => {
-      const prisma = buildPrismaMock();
-      const bot = buildBotSenderMock();
-      const service = buildService(prisma, bot);
-
-      // ownership check passes
+    // Helper to set up a passing deliver scenario
+    function setupDeliverBase(
+      prisma: jest.Mocked<PrismaService>,
+      bot: jest.Mocked<BotSender>,
+      opts: { unlocked?: boolean; username?: string | null } = {},
+    ) {
+      const { unlocked = false, username = 'alice' } = opts;
       (prisma.pack.findUnique as jest.Mock).mockResolvedValueOnce({
         userId: 'user-abc',
       });
-      // telegram identity exists
       (prisma.channelIdentity.findFirst as jest.Mock).mockResolvedValueOnce({
         channelUserId: '99999',
+        username,
       });
-      // user is locked (free count = 3)
       (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
-        fullPackUnlockedAt: null,
+        fullPackUnlockedAt: unlocked ? new Date() : null,
       });
-      // claim insert succeeds (this call owns it)
+    }
+
+    it('creates sticker set, persists set info, sends link, returns stickerSetUrl', async () => {
+      const prisma = buildPrismaMock();
+      const bot = buildBotSenderMock();
+      const stickerSvc = buildStickerServiceMock();
+      const service = buildService(prisma, bot, stickerSvc);
+
+      setupDeliverBase(prisma, bot);
       (prisma.packClaim.create as jest.Mock).mockResolvedValueOnce({});
-      // first sticker send throws
-      (bot.sendSticker as jest.Mock).mockRejectedValueOnce(
-        new Error('Telegram API timeout'),
-      );
-      // rollback delete succeeds
-      (prisma.packClaim.delete as jest.Mock).mockResolvedValueOnce({});
 
       const result = await service.deliverTelegram('pack-1', 'user-abc');
 
-      expect(result).toEqual({
-        delivered: false,
-        botUrl: 'https://t.me/stikup_bot',
-      });
-      // The claim that THIS call inserted must be deleted.
-      expect(prisma.packClaim.delete).toHaveBeenCalledWith({
-        where: { packId_userId: { packId: 'pack-1', userId: 'user-abc' } },
-      });
+      expect(result.delivered).toBe(true);
+      expect(result.stickerSetUrl).toBe(
+        'https://t.me/addstickers/pabcdef_by_testbot',
+      );
+      expect(stickerSvc.ensureSet).toHaveBeenCalledTimes(1);
+      expect(prisma.pack.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'pack-1' },
+          data: expect.objectContaining({
+            telegramStickerCount: 3,
+            telegramStickerSetName: 'pabcdef_by_testbot',
+          }),
+        }),
+      );
+      expect(bot.sendMessage).toHaveBeenCalledWith(
+        '99999',
+        expect.stringContaining('t.me/addstickers'),
+      );
     });
 
-    it('does not delete a pre-existing claim when P2002 fires (alreadyClaimed)', async () => {
+    it('re-delivers (sends link again) when P2002 fires on claim insert', async () => {
       const prisma = buildPrismaMock();
       const bot = buildBotSenderMock();
-      const service = buildService(prisma, bot);
+      const stickerSvc = buildStickerServiceMock();
+      const service = buildService(prisma, bot, stickerSvc);
 
-      (prisma.pack.findUnique as jest.Mock).mockResolvedValueOnce({
-        userId: 'user-abc',
-      });
-      (prisma.channelIdentity.findFirst as jest.Mock).mockResolvedValueOnce({
-        channelUserId: '99999',
-      });
-      (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
-        fullPackUnlockedAt: null,
-      });
+      setupDeliverBase(prisma, bot);
 
-      // Simulate the claim already existing (P2002).
       const p2002 = new Prisma.PrismaClientKnownRequestError(
         'Unique constraint failed',
         { code: 'P2002', clientVersion: '6.0.0', meta: {} },
@@ -427,14 +456,93 @@ describe('PackService', () => {
 
       const result = await service.deliverTelegram('pack-1', 'user-abc');
 
+      // Re-delivery still delivers the set link
+      expect(result.delivered).toBe(true);
+      expect(result.stickerSetUrl).toBeDefined();
+      // No rollback of a claim this call did NOT insert
+      expect(prisma.packClaim.delete).not.toHaveBeenCalled();
+      expect(stickerSvc.ensureSet).toHaveBeenCalledTimes(1);
+    });
+
+    it('rolls back own claim and returns delivered:false when ensureSet throws', async () => {
+      const prisma = buildPrismaMock();
+      const bot = buildBotSenderMock();
+      const stickerSvc = buildStickerServiceMock();
+      const service = buildService(prisma, bot, stickerSvc);
+
+      setupDeliverBase(prisma, bot);
+      (prisma.packClaim.create as jest.Mock).mockResolvedValueOnce({});
+      (stickerSvc.ensureSet as jest.Mock).mockRejectedValueOnce(
+        new Error('Telegram API timeout'),
+      );
+      (prisma.packClaim.delete as jest.Mock).mockResolvedValueOnce({});
+
+      const result = await service.deliverTelegram('pack-1', 'user-abc');
+
       expect(result).toEqual({
         delivered: false,
         botUrl: 'https://t.me/stikup_bot',
-        alreadyClaimed: true,
       });
-      // Must NOT touch the pre-existing claim row.
+      expect(prisma.packClaim.delete).toHaveBeenCalledWith({
+        where: { packId_userId: { packId: 'pack-1', userId: 'user-abc' } },
+      });
+    });
+
+    it('does NOT roll back pre-existing claim when ensureSet throws on re-delivery', async () => {
+      const prisma = buildPrismaMock();
+      const bot = buildBotSenderMock();
+      const stickerSvc = buildStickerServiceMock();
+      const service = buildService(prisma, bot, stickerSvc);
+
+      setupDeliverBase(prisma, bot);
+
+      // Claim already existed (P2002)
+      const p2002 = new Prisma.PrismaClientKnownRequestError(
+        'Unique constraint failed',
+        { code: 'P2002', clientVersion: '6.0.0', meta: {} },
+      );
+      (prisma.packClaim.create as jest.Mock).mockRejectedValueOnce(p2002);
+      // ensureSet then fails
+      (stickerSvc.ensureSet as jest.Mock).mockRejectedValueOnce(
+        new Error('Telegram API timeout'),
+      );
+
+      const result = await service.deliverTelegram('pack-1', 'user-abc');
+
+      expect(result.delivered).toBe(false);
+      // Must NOT delete the pre-existing claim
       expect(prisma.packClaim.delete).not.toHaveBeenCalled();
-      expect(bot.sendSticker).not.toHaveBeenCalled();
+    });
+
+    it('does not delete a pre-existing claim when P2002 fires (legacy alreadyClaimed behavior replaced)', async () => {
+      const prisma = buildPrismaMock();
+      const bot = buildBotSenderMock();
+      const stickerSvc = buildStickerServiceMock();
+      const service = buildService(prisma, bot, stickerSvc);
+
+      (prisma.pack.findUnique as jest.Mock).mockResolvedValueOnce({
+        userId: 'user-abc',
+      });
+      (prisma.channelIdentity.findFirst as jest.Mock).mockResolvedValueOnce({
+        channelUserId: '99999',
+        username: 'alice',
+      });
+      (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
+        fullPackUnlockedAt: null,
+      });
+
+      // Simulate the claim already existing (P2002) then ensureSet succeeds.
+      const p2002 = new Prisma.PrismaClientKnownRequestError(
+        'Unique constraint failed',
+        { code: 'P2002', clientVersion: '6.0.0', meta: {} },
+      );
+      (prisma.packClaim.create as jest.Mock).mockRejectedValueOnce(p2002);
+
+      const result = await service.deliverTelegram('pack-1', 'user-abc');
+
+      // Now a re-delivery => delivered:true (not dead-end alreadyClaimed)
+      expect(result.delivered).toBe(true);
+      expect(prisma.packClaim.delete).not.toHaveBeenCalled();
     });
   });
 

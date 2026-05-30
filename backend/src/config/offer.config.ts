@@ -41,6 +41,9 @@ export class OfferConfigSchema {
 
   @IsBoolean()
   referralUnlockEnabled!: boolean;
+
+  @IsString()
+  stickerDefaultEmoji!: string;
 }
 
 function toInt(raw: string | undefined, fallback: number): number {
@@ -67,6 +70,7 @@ export const offerConfig = registerAs('offer', (): OfferConfigSchema => {
     freeGenerations: toInt(process.env.OFFER_FREE_GENERATIONS, 1),
     freeRegenerations: toInt(process.env.OFFER_FREE_REGENERATIONS, 1),
     referralUnlockEnabled: toBool(process.env.OFFER_REFERRAL_UNLOCK, true),
+    stickerDefaultEmoji: process.env.STICKER_DEFAULT_EMOJI?.trim() || '😀',
   };
 
   const instance = plainToInstance(OfferConfigSchema, raw);

@@ -8,6 +8,7 @@ import { EmailAdapter } from './channel/email-adapter';
 import { GoogleAdapter } from './channel/google-adapter';
 import { TelegramAdapter } from './channel/telegram-adapter';
 import { TelegramBotSender } from './channel/telegram-bot-sender';
+import { TelegramStickerService } from './channel/telegram-sticker.service';
 import { IdentityService } from './identity.service';
 import { SessionService } from './session.service';
 import { TokenService } from './token.service';
@@ -22,6 +23,7 @@ import { TokenService } from './token.service';
     IdentityService,
     TokenService,
     SessionService,
+    TelegramStickerService,
     { provide: BOT_SENDER, useClass: TelegramBotSender },
   ],
   exports: [
@@ -31,6 +33,7 @@ import { TokenService } from './token.service';
     IdentityService,
     TokenService,
     SessionService,
+    TelegramStickerService,
     BOT_SENDER,
   ],
 })

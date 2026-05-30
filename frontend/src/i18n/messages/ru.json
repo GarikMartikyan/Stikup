@@ -334,6 +334,8 @@
       "title": "Получить стикеры",
       "get_in_telegram": "Получить в Telegram",
       "get_in_telegram_desc": "Бот установит пак прямо в ваш Telegram.",
+      "pack_ready": "Ваш пак готов!",
+      "open_pack": "Открыть пак в Telegram",
       "download": "Скачать",
       "downloading": "Скачивание…",
       "download_desc": "Сохраните каждый стикер как .webp-файл на устройство.",

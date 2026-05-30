@@ -107,10 +107,12 @@ model PackClaim {
 }
 
 model Pack {
-  id        String     @id @default(uuid()) @db.Uuid
-  userId    String     @map("user_id") @db.Uuid
-  status    PackStatus @default(ready)
-  createdAt DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  id                     String     @id @default(uuid()) @db.Uuid
+  userId                 String     @map("user_id") @db.Uuid
+  status                 PackStatus @default(ready)
+  createdAt              DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  telegramStickerSetName String?    @map("telegram_sticker_set_name")
+  telegramStickerCount   Int        @default(0) @map("telegram_sticker_count")
 
   user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   stickers Sticker[]

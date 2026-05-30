@@ -334,6 +334,8 @@
       "title": "Get your stickers",
       "get_in_telegram": "Get in Telegram",
       "get_in_telegram_desc": "The bot will install the pack straight into your Telegram.",
+      "pack_ready": "Your pack is ready!",
+      "open_pack": "Open your pack in Telegram",
       "download": "Download",
       "downloading": "Downloading…",
       "download_desc": "Save each sticker as a .webp file to your device.",

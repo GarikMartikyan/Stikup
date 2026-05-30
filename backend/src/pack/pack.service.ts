@@ -1,4 +1,3 @@
-import { existsSync } from 'node:fs';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -7,18 +6,13 @@ import type { ConfigType } from '@nestjs/config';
 import { Prisma } from '@prisma/client';
 
 import { BOT_SENDER, type BotSender } from '../auth/channel/bot-sender';
+import { TelegramStickerService } from '../auth/channel/telegram-sticker.service';
 import { offerConfig } from '../config/offer.config';
 import { PrismaService } from '../prisma/prisma.service';
+import { getPlaceholderFiles } from './sticker-assets';
 
 const FREE_STICKER_DIR = join(__dirname, '..', '..', 'public', 'free-stickers');
 const FREE_STICKER_MANIFEST = join(FREE_STICKER_DIR, 'manifest.json');
-const PLACEHOLDER_DIR = join(
-  __dirname,
-  '..',
-  '..',
-  'public',
-  'sticker-placeholders',
-);
 
 /** Artificial delay to simulate AI generation (ms). */
 const SIMULATED_GENERATION_DELAY_MS = 700;
@@ -36,8 +30,8 @@ export interface ClaimFreeResult {
 export interface DeliverTelegramResult {
   delivered: boolean;
   botUrl: string;
-  alreadyClaimed?: boolean;
   needsTelegram?: boolean;
+  stickerSetUrl?: string;
 }
 
 export interface PackDetail {
@@ -72,6 +66,7 @@ export class PackService {
     private readonly prisma: PrismaService,
     @Inject(offerConfig.KEY)
     private readonly offer: ConfigType<typeof offerConfig>,
+    private readonly telegramStickerService: TelegramStickerService,
   ) {}
 
   async generatePack(userId: string): Promise<{ packId: string }> {
@@ -223,7 +218,7 @@ export class PackService {
 
     const identity = await this.prisma.channelIdentity.findFirst({
       where: { userId, channel: this.botSender.channel },
-      select: { channelUserId: true },
+      select: { channelUserId: true, username: true },
     });
 
     if (!identity) {
@@ -240,59 +235,91 @@ export class PackService {
     const unlocked = user?.fullPackUnlockedAt != null;
     const count = unlocked ? this.offer.packSize : this.offer.freeStickerCount;
 
-    // Insert claim first to guard against double-delivery.
+    // Try to insert the delivery claim. On P2002 (already claimed) this is a
+    // re-delivery — do NOT dead-end; continue to re-send the existing link.
+    let thisCallOwnsClaim = false;
     try {
       await this.prisma.packClaim.create({
         data: { packId, userId, channel: this.botSender.channel },
       });
+      thisCallOwnsClaim = true;
     } catch (err) {
       if (
         err instanceof Prisma.PrismaClientKnownRequestError &&
         err.code === 'P2002'
       ) {
         this.logger.log(
-          `deliver-telegram: pack ${packId} already claimed by user ${userId}`,
+          `deliver-telegram: pack ${packId} already claimed by user ${userId}, re-delivering`,
         );
-        return { delivered: false, botUrl, alreadyClaimed: true };
+        // wasAlreadyClaimed — continue with re-delivery
+      } else {
+        throw err;
       }
-      throw err;
     }
 
-    // Send N sticker files.
-    const files = this.getPlaceholderFiles(count);
+    const files = getPlaceholderFiles(count);
     if (files.length === 0) {
       this.logger.warn(
-        `deliver-telegram: no placeholder files found in ${PLACEHOLDER_DIR}; aborting delivery`,
+        `deliver-telegram: no placeholder files found; aborting delivery`,
       );
-      // Roll back claim so the user can retry once files are available.
-      await this.prisma.packClaim.delete({
-        where: { packId_userId: { packId, userId } },
-      });
+      if (thisCallOwnsClaim) {
+        await this.prisma.packClaim.delete({
+          where: { packId_userId: { packId, userId } },
+        });
+      }
       return { delivered: false, botUrl };
     }
 
-    // If any send fails mid-loop, roll back the claim this call inserted so
-    // the user can retry and receive a complete delivery rather than getting
-    // stuck on `alreadyClaimed: true` forever.
+    const usernameOrFallback =
+      identity.username ?? `user${identity.channelUserId}`;
+
+    let ensureResult: { name: string; shareUrl: string; count: number };
     try {
-      for (const filePath of files) {
-        await this.botSender.sendSticker(identity.channelUserId, filePath);
-      }
+      ensureResult = await this.telegramStickerService.ensureSet({
+        channelUserId: identity.channelUserId,
+        packId,
+        usernameOrFallback,
+        files,
+      });
     } catch (err) {
       this.logger.warn(
-        `deliver-telegram: sendSticker failed for user ${userId}, rolling back claim: ${err instanceof Error ? err.message : String(err)}`,
+        `deliver-telegram: ensureSet failed for pack ${packId}: ${err instanceof Error ? err.message : String(err)}`,
       );
-      await this.prisma.packClaim.delete({
-        where: { packId_userId: { packId, userId } },
-      });
+      if (thisCallOwnsClaim) {
+        await this.prisma.packClaim.delete({
+          where: { packId_userId: { packId, userId } },
+        });
+      }
       return { delivered: false, botUrl };
+    }
+
+    // Persist sticker set info on the pack.
+    await this.prisma.pack.update({
+      where: { id: packId },
+      data: {
+        telegramStickerSetName: ensureResult.name,
+        telegramStickerCount: ensureResult.count,
+      },
+    });
+
+    // Best-effort: a transient send failure must not surface as a 500 after
+    // the set is already created and the claim persisted.
+    try {
+      await this.botSender.sendMessage(
+        identity.channelUserId,
+        `Your sticker pack is ready! Add it to Telegram: ${ensureResult.shareUrl}`,
+      );
+    } catch (err) {
+      this.logger.warn(
+        `deliver-telegram: sendMessage failed for pack ${packId} user ${identity.channelUserId}: ${err instanceof Error ? err.message : String(err)}`,
+      );
     }
 
     this.logger.log(
-      `deliver-telegram: sent ${files.length} stickers to ${this.botSender.channel} user ${identity.channelUserId}`,
+      `deliver-telegram: delivered sticker set to ${this.botSender.channel} user ${identity.channelUserId}, url=${ensureResult.shareUrl}`,
     );
 
-    return { delivered: true, botUrl };
+    return { delivered: true, botUrl, stickerSetUrl: ensureResult.shareUrl };
   }
 
   async claimFreeStickers(
@@ -360,19 +387,6 @@ export class PackService {
     );
 
     return { delivered: true, botUrl };
-  }
-
-  private getPlaceholderFiles(count: number): string[] {
-    const files: string[] = [];
-    for (let i = 1; i <= count; i++) {
-      const filePath = join(PLACEHOLDER_DIR, `sticker_${i}.webp`);
-      if (existsSync(filePath)) {
-        files.push(filePath);
-      } else {
-        this.logger.warn(`placeholder file missing: ${filePath}`);
-      }
-    }
-    return files;
   }
 
   private getFreeStickerFiles(): string[] {

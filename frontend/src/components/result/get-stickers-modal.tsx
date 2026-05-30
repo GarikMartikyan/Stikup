@@ -26,6 +26,7 @@ export function GetStickersModal({
   const [mounted, setMounted] = useState(false);
   const [telegramBusy, setTelegramBusy] = useState(false);
   const [downloadBusy, setDownloadBusy] = useState(false);
+  const [packLink, setPackLink] = useState<string | null>(null);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot post-hydration gate
@@ -34,6 +35,11 @@ export function GetStickersModal({
 
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
+
+    if (!open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset stale link when modal closes
+      setPackLink(null);
+    }
 
     function handleKey(event: KeyboardEvent) {
       if (event.key === "Escape") onClose();
@@ -65,14 +71,15 @@ export function GetStickersModal({
         delivered: boolean;
         botUrl: string;
         needsTelegram?: boolean;
-        alreadyClaimed?: boolean;
+        stickerSetUrl?: string;
       };
       // If the backend says Telegram isn't connected, treat as unconnected.
       if (data.needsTelegram) {
         setTelegramBusy(false);
         return;
       }
-      window.location.href = data.botUrl;
+      setPackLink(data.stickerSetUrl ?? data.botUrl);
+      setTelegramBusy(false);
     } catch {
       setTelegramBusy(false);
     }
@@ -142,7 +149,26 @@ export function GetStickersModal({
 
         <div className="mt-5 space-y-3">
           {/* Get in Telegram option */}
-          {telegramConnected ? (
+          {packLink ? (
+            <a
+              href={packLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex w-full items-start gap-4 rounded-2xl border border-[var(--color-brand)] bg-[var(--color-brand)]/5 p-4 text-left transition hover:bg-[var(--color-brand)]/10"
+            >
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[var(--color-brand)]/10 text-[var(--color-brand)]">
+                <Send className="h-5 w-5" strokeWidth={2.2} />
+              </div>
+              <div>
+                <div className="font-semibold text-[var(--color-brand)]">
+                  {t("result.get_stickers_modal.pack_ready")}
+                </div>
+                <div className="mt-0.5 text-sm text-[var(--color-fg-muted)]">
+                  {t("result.get_stickers_modal.open_pack")}
+                </div>
+              </div>
+            </a>
+          ) : telegramConnected ? (
             <button
               type="button"
               onClick={handleTelegram}

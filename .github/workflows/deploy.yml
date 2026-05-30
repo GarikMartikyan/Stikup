@@ -1,0 +1,177 @@
+name: Deploy
+
+# Continuous deployment to production (https://stikup.app on the DO droplet).
+#
+# Flow: push to main -> test gate -> build BOTH images on CI's amd64 runners
+# and push to GHCR (tagged :latest and :<sha>) -> SSH into the droplet and
+# `docker compose pull && up -d` (the 2 GB droplet never builds — it only
+# pulls). Backend migrations still run automatically on container start.
+#
+# Manual re-deploy of the current main: Actions tab -> Deploy -> Run workflow.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Never run two production deploys at once; let an in-flight one finish.
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+# Least privilege by default; jobs that need more opt in explicitly below.
+permissions:
+  contents: read
+
+env:
+  BACKEND_IMAGE: ghcr.io/garikmartikyan/stikup-backend
+  FRONTEND_IMAGE: ghcr.io/garikmartikyan/stikup-frontend
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Lint
+        # Lint has pre-existing warnings across the codebase; don't block on it.
+        run: npm run lint || echo "::warning::lint failed (pre-existing)"
+
+  build-and-push:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backend/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.BACKEND_IMAGE }}:latest
+            ${{ env.BACKEND_IMAGE }}:${{ github.sha }}
+          # Links the package to this repo so the repo's token can pull it.
+          labels: |
+            org.opencontainers.image.source=https://github.com/GarikMartikyan/Stikup
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,scope=backend,mode=max
+
+      - name: Build & push frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: frontend/Dockerfile
+          platforms: linux/amd64
+          push: true
+          # NEXT_PUBLIC_* and BACKEND_URL are baked at build time — keep these
+          # in sync with .env.production.
+          build-args: |
+            BACKEND_URL=http://backend:3131
+            NEXT_PUBLIC_TELEGRAM_BOT_URL=https://t.me/stikup_bot
+          tags: |
+            ${{ env.FRONTEND_IMAGE }}:latest
+            ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/GarikMartikyan/Stikup
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,scope=frontend,mode=max
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Set up SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Deploy to droplet (pull + recreate)
+        env:
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GIT_SHA: ${{ github.sha }}
+        run: |
+          # Untrusted input is not used here; values are passed via env and
+          # forwarded to the remote shell, which expands them (quoted heredoc).
+          ssh -i ~/.ssh/id_deploy -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+            "$DEPLOY_USER@$DEPLOY_HOST" \
+            GHCR_USER="$GHCR_USER" GHCR_TOKEN="$GHCR_TOKEN" GIT_SHA="$GIT_SHA" 'bash -s' <<'REMOTE'
+          set -euo pipefail
+          cd /opt/stikup
+
+          echo "==> Pull latest config (compose / Caddyfile / .env.production)"
+          git fetch origin main
+          git checkout main
+          git pull --ff-only origin main
+
+          echo "==> Log in to GHCR (ephemeral, token valid only for this run)"
+          echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
+
+          # Deploy the exact images built from this commit (immutable tag).
+          # Secrets live only on the server and are REQUIRED. Fail loudly rather
+          # than silently deploy with the committed __CHANGE_ME__ placeholders.
+          test -f .env.production.local || { echo "::error::missing /opt/stikup/.env.production.local on the droplet"; exit 1; }
+
+          export BACKEND_IMAGE="ghcr.io/garikmartikyan/stikup-backend:$GIT_SHA"
+          export FRONTEND_IMAGE="ghcr.io/garikmartikyan/stikup-frontend:$GIT_SHA"
+          DC="docker compose --env-file .env.production --env-file .env.production.local -f docker-compose.prod.yml"
+
+          echo "==> Pull images @ $GIT_SHA"
+          $DC pull backend frontend
+
+          # --no-build: never let a failed pull silently trigger an on-droplet
+          # build (the 2 GB box would OOM). Hard-fail instead.
+          echo "==> Recreate containers (pull-only, never build here)"
+          $DC up -d --no-build
+
+          docker logout ghcr.io || true
+          docker image prune -f >/dev/null 2>&1 || true
+
+          echo "==> Status"
+          $DC ps
+          REMOTE
+
+      - name: Smoke check (https://stikup.app)
+        run: |
+          # Up to ~180s: covers a cold start (postgres + backend start_period +
+          # prisma migrate deploy) without false-negative failures.
+          for i in $(seq 1 36); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 https://stikup.app || true)
+            echo "attempt $i: HTTP $code"
+            [ "$code" = "200" ] && { echo "site healthy"; exit 0; }
+            sleep 5
+          done
+          echo "::error::site did not return HTTP 200 within ~180s after deploy"
+          exit 1

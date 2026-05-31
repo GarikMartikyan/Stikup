@@ -42,28 +42,36 @@ type AppHeaderProps = {
 export function AppHeader({ navLinks, loggedIn, right }: AppHeaderProps) {
   const t = useT();
   const pathname = usePathname();
-  const { isTelegram } = useTelegram();
+  const { isTelegram, status } = useTelegram();
 
-  // Inside Telegram the SDK provides its own chrome — suppress our header.
-  if (isTelegram) return null;
-
-  const resolvedNavLinks =
-    navLinks ??
-    (pathname && LANDING_NAV_ROUTES.has(pathname)
-      ? LANDING_NAV_LINKS
-      : undefined);
+  // Inside Telegram the in-app chrome (title bar, back/close) is native, so the
+  // header stays minimal: brand + toggles, and the account drawer once the
+  // initData auto-login completes. There is never a Sign in / Sign up CTA — the
+  // user is already authenticated by Telegram — and the drawer hides its
+  // Sign out action (the next launch would just auto-sign-in again).
+  const resolvedNavLinks = isTelegram
+    ? undefined
+    : navLinks ??
+      (pathname && LANDING_NAV_ROUTES.has(pathname)
+        ? LANDING_NAV_LINKS
+        : undefined);
 
   const onAuthRoute = Boolean(pathname && AUTH_ROUTES.has(pathname));
 
-  const rightContent =
-    right ??
-    (onAuthRoute ? null : loggedIn === false ? (
-      <SignInButton />
-    ) : (
-      // Server sees a session cookie but it may be stale — UserDrawer falls
-      // back to a sign-in button when /auth/me returns 401.
-      <UserDrawer fallback={<SignInButton />} />
-    ));
+  const rightContent = isTelegram
+    ? // Render the drawer only after auto-login resolves, so its /auth/me runs
+      // once the session cookie exists (avoids a 401-then-stale-cache race).
+      status === 'authed'
+      ? <UserDrawer hideSignOut />
+      : null
+    : right ??
+      (onAuthRoute ? null : loggedIn === false ? (
+        <SignInButton />
+      ) : (
+        // Server sees a session cookie but it may be stale — UserDrawer falls
+        // back to a sign-in button when /auth/me returns 401.
+        <UserDrawer fallback={<SignInButton />} />
+      ));
 
   return (
     <header className="sticky top-0 z-40 border-b border-[var(--color-border)] bg-[var(--color-bg-elev)]/80 backdrop-blur-xl">

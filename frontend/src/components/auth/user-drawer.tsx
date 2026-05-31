@@ -17,9 +17,16 @@ type UserDrawerProps = {
   // — the server saw the cookie but the session is gone). Lets the header
   // recover to a sign-in CTA instead of rendering nothing.
   fallback?: ReactNode;
+  // Hide the "Sign out" action at the bottom of the drawer. Used inside the
+  // Telegram Mini App, where the session is owned by Telegram itself — signing
+  // out is meaningless (the next launch just auto-signs-in again).
+  hideSignOut?: boolean;
 };
 
-export function UserDrawer({ fallback = null }: UserDrawerProps = {}) {
+export function UserDrawer({
+  fallback = null,
+  hideSignOut = false,
+}: UserDrawerProps = {}) {
   const router = useRouter();
   const pathname = usePathname();
   const t = useT();
@@ -187,20 +194,22 @@ export function UserDrawer({ fallback = null }: UserDrawerProps = {}) {
                 </ul>
               </nav>
 
-              <div className="border-t border-[var(--color-border)] px-5 py-4">
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  disabled={loggingOut}
-                  className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-base font-semibold text-[var(--color-fg)] transition hover:bg-[var(--color-bg-elev)] disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  <LogOut
-                    className="h-4 w-4 text-[var(--color-fg-muted)]"
-                    aria-hidden="true"
-                  />
-                  {loggingOut ? t('auth.user_drawer.signing_out') : t('auth.user_drawer.sign_out')}
-                </button>
-              </div>
+              {!hideSignOut && (
+                <div className="border-t border-[var(--color-border)] px-5 py-4">
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    disabled={loggingOut}
+                    className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-base font-semibold text-[var(--color-fg)] transition hover:bg-[var(--color-bg-elev)] disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <LogOut
+                      className="h-4 w-4 text-[var(--color-fg-muted)]"
+                      aria-hidden="true"
+                    />
+                    {loggingOut ? t('auth.user_drawer.signing_out') : t('auth.user_drawer.sign_out')}
+                  </button>
+                </div>
+              )}
             </aside>
           </>,
           document.body,

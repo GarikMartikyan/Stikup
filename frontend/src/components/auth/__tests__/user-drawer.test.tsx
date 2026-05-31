@@ -53,3 +53,38 @@ describe("UserDrawer connect nudge", () => {
     expect(screen.queryByText(enMessages.header.connect_reminder)).not.toBeInTheDocument();
   });
 });
+
+describe("UserDrawer sign-out visibility", () => {
+  beforeEach(() => {
+    mockMe = undefined;
+  });
+
+  it("renders the Sign out action by default", async () => {
+    setMe(["telegram", "google"]);
+    const { UserDrawer } = await import("../user-drawer");
+    render(
+      <LanguageProvider>
+        <UserDrawer />
+      </LanguageProvider>,
+    );
+    expect(
+      await screen.findByText(enMessages.auth.user_drawer.sign_out),
+    ).toBeInTheDocument();
+  });
+
+  it("hides the Sign out action when hideSignOut is set (Telegram Mini App)", async () => {
+    setMe(["telegram", "google"]);
+    const { UserDrawer } = await import("../user-drawer");
+    render(
+      <LanguageProvider>
+        <UserDrawer hideSignOut />
+      </LanguageProvider>,
+    );
+    // The drawer body still mounts (the account name renders)…
+    expect(await screen.findByText("Test User")).toBeInTheDocument();
+    // …but the Sign out action is gone.
+    expect(
+      screen.queryByText(enMessages.auth.user_drawer.sign_out),
+    ).not.toBeInTheDocument();
+  });
+});

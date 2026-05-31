@@ -4,8 +4,10 @@
 #  Services: Postgres (+volume) · Redis · backend · frontend · Caddy
 #  (auto-HTTPS reverse proxy) · nightly Postgres backup.
 #
-#  Postgres and Redis are NOT published to the host — they are only
-#  reachable on the internal compose network. Only Caddy exposes
+#  Redis is NOT published to the host — it is only reachable on the
+#  internal compose network. Postgres is published to the droplet's
+#  LOOPBACK only (127.0.0.1:5432) so a DBA can reach it through an SSH
+#  tunnel; it stays invisible to the internet. Only Caddy exposes
 #  ports (80/443) to the internet.
 #
 #  Secret hygiene: only the BACKEND needs the secret-bearing env files
@@ -28,6 +30,10 @@ services:
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
+    # Bind to the droplet's loopback ONLY (never 0.0.0.0): reachable from
+    # an on-droplet SSH tunnel (e.g. DataGrip) but not from the internet.
+    ports:
+      - '127.0.0.1:5432:5432'
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}

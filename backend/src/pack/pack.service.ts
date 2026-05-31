@@ -34,10 +34,16 @@ export interface DeliverTelegramResult {
   stickerSetUrl?: string;
 }
 
+export interface MarkDownloadedResult {
+  locked: boolean;
+}
+
 export interface PackDetail {
   id: string;
   status: string;
   unlocked: boolean;
+  /** The user has accepted a pack (got/downloaded/unlocked) — generation is locked. */
+  locked: boolean;
   freeCount: number;
   packSize: number;
   regensLeft: number;
@@ -49,6 +55,8 @@ export interface PackSummary {
   createdAt: string;
   status: string;
   unlocked: boolean;
+  /** The user has accepted a pack (got/downloaded/unlocked) — generation is locked. */
+  locked: boolean;
   freeCount: number;
   packSize: number;
   regensLeft: number;
@@ -69,6 +77,31 @@ export class PackService {
     private readonly telegramStickerService: TelegramStickerService,
   ) {}
 
+  /**
+   * Whether the user has "accepted" a pack and is therefore locked out of
+   * generating or regenerating. Acceptance = getting the pack on Telegram,
+   * downloading it, or unlocking the full pack. `fullPackUnlockedAt` is folded
+   * in so an unlock (via referral) locks generation even though it sets a
+   * different column.
+   */
+  private isLocked(user: {
+    generationLockedAt: Date | null;
+    fullPackUnlockedAt: Date | null;
+  }): boolean {
+    return user.generationLockedAt != null || user.fullPackUnlockedAt != null;
+  }
+
+  /**
+   * Mark the user as having accepted a pack. Set-once (never overwrites an
+   * earlier timestamp), idempotent, and safe to call from every accept path.
+   */
+  private async lockGeneration(userId: string): Promise<void> {
+    await this.prisma.user.updateMany({
+      where: { id: userId, generationLockedAt: null },
+      data: { generationLockedAt: new Date() },
+    });
+  }
+
   async generatePack(userId: string): Promise<{ packId: string }> {
     // Simulate AI generation delay before entering the transaction so the DB
     // connection is not held open during the wait.
@@ -82,12 +115,30 @@ export class PackService {
     const pack = await this.prisma.$transaction(async (tx) => {
       // Lock the user row so concurrent POST /packs requests serialize and
       // cannot both pass the quota check at the same time.
-      const rows = await tx.$queryRaw<Array<{ generations_used: number }>>`
-        SELECT generations_used FROM users WHERE id = ${userId}::uuid FOR UPDATE
+      const rows = await tx.$queryRaw<
+        Array<{
+          generations_used: number;
+          generation_locked_at: Date | null;
+          full_pack_unlocked_at: Date | null;
+        }>
+      >`
+        SELECT generations_used, generation_locked_at, full_pack_unlocked_at
+        FROM users WHERE id = ${userId}::uuid FOR UPDATE
       `;
 
       if (rows.length === 0) {
         throw new Error(`user ${userId} not found`);
+      }
+
+      // Accepting a pack (get/download/unlock) locks generation — even if the
+      // raw regeneration quota is not yet exhausted.
+      if (
+        this.isLocked({
+          generationLockedAt: rows[0].generation_locked_at,
+          fullPackUnlockedAt: rows[0].full_pack_unlocked_at,
+        })
+      ) {
+        throw new ForbiddenException('generation_locked');
       }
 
       if (rows[0].generations_used >= maxGenerations) {
@@ -137,20 +188,26 @@ export class PackService {
 
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { fullPackUnlockedAt: true, generationsUsed: true },
+      select: {
+        fullPackUnlockedAt: true,
+        generationsUsed: true,
+        generationLockedAt: true,
+      },
     });
     const unlocked = user?.fullPackUnlockedAt != null;
+    const locked = user ? this.isLocked(user) : false;
     const maxGenerations = 1 + this.offer.freeRegenerations;
-    const regensLeft = Math.max(
-      0,
-      maxGenerations - (user?.generationsUsed ?? 0),
-    );
+    // A locked user has no regenerations left regardless of raw quota.
+    const regensLeft = locked
+      ? 0
+      : Math.max(0, maxGenerations - (user?.generationsUsed ?? 0));
 
     return packs.map((pack) => ({
       id: pack.id,
       createdAt: pack.createdAt.toISOString(),
       status: pack.status,
       unlocked,
+      locked,
       freeCount: this.offer.freeStickerCount,
       packSize: this.offer.packSize,
       regensLeft,
@@ -176,18 +233,27 @@ export class PackService {
 
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { fullPackUnlockedAt: true, generationsUsed: true },
+      select: {
+        fullPackUnlockedAt: true,
+        generationsUsed: true,
+        generationLockedAt: true,
+      },
     });
 
     const maxGenerations = 1 + this.offer.freeRegenerations;
+    const locked = user ? this.isLocked(user) : false;
 
     return {
       id: pack.id,
       status: pack.status,
       unlocked: user?.fullPackUnlockedAt != null,
+      locked,
       freeCount: this.offer.freeStickerCount,
       packSize: this.offer.packSize,
-      regensLeft: Math.max(0, maxGenerations - (user?.generationsUsed ?? 0)),
+      // A locked user has no regenerations left regardless of raw quota.
+      regensLeft: locked
+        ? 0
+        : Math.max(0, maxGenerations - (user?.generationsUsed ?? 0)),
       stickers: pack.stickers,
     };
   }
@@ -202,6 +268,33 @@ export class PackService {
     await this.prisma.pack.delete({ where: { id: packId } });
     this.logger.log(`deleted pack ${packId} for user ${userId}`);
     return true;
+  }
+
+  /**
+   * Record that the user downloaded their pack. Downloading counts as
+   * accepting the pack, so this locks generation/regeneration. No-op (and
+   * does not lock) if the pack is missing or not owned by the user.
+   */
+  async markDownloaded(
+    packId: string,
+    userId: string,
+  ): Promise<MarkDownloadedResult> {
+    const pack = await this.prisma.pack.findUnique({
+      where: { id: packId },
+      select: { userId: true },
+    });
+    if (!pack || pack.userId !== userId) {
+      this.logger.log(
+        `mark-downloaded: pack ${packId} not found or not owned by user ${userId}`,
+      );
+      return { locked: false };
+    }
+
+    await this.lockGeneration(userId);
+    this.logger.log(
+      `mark-downloaded: locked generation for user ${userId} (pack ${packId})`,
+    );
+    return { locked: true };
   }
 
   async deliverTelegram(
@@ -315,6 +408,9 @@ export class PackService {
       );
     }
 
+    // Getting the pack on Telegram counts as accepting it — lock generation.
+    await this.lockGeneration(userId);
+
     this.logger.log(
       `deliver-telegram: delivered sticker set to ${this.botSender.channel} user ${identity.channelUserId}, url=${ensureResult.shareUrl}`,
     );
@@ -372,6 +468,9 @@ export class PackService {
         this.logger.log(
           `claim-free: pack ${packId} already claimed by user ${userId}; skipping resend`,
         );
+        // A claim already exists → the pack was accepted; make sure the lock is
+        // set even if the original accept's lock write was lost.
+        await this.lockGeneration(userId);
         return { delivered: false, botUrl, alreadyClaimed: true };
       }
       throw err;
@@ -382,6 +481,10 @@ export class PackService {
       const path = join(FREE_STICKER_DIR, filename);
       await this.botSender.sendSticker(identity.channelUserId, path);
     }
+
+    // Claiming the free stickers counts as accepting the pack — lock generation.
+    await this.lockGeneration(userId);
+
     this.logger.log(
       `claim-free: sent ${stickers.length} stickers to ${this.botSender.channel} user ${identity.channelUserId}`,
     );

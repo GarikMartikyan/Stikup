@@ -11,6 +11,7 @@ type Pack = {
   id: string;
   status: "generating" | "ready" | "failed";
   unlocked: boolean;
+  locked: boolean;
   freeCount: number;
   packSize: number;
   stickers: StickerItem[];
@@ -22,6 +23,7 @@ function buildDemoPack(packId: string): Pack {
     id: packId,
     status: "ready",
     unlocked: false,
+    locked: false,
     freeCount: FREE_COUNT,
     packSize: PACK_SIZE,
     stickers: ALL_STICKERS.map((s, i) => ({ index: i, url: s.src })),
@@ -56,6 +58,7 @@ export default function ResultPage({
           id: string;
           status: "generating" | "ready" | "failed";
           unlocked: boolean;
+          locked?: boolean;
           freeCount: number;
           packSize: number;
           stickers: Array<{ index: number; url: string }>;
@@ -65,6 +68,7 @@ export default function ResultPage({
           id: data.id,
           status: data.status,
           unlocked: data.unlocked,
+          locked: data.locked ?? false,
           freeCount: data.freeCount,
           packSize: data.packSize,
           stickers: data.stickers,
@@ -104,6 +108,7 @@ export default function ResultPage({
                 packId={packId}
                 packSize={pack.packSize}
                 unlocked={pack.unlocked}
+                locked={pack.locked}
                 stickers={pack.stickers}
                 freeCount={pack.freeCount}
                 regensLeft={pack.regensLeft}

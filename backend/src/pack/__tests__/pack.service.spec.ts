@@ -27,6 +27,7 @@ function buildPrismaMock() {
     user: {
       findUnique: jest.fn(),
       update: jest.fn().mockResolvedValue({}),
+      updateMany: jest.fn().mockResolvedValue({ count: 1 }),
     },
     $queryRaw: jest.fn(),
     $transaction: jest.fn(),
@@ -147,6 +148,49 @@ describe('PackService', () => {
       });
 
       expect(prisma.user.update).not.toHaveBeenCalled();
+      expect(prisma.pack.create).not.toHaveBeenCalled();
+    });
+
+    it('throws generation_locked when the user already accepted a pack (download/claim)', async () => {
+      const prisma = buildPrismaMock();
+      const bot = buildBotSenderMock();
+      const service = buildService(prisma, bot);
+
+      // Under quota, but generation_locked_at is set → locked.
+      (prisma.$queryRaw as jest.Mock).mockResolvedValueOnce([
+        {
+          generations_used: 1,
+          generation_locked_at: new Date(),
+          full_pack_unlocked_at: null,
+        },
+      ]);
+
+      await expect(service.generatePack('user-abc')).rejects.toMatchObject({
+        message: 'generation_locked',
+      });
+
+      expect(prisma.user.update).not.toHaveBeenCalled();
+      expect(prisma.pack.create).not.toHaveBeenCalled();
+    });
+
+    it('throws generation_locked when the user unlocked the full pack', async () => {
+      const prisma = buildPrismaMock();
+      const bot = buildBotSenderMock();
+      const service = buildService(prisma, bot);
+
+      // Under quota, but full_pack_unlocked_at is set → locked.
+      (prisma.$queryRaw as jest.Mock).mockResolvedValueOnce([
+        {
+          generations_used: 1,
+          generation_locked_at: null,
+          full_pack_unlocked_at: new Date(),
+        },
+      ]);
+
+      await expect(service.generatePack('user-abc')).rejects.toMatchObject({
+        message: 'generation_locked',
+      });
+
       expect(prisma.pack.create).not.toHaveBeenCalled();
     });
 
@@ -286,6 +330,52 @@ describe('PackService', () => {
       // maxGenerations = 2; used=2 → left=0 (clamped, never negative)
       expect(result!.regensLeft).toBe(0);
     });
+
+    it('reports locked=true and regensLeft=0 once the user accepted a pack', async () => {
+      const prisma = buildPrismaMock();
+      const bot = buildBotSenderMock();
+      const service = buildService(prisma, bot);
+
+      (prisma.pack.findUnique as jest.Mock).mockResolvedValueOnce({
+        id: 'pack-1',
+        status: 'ready',
+        userId: 'user-abc',
+        stickers: [],
+      });
+      // Only 1 generation used (quota would allow a regen) but the user has
+      // accepted the pack → locked, no regenerations.
+      (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
+        fullPackUnlockedAt: null,
+        generationsUsed: 1,
+        generationLockedAt: new Date(),
+      });
+
+      const result = await service.getPack('pack-1', 'user-abc');
+      expect(result!.locked).toBe(true);
+      expect(result!.regensLeft).toBe(0);
+    });
+
+    it('reports locked=false with regens remaining for a fresh pack', async () => {
+      const prisma = buildPrismaMock();
+      const bot = buildBotSenderMock();
+      const service = buildService(prisma, bot);
+
+      (prisma.pack.findUnique as jest.Mock).mockResolvedValueOnce({
+        id: 'pack-1',
+        status: 'ready',
+        userId: 'user-abc',
+        stickers: [],
+      });
+      (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
+        fullPackUnlockedAt: null,
+        generationsUsed: 1,
+        generationLockedAt: null,
+      });
+
+      const result = await service.getPack('pack-1', 'user-abc');
+      expect(result!.locked).toBe(false);
+      expect(result!.regensLeft).toBe(1);
+    });
   });
 
   describe('listPacks', () => {
@@ -305,6 +395,7 @@ describe('PackService', () => {
       (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
         fullPackUnlockedAt: null,
         generationsUsed: 1,
+        generationLockedAt: null,
       });
 
       const result = await service.listPacks('user-abc');
@@ -321,6 +412,7 @@ describe('PackService', () => {
           createdAt: '2026-05-30T00:00:00.000Z',
           status: 'ready',
           unlocked: false,
+          locked: false,
           freeCount: 3,
           packSize: 12,
           regensLeft: 1,
@@ -438,6 +530,11 @@ describe('PackService', () => {
         '99999',
         expect.stringContaining('t.me/addstickers'),
       );
+      // Accepting the pack on Telegram locks generation (set-once).
+      expect(prisma.user.updateMany).toHaveBeenCalledWith({
+        where: { id: 'user-abc', generationLockedAt: null },
+        data: { generationLockedAt: expect.any(Date) },
+      });
     });
 
     it('re-delivers (sends link again) when P2002 fires on claim insert', async () => {
@@ -486,6 +583,8 @@ describe('PackService', () => {
       expect(prisma.packClaim.delete).toHaveBeenCalledWith({
         where: { packId_userId: { packId: 'pack-1', userId: 'user-abc' } },
       });
+      // A failed delivery must NOT lock generation.
+      expect(prisma.user.updateMany).not.toHaveBeenCalled();
     });
 
     it('does NOT roll back pre-existing claim when ensureSet throws on re-delivery', async () => {
@@ -582,6 +681,82 @@ describe('PackService', () => {
         botUrl: 'https://t.me/stikup_bot',
       });
       expect(prisma.packClaim.create).not.toHaveBeenCalled();
+    });
+
+    it('locks generation on the P2002 already-claimed path', async () => {
+      const prisma = buildPrismaMock();
+      const bot = buildBotSenderMock();
+      const service = buildService(prisma, bot);
+
+      (prisma.pack.findUnique as jest.Mock).mockResolvedValueOnce({
+        userId: 'user-abc',
+      });
+      (prisma.channelIdentity.findFirst as jest.Mock).mockResolvedValueOnce({
+        channelUserId: '99999',
+        channel: 'telegram',
+      });
+      const p2002 = new Prisma.PrismaClientKnownRequestError(
+        'Unique constraint failed',
+        { code: 'P2002', clientVersion: '6.0.0', meta: {} },
+      );
+      (prisma.packClaim.create as jest.Mock).mockRejectedValueOnce(p2002);
+
+      const result = await service.claimFreeStickers('pack-1', 'user-abc');
+
+      expect(result.alreadyClaimed).toBe(true);
+      // A pre-existing claim means the pack was accepted — ensure locked.
+      expect(prisma.user.updateMany).toHaveBeenCalledWith({
+        where: { id: 'user-abc', generationLockedAt: null },
+        data: { generationLockedAt: expect.any(Date) },
+      });
+    });
+  });
+
+  describe('markDownloaded', () => {
+    it('locks generation when the owner downloads their pack', async () => {
+      const prisma = buildPrismaMock();
+      const bot = buildBotSenderMock();
+      const service = buildService(prisma, bot);
+
+      (prisma.pack.findUnique as jest.Mock).mockResolvedValueOnce({
+        userId: 'user-abc',
+      });
+
+      const result = await service.markDownloaded('pack-1', 'user-abc');
+
+      expect(result).toEqual({ locked: true });
+      expect(prisma.user.updateMany).toHaveBeenCalledWith({
+        where: { id: 'user-abc', generationLockedAt: null },
+        data: { generationLockedAt: expect.any(Date) },
+      });
+    });
+
+    it('does not lock when the pack does not exist', async () => {
+      const prisma = buildPrismaMock();
+      const bot = buildBotSenderMock();
+      const service = buildService(prisma, bot);
+
+      (prisma.pack.findUnique as jest.Mock).mockResolvedValueOnce(null);
+
+      const result = await service.markDownloaded('missing', 'user-abc');
+
+      expect(result).toEqual({ locked: false });
+      expect(prisma.user.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('does not lock when the pack belongs to a different user', async () => {
+      const prisma = buildPrismaMock();
+      const bot = buildBotSenderMock();
+      const service = buildService(prisma, bot);
+
+      (prisma.pack.findUnique as jest.Mock).mockResolvedValueOnce({
+        userId: 'other-user',
+      });
+
+      const result = await service.markDownloaded('pack-1', 'user-abc');
+
+      expect(result).toEqual({ locked: false });
+      expect(prisma.user.updateMany).not.toHaveBeenCalled();
     });
   });
 });

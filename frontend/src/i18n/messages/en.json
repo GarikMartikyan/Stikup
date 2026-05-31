@@ -328,7 +328,8 @@
       "recommended": "Recommended",
       "link_copied": "Link copied!",
       "copying_link": "Copying link…",
-      "no_regens": "No regenerations left"
+      "no_regens": "No regenerations left",
+      "claimed": "You’ve got this pack"
     },
     "get_stickers_modal": {
       "title": "Get your stickers",

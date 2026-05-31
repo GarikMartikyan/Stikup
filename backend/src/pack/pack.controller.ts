@@ -32,6 +32,7 @@ import { sessionConfig } from '../config/session.config';
 import {
   ClaimFreeResult,
   DeliverTelegramResult,
+  MarkDownloadedResult,
   PackDetail,
   PackService,
   PackSummary,
@@ -73,6 +74,7 @@ export class PackController {
           createdAt: { type: 'string', format: 'date-time' },
           status: { type: 'string' },
           unlocked: { type: 'boolean' },
+          locked: { type: 'boolean' },
           freeCount: { type: 'integer' },
           packSize: { type: 'integer' },
           regensLeft: { type: 'integer' },
@@ -93,6 +95,7 @@ export class PackController {
           'createdAt',
           'status',
           'unlocked',
+          'locked',
           'freeCount',
           'packSize',
           'regensLeft',
@@ -149,6 +152,7 @@ export class PackController {
         id: { type: 'string', format: 'uuid' },
         status: { type: 'string' },
         unlocked: { type: 'boolean' },
+        locked: { type: 'boolean' },
         freeCount: { type: 'integer' },
         packSize: { type: 'integer' },
         regensLeft: { type: 'integer' },
@@ -168,6 +172,7 @@ export class PackController {
         'id',
         'status',
         'unlocked',
+        'locked',
         'freeCount',
         'packSize',
         'regensLeft',
@@ -226,6 +231,25 @@ export class PackController {
     if (!session) throw new UnauthorizedException();
 
     return this.packs.deliverTelegram(packId, session.userId);
+  }
+
+  @Post(':packId/download')
+  @ApiParam({ name: 'packId' })
+  @ApiOkResponse({
+    schema: {
+      properties: { locked: { type: 'boolean' } },
+      required: ['locked'],
+    },
+  })
+  @ApiUnauthorizedResponse()
+  async download(
+    @Param('packId') packId: string,
+    @Req() req: Request,
+  ): Promise<MarkDownloadedResult> {
+    const session = await this.resolveSession(req);
+    if (!session) throw new UnauthorizedException();
+
+    return this.packs.markDownloaded(packId, session.userId);
   }
 
   @Post(':packId/claim-free')

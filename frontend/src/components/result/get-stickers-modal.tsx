@@ -13,6 +13,8 @@ type GetStickersModalProps = {
   stickers: StickerItem[];
   open: boolean;
   onClose: () => void;
+  /** Fired when the user accepts the pack (gets it on Telegram or downloads it). */
+  onAccept?: () => void;
 };
 
 export function GetStickersModal({
@@ -20,6 +22,7 @@ export function GetStickersModal({
   stickers,
   open,
   onClose,
+  onAccept,
 }: GetStickersModalProps) {
   const t = useT();
   const { telegramConnected } = useConnectionStatus();
@@ -80,6 +83,8 @@ export function GetStickersModal({
       }
       setPackLink(data.stickerSetUrl ?? data.botUrl);
       setTelegramBusy(false);
+      // Getting the pack on Telegram is an acceptance — lock regeneration.
+      if (data.delivered) onAccept?.();
     } catch {
       setTelegramBusy(false);
     }
@@ -87,7 +92,26 @@ export function GetStickersModal({
 
   async function handleDownload() {
     if (downloadBusy) return;
+    // Nothing to download → don't register an acceptance / lock the user.
+    if (stickers.length === 0) return;
     setDownloadBusy(true);
+
+    // Downloading is an acceptance — register it FIRST so the server lock is
+    // recorded even if the blob saves are interrupted. The lock is what gates
+    // regeneration, so make it reliable: await it and retry once on failure
+    // rather than fire-and-forget.
+    let locked = false;
+    for (let attempt = 0; attempt < 2 && !locked; attempt++) {
+      try {
+        const res = await fetch(
+          `/api/packs/${encodeURIComponent(packId)}/download`,
+          { method: "POST", credentials: "include", keepalive: true },
+        );
+        locked = res.ok;
+      } catch {
+        // retry once
+      }
+    }
 
     for (const sticker of stickers) {
       try {
@@ -106,6 +130,7 @@ export function GetStickersModal({
       }
     }
 
+    onAccept?.();
     setDownloadBusy(false);
     onClose();
   }

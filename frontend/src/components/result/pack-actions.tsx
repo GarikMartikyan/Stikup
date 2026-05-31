@@ -11,12 +11,14 @@ type PackActionsProps = {
   packId: string;
   packSize: number;
   unlocked: boolean;
+  /** The user has already accepted this pack (got/downloaded/unlocked) — no regenerating. */
+  locked: boolean;
   stickers: StickerItem[];
   freeCount: number;
   regensLeft: number;
 };
 
-export function PackActions({ packId, packSize, unlocked, stickers, freeCount, regensLeft }: PackActionsProps) {
+export function PackActions({ packId, packSize, unlocked, locked: lockedInitial, stickers, freeCount, regensLeft }: PackActionsProps) {
   // Only available (unlocked) stickers can be downloaded.
   const available = unlocked ? stickers : stickers.slice(0, freeCount);
   const t = useT();
@@ -25,6 +27,9 @@ export function PackActions({ packId, packSize, unlocked, stickers, freeCount, r
   const [linkCopied, setLinkCopied] = useState(false);
   const [unlockBusy, setUnlockBusy] = useState(false);
   const [regenBusy, setRegenBusy] = useState(false);
+  // Accepting the pack (get on Telegram / download) locks regeneration. Seed
+  // from the server value and flip locally the moment the user accepts.
+  const [locked, setLocked] = useState(lockedInitial);
 
   const handleUnlock = useCallback(async () => {
     if (unlocked || unlockBusy) return;
@@ -113,8 +118,14 @@ export function PackActions({ packId, packSize, unlocked, stickers, freeCount, r
           {t("result.actions.get_stickers")}
         </button>
 
-        {/* Regenerate */}
-        {regensLeft <= 0 ? (
+        {/* Regenerate — hidden once the pack is accepted (locked) or the
+            regeneration quota is exhausted. */}
+        {locked ? (
+          <div className="inline-flex items-center gap-2 rounded-full border border-[var(--color-success)]/40 bg-[var(--color-success)]/10 px-4 py-2 text-sm font-semibold text-[var(--color-success)] select-none">
+            <Check className="h-4 w-4" strokeWidth={3} />
+            {t("result.actions.claimed")}
+          </div>
+        ) : regensLeft <= 0 ? (
           <div className="inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-transparent px-5 py-2 text-sm font-semibold text-[var(--color-fg-subtle)] opacity-50 cursor-not-allowed select-none">
             <RefreshCw className="h-4 w-4" strokeWidth={2.2} />
             {t("result.actions.no_regens")}
@@ -137,6 +148,7 @@ export function PackActions({ packId, packSize, unlocked, stickers, freeCount, r
         stickers={available}
         open={showModal}
         onClose={() => setShowModal(false)}
+        onAccept={() => setLocked(true)}
       />
     </>
   );

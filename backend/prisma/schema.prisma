@@ -33,6 +33,9 @@ model User {
   referralCode       String?   @unique @map("referral_code")
   fullPackUnlockedAt DateTime? @map("full_pack_unlocked_at") @db.Timestamptz(6)
   generationsUsed    Int       @default(0) @map("generations_used")
+  // Set the first time the user "accepts" a pack — gets it on Telegram,
+  // downloads it, or unlocks it. Once set, generation/regeneration is locked.
+  generationLockedAt DateTime? @map("generation_locked_at") @db.Timestamptz(6)
 
   identities       ChannelIdentity[]
   loginTokens      LoginToken[]

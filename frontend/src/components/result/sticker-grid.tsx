@@ -15,9 +15,12 @@ type StickerGridProps = {
   stickers: StickerItem[];
   freeCount: number;
   unlocked: boolean;
+  /** Forward to StickerCard — set true when images are served by the backend
+   *  (/api/static/...) so Next.js image optimization is bypassed. */
+  unoptimized?: boolean;
 };
 
-export function StickerGrid({ stickers, freeCount, unlocked }: StickerGridProps) {
+export function StickerGrid({ stickers, freeCount, unlocked, unoptimized = false }: StickerGridProps) {
   const t = useT();
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
@@ -69,6 +72,7 @@ export function StickerGrid({ stickers, freeCount, unlocked }: StickerGridProps)
                 rotate={isLocked ? 0 : (i - 1) * 2}
                 delay={i * 60}
                 popIn
+                unoptimized={unoptimized}
               />
               {!isLocked && (
                 <div className="absolute -top-1 -right-1 grid h-6 w-6 place-items-center rounded-full bg-[var(--color-success)] text-white shadow-md">
@@ -85,6 +89,7 @@ export function StickerGrid({ stickers, freeCount, unlocked }: StickerGridProps)
         index={openIndex}
         onClose={() => setOpenIndex(null)}
         onNavigate={setOpenIndex}
+        unoptimized={unoptimized}
       />
     </div>
   );

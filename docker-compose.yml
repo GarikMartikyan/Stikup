@@ -44,8 +44,12 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
       # Override REDIS_URL so the backend reaches Redis via the compose network.
       REDIS_URL: redis://redis:6379
+      # Pin the in-container sticker path to the named volume mount.
+      STICKER_STORAGE_DIR: /app/backend/public/packs
     ports:
       - '${PORT}:3131'
+    volumes:
+      - stickup-stickers:/app/backend/public/packs
 
   frontend:
     build:
@@ -61,3 +65,4 @@ services:
 
 volumes:
   postgres-data:
+  stickup-stickers:

@@ -2,10 +2,10 @@ import { registerAs } from '@nestjs/config';
 import { plainToInstance } from 'class-transformer';
 import { IsIn, validateSync } from 'class-validator';
 
-export type AiProviderName = 'stub';
+export type AiProviderName = 'stub' | 'openai';
 
 export class AiConfigSchema {
-  @IsIn(['stub'])
+  @IsIn(['stub', 'openai'])
   provider!: AiProviderName;
 }
 

@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import type { BotSender } from '../../auth/channel/bot-sender';
 import type { TelegramStickerService } from '../../auth/channel/telegram-sticker.service';
 import { PrismaService } from '../../prisma/prisma.service';
+import type { StickerQueueService } from '../../queue/sticker.queue';
 import { PackService } from '../pack.service';
 
 function buildPrismaMock() {
@@ -67,6 +68,13 @@ function buildStickerServiceMock(): jest.Mocked<TelegramStickerService> {
   } as unknown as jest.Mocked<TelegramStickerService>;
 }
 
+function buildQueueMock(): jest.Mocked<StickerQueueService> {
+  return {
+    enqueue: jest.fn().mockResolvedValue(undefined),
+    enqueueWebPack: jest.fn().mockResolvedValue(undefined),
+  } as unknown as jest.Mocked<StickerQueueService>;
+}
+
 const OFFER_STUB = {
   packSize: 12,
   freeStickerCount: 3,
@@ -80,57 +88,68 @@ const OFFER_STUB = {
   stickerDefaultEmoji: '😀',
 };
 
+const FAKE_IMAGE = Buffer.from('fake-image-data');
+
 function buildService(
   prisma: jest.Mocked<PrismaService>,
   bot: jest.Mocked<BotSender>,
   stickerSvc?: jest.Mocked<TelegramStickerService>,
+  queue?: jest.Mocked<StickerQueueService>,
 ) {
   return new PackService(
     bot,
     prisma,
     OFFER_STUB,
     stickerSvc ?? buildStickerServiceMock(),
+    queue ?? buildQueueMock(),
   );
 }
 
+// Mock fs/promises so staging-file writes don't touch the real filesystem.
+jest.mock('node:fs/promises', () => ({
+  mkdir: jest.fn().mockResolvedValue(undefined),
+  writeFile: jest.fn().mockResolvedValue(undefined),
+  readFile: jest.fn().mockResolvedValue(Buffer.from('stub')),
+  rm: jest.fn().mockResolvedValue(undefined),
+}));
+
 describe('PackService', () => {
   describe('generatePack', () => {
-    it('creates a pack with packSize stickers in a transaction when under limit', async () => {
+    it('creates a pack with status generating (no stickers) and enqueues web-pack', async () => {
       const prisma = buildPrismaMock();
       const bot = buildBotSenderMock();
-      const service = buildService(prisma, bot);
+      const queue = buildQueueMock();
+      const service = buildService(prisma, bot, undefined, queue);
 
-      // generationsUsed = 0 → under maxGenerations (2)
       (prisma.$queryRaw as jest.Mock).mockResolvedValueOnce([
-        { generations_used: 0 },
+        {
+          generations_used: 0,
+          generation_locked_at: null,
+          full_pack_unlocked_at: null,
+        },
       ]);
       (prisma.pack.create as jest.Mock).mockResolvedValueOnce({ id: 'pack-1' });
 
-      const result = await service.generatePack('user-abc');
+      const result = await service.generatePack('user-abc', FAKE_IMAGE);
 
       expect(result).toEqual({ packId: 'pack-1' });
       expect(prisma.$transaction).toHaveBeenCalledTimes(1);
-      // generationsUsed must be incremented
       expect(prisma.user.update).toHaveBeenCalledWith({
         where: { id: 'user-abc' },
         data: { generationsUsed: { increment: 1 } },
       });
+      // Pack created with status 'generating' and NO sticker rows
       expect(prisma.pack.create).toHaveBeenCalledWith({
         data: {
           userId: 'user-abc',
-          status: 'ready',
-          stickers: {
-            create: expect.arrayContaining([
-              { index: 0, url: '/assets/sticker_1.webp' },
-              { index: 11, url: '/assets/sticker_12.webp' },
-            ]),
-          },
+          status: 'generating',
         },
         select: { id: true },
       });
-      // Verify exactly packSize stickers
-      const createCall = (prisma.pack.create as jest.Mock).mock.calls[0][0];
-      expect(createCall.data.stickers.create).toHaveLength(12);
+      // web-pack job must be enqueued
+      expect(queue.enqueueWebPack).toHaveBeenCalledWith(
+        expect.objectContaining({ packId: 'pack-1', userId: 'user-abc' }),
+      );
     });
 
     it('throws ForbiddenException when generationsUsed >= maxGenerations', async () => {
@@ -138,14 +157,17 @@ describe('PackService', () => {
       const bot = buildBotSenderMock();
       const service = buildService(prisma, bot);
 
-      // generationsUsed = 2, maxGenerations = 1 + 1 = 2 → at limit
       (prisma.$queryRaw as jest.Mock).mockResolvedValueOnce([
-        { generations_used: 2 },
+        {
+          generations_used: 2,
+          generation_locked_at: null,
+          full_pack_unlocked_at: null,
+        },
       ]);
 
-      await expect(service.generatePack('user-abc')).rejects.toMatchObject({
-        message: 'generation_limit_reached',
-      });
+      await expect(
+        service.generatePack('user-abc', FAKE_IMAGE),
+      ).rejects.toMatchObject({ message: 'generation_limit_reached' });
 
       expect(prisma.user.update).not.toHaveBeenCalled();
       expect(prisma.pack.create).not.toHaveBeenCalled();
@@ -156,7 +178,6 @@ describe('PackService', () => {
       const bot = buildBotSenderMock();
       const service = buildService(prisma, bot);
 
-      // Under quota, but generation_locked_at is set → locked.
       (prisma.$queryRaw as jest.Mock).mockResolvedValueOnce([
         {
           generations_used: 1,
@@ -165,9 +186,9 @@ describe('PackService', () => {
         },
       ]);
 
-      await expect(service.generatePack('user-abc')).rejects.toMatchObject({
-        message: 'generation_locked',
-      });
+      await expect(
+        service.generatePack('user-abc', FAKE_IMAGE),
+      ).rejects.toMatchObject({ message: 'generation_locked' });
 
       expect(prisma.user.update).not.toHaveBeenCalled();
       expect(prisma.pack.create).not.toHaveBeenCalled();
@@ -178,7 +199,6 @@ describe('PackService', () => {
       const bot = buildBotSenderMock();
       const service = buildService(prisma, bot);
 
-      // Under quota, but full_pack_unlocked_at is set → locked.
       (prisma.$queryRaw as jest.Mock).mockResolvedValueOnce([
         {
           generations_used: 1,
@@ -187,34 +207,45 @@ describe('PackService', () => {
         },
       ]);
 
-      await expect(service.generatePack('user-abc')).rejects.toMatchObject({
-        message: 'generation_locked',
-      });
+      await expect(
+        service.generatePack('user-abc', FAKE_IMAGE),
+      ).rejects.toMatchObject({ message: 'generation_locked' });
 
       expect(prisma.pack.create).not.toHaveBeenCalled();
     });
 
-    it('generates sequential sticker indices 0..11', async () => {
+    it('marks pack failed and refunds generationsUsed when enqueue throws', async () => {
       const prisma = buildPrismaMock();
       const bot = buildBotSenderMock();
-      const service = buildService(prisma, bot);
+      const queue = buildQueueMock();
+      const service = buildService(prisma, bot, undefined, queue);
 
       (prisma.$queryRaw as jest.Mock).mockResolvedValueOnce([
-        { generations_used: 0 },
+        {
+          generations_used: 0,
+          generation_locked_at: null,
+          full_pack_unlocked_at: null,
+        },
       ]);
-      (prisma.pack.create as jest.Mock).mockResolvedValueOnce({ id: 'pack-2' });
+      (prisma.pack.create as jest.Mock).mockResolvedValueOnce({ id: 'pack-1' });
+      (queue.enqueueWebPack as jest.Mock).mockRejectedValueOnce(
+        new Error('Redis connection refused'),
+      );
 
-      await service.generatePack('user-xyz');
+      await expect(
+        service.generatePack('user-abc', FAKE_IMAGE),
+      ).rejects.toThrow('Redis connection refused');
 
-      const createCall = (prisma.pack.create as jest.Mock).mock.calls[0][0];
-      const stickers: Array<{ index: number; url: string }> =
-        createCall.data.stickers.create;
-      for (let i = 0; i < 12; i++) {
-        expect(stickers[i]).toEqual({
-          index: i,
-          url: `/assets/sticker_${i + 1}.webp`,
-        });
-      }
+      // Pack must be marked failed
+      expect(prisma.pack.update).toHaveBeenCalledWith({
+        where: { id: 'pack-1' },
+        data: { status: 'failed' },
+      });
+      // generationsUsed must be refunded
+      expect(prisma.user.updateMany).toHaveBeenCalledWith({
+        where: { id: 'user-abc', generationsUsed: { gt: 0 } },
+        data: { generationsUsed: { decrement: 1 } },
+      });
     });
   });
 

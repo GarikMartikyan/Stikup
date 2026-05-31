@@ -8,8 +8,10 @@ import { resolveAppEnv } from './environment';
 import { frontendConfig } from './frontend.config';
 import { googleOAuthConfig } from './google-oauth.config';
 import { offerConfig } from './offer.config';
+import { openaiConfig } from './openai.config';
 import { redisConfig } from './redis.config';
 import { sessionConfig } from './session.config';
+import { storageConfig } from './storage.config';
 import { telegramConfig } from './telegram.config';
 
 const env = resolveAppEnv();
@@ -38,6 +40,8 @@ const env = resolveAppEnv();
         redisConfig,
         googleOAuthConfig,
         offerConfig,
+        openaiConfig,
+        storageConfig,
       ],
     }),
   ],

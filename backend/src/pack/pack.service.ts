@@ -1,4 +1,6 @@
 import { readFileSync } from 'node:fs';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { ForbiddenException, Inject, Injectable, Logger } from '@nestjs/common';
@@ -9,13 +11,11 @@ import { BOT_SENDER, type BotSender } from '../auth/channel/bot-sender';
 import { TelegramStickerService } from '../auth/channel/telegram-sticker.service';
 import { offerConfig } from '../config/offer.config';
 import { PrismaService } from '../prisma/prisma.service';
+import { StickerQueueService } from '../queue/sticker.queue';
 import { getPlaceholderFiles } from './sticker-assets';
 
 const FREE_STICKER_DIR = join(__dirname, '..', '..', 'public', 'free-stickers');
 const FREE_STICKER_MANIFEST = join(FREE_STICKER_DIR, 'manifest.json');
-
-/** Artificial delay to simulate AI generation (ms). */
-const SIMULATED_GENERATION_DELAY_MS = 700;
 
 interface FreeStickerManifest {
   stickers: string[];
@@ -75,6 +75,7 @@ export class PackService {
     @Inject(offerConfig.KEY)
     private readonly offer: ConfigType<typeof offerConfig>,
     private readonly telegramStickerService: TelegramStickerService,
+    private readonly stickerQueue: StickerQueueService,
   ) {}
 
   /**
@@ -102,14 +103,10 @@ export class PackService {
     });
   }
 
-  async generatePack(userId: string): Promise<{ packId: string }> {
-    // Simulate AI generation delay before entering the transaction so the DB
-    // connection is not held open during the wait.
-    await new Promise((resolve) =>
-      setTimeout(resolve, SIMULATED_GENERATION_DELAY_MS),
-    );
-
-    const packSize = this.offer.packSize;
+  async generatePack(
+    userId: string,
+    sourceImage: Buffer,
+  ): Promise<{ packId: string }> {
     const maxGenerations = 1 + this.offer.freeRegenerations;
 
     const pack = await this.prisma.$transaction(async (tx) => {
@@ -153,22 +150,51 @@ export class PackService {
       return tx.pack.create({
         data: {
           userId,
-          status: 'ready',
-          stickers: {
-            create: Array.from({ length: packSize }, (_, i) => ({
-              index: i,
-              url: `/assets/sticker_${i + 1}.webp`,
-            })),
-          },
+          status: 'generating',
         },
         select: { id: true },
       });
     });
 
+    // Write the uploaded image to a staging directory outside the web-served
+    // tree. The worker reads it from here and deletes it in its finally block.
+    const stagingDir = join(tmpdir(), 'stikup-src');
+    const sourceImagePath = join(stagingDir, pack.id);
+    try {
+      await mkdir(stagingDir, { recursive: true });
+      await writeFile(sourceImagePath, sourceImage);
+      await this.stickerQueue.enqueueWebPack({
+        packId: pack.id,
+        userId,
+        sourceImagePath,
+      });
+    } catch (err) {
+      // Enqueue failed — roll back the quota increment and mark the pack failed
+      // so the UI can surface an error rather than polling forever.
+      await this.markPackFailed(pack.id, userId);
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(
+        `failed to enqueue web-pack for pack ${pack.id}: ${message}`,
+      );
+      throw err;
+    }
+
     this.logger.log(
-      `generated pack ${pack.id} for user ${userId} with ${packSize} stickers`,
+      `enqueued web-pack job for pack ${pack.id}, user ${userId}`,
     );
     return { packId: pack.id };
+  }
+
+  /** Set pack status to failed and refund one generationsUsed credit. */
+  private async markPackFailed(packId: string, userId: string): Promise<void> {
+    await this.prisma.pack.update({
+      where: { id: packId },
+      data: { status: 'failed' },
+    });
+    await this.prisma.user.updateMany({
+      where: { id: userId, generationsUsed: { gt: 0 } },
+      data: { generationsUsed: { decrement: 1 } },
+    });
   }
 
   async listPacks(userId: string): Promise<PackSummary[]> {

@@ -13,6 +13,8 @@ type StickerLightboxProps = {
   index: number | null;
   onClose: () => void;
   onNavigate: (index: number) => void;
+  /** Bypass Next.js image optimization for backend-served images. */
+  unoptimized?: boolean;
 };
 
 export function StickerLightbox({
@@ -20,6 +22,7 @@ export function StickerLightbox({
   index,
   onClose,
   onNavigate,
+  unoptimized = false,
 }: StickerLightboxProps) {
   const t = useT();
   const [mounted, setMounted] = useState(false);
@@ -111,6 +114,7 @@ export function StickerLightbox({
             width={420}
             height={420}
             priority
+            unoptimized={unoptimized}
             className="h-[min(64vw,22rem)] w-[min(64vw,22rem)] animate-[pop-in_320ms_cubic-bezier(0.34,1.56,0.64,1)] object-contain"
           />
         </div>

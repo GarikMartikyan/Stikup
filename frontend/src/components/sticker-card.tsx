@@ -11,6 +11,10 @@ type StickerCardProps = {
   className?: string;
   popIn?: boolean;
   floating?: boolean;
+  /** Pass true for backend-served images (e.g. /api/static/...) to skip
+   *  Next.js image optimization, which doesn't forward auth cookies and
+   *  would double-proxy already-optimal webp files. */
+  unoptimized?: boolean;
 };
 
 export function StickerCard({
@@ -23,6 +27,7 @@ export function StickerCard({
   className = "",
   popIn = false,
   floating = false,
+  unoptimized = false,
 }: StickerCardProps) {
   const animations: string[] = [];
   if (popIn)
@@ -52,6 +57,7 @@ export function StickerCard({
           height={size}
           className="h-full w-full object-contain p-2"
           draggable={false}
+          unoptimized={unoptimized}
         />
 
         {locked && (

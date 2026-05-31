@@ -141,7 +141,7 @@ export class PackController {
       throw new BadRequestException('uploaded file must be an image');
     }
 
-    return this.packs.generatePack(session.userId);
+    return this.packs.generatePack(session.userId, file.buffer);
   }
 
   @Get(':packId')

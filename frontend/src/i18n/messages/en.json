@@ -298,6 +298,16 @@
     }
   },
   "result": {
+    "generating": {
+      "title": "Creating your stickers…",
+      "description": "This usually takes about 30 seconds. Hang tight!",
+      "label": "Generating sticker pack"
+    },
+    "failed": {
+      "title": "Something went wrong",
+      "description": "We couldn't generate your sticker pack. Please try again.",
+      "retry": "Try again"
+    },
     "header": {
       "eyebrow": "Pack ready",
       "title": "Your sticker pack is alive.",

@@ -116,15 +116,13 @@ describe('TelegramStickerService.buildSetName', () => {
 describe('TelegramStickerService.buildTitle', () => {
   it('formats with username', () => {
     const svc = buildService(buildBotMock());
-    expect(svc.buildTitle('alice', 'TestBot')).toBe(
-      'alice Stickers by @TestBot',
-    );
+    expect(svc.buildTitle('alice', 'TestBot')).toBe('alice by @TestBot');
   });
 
   it('uses fallback when no username', () => {
     const svc = buildService(buildBotMock());
     expect(svc.buildTitle('user123456', 'TestBot')).toBe(
-      'user123456 Stickers by @TestBot',
+      'user123456 by @TestBot',
     );
   });
 

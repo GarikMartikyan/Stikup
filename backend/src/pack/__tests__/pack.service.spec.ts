@@ -54,7 +54,7 @@ function buildBotSenderMock(): jest.Mocked<BotSender> {
 function buildStickerServiceMock(): jest.Mocked<TelegramStickerService> {
   return {
     buildSetName: jest.fn().mockReturnValue('pabcdef_by_testbot'),
-    buildTitle: jest.fn().mockReturnValue('Alice Stickers by @TestBot'),
+    buildTitle: jest.fn().mockReturnValue('Alice by @TestBot'),
     shareUrl: jest
       .fn()
       .mockReturnValue('https://t.me/addstickers/pabcdef_by_testbot'),

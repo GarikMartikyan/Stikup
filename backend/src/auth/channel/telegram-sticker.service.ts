@@ -52,10 +52,10 @@ export class TelegramStickerService {
 
   /**
    * Build the visible title of the sticker set.
-   * Format: "<usernameOrFallback> Stickers by @<botUsername>", clamped to 64 chars.
+   * Format: "<usernameOrFallback> by @<botUsername>", clamped to 64 chars.
    */
   buildTitle(usernameOrFallback: string, botUsername: string): string {
-    const full = `${usernameOrFallback} Stickers by @${botUsername}`;
+    const full = `${usernameOrFallback} by @${botUsername}`;
     return full.slice(0, MAX_TITLE_LENGTH);
   }
 

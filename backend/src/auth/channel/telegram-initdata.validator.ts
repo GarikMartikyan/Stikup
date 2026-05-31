@@ -51,9 +51,13 @@ function _validate(
     return { ok: false, reason: 'missing_hash' };
   }
 
-  // Remove both hash and signature — neither must be part of the data-check-string.
+  // Remove ONLY `hash`. For the bot-token HMAC method, the data-check-string is
+  // "all received fields" except `hash` — the `signature` field IS included and
+  // is covered by the hash (https://core.telegram.org/bots/webapps). Stripping
+  // `signature` (which every modern client sends) would hash fewer fields than
+  // Telegram signed, guaranteeing a mismatch. (`signature` is only excluded for
+  // the separate Ed25519 third-party validation method, which we do not use.)
   params.delete('hash');
-  params.delete('signature');
 
   // Build sorted key=value pairs joined with newline.
   const entries = [...params.entries()].sort(([a], [b]) =>

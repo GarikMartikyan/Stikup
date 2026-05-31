@@ -85,15 +85,16 @@ describe('validateInitData', () => {
       expect(result.user.displayName).toBeUndefined();
     });
 
-    it('ignores a signature field — a valid initData with signature still passes', () => {
-      // Build normally, then append &signature=someed25519sig to the string.
-      const base = buildInitData({ user: VALID_USER_JSON });
-      const withSignature = `${base}&signature=someed25519sigvalue`;
-      const result = validateInitData(
-        withSignature,
-        FAKE_BOT_TOKEN,
-        MAX_AGE_SEC,
-      );
+    it('validates initData whose `signature` field is covered by the hash (Telegram HMAC: signature is part of the data-check-string; only `hash` is excluded)', () => {
+      // Modern Telegram clients always send a `signature` field, and the
+      // bot-token `hash` is computed over ALL received fields except `hash`
+      // (signature INCLUDED — see core.telegram.org/bots/webapps). buildInitData
+      // folds `signature` into the data-check-string, mirroring real Telegram.
+      const initData = buildInitData({
+        user: VALID_USER_JSON,
+        signature: 'ed25519_AbC-123_xyz',
+      });
+      const result = validateInitData(initData, FAKE_BOT_TOKEN, MAX_AGE_SEC);
       expect(result.ok).toBe(true);
     });
   });
@@ -128,6 +129,18 @@ describe('validateInitData', () => {
       );
       expect(result.ok).toBe(false);
       if (!result.ok) expect(result.reason).toBe('missing_hash');
+    });
+
+    it('returns ok:false when a `signature` field is present but NOT covered by the hash (tampered/appended)', () => {
+      // Telegram always covers `signature` with the bot-token hash, so a
+      // signature that is not part of the signed data-check-string is a tamper
+      // signal. This guards against regressing to the old "strip signature"
+      // behavior, which silently accepted such data.
+      const base = buildInitData({ user: VALID_USER_JSON });
+      const tampered = `${base}&signature=appended_not_signed`;
+      const result = validateInitData(tampered, FAKE_BOT_TOKEN, MAX_AGE_SEC);
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.reason).toBe('hash_mismatch');
     });
   });
 

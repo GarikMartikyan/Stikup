@@ -500,6 +500,14 @@
       "note": "We'll let you know the moment they go live."
     }
   },
+  "telegram_app": {
+    "loading": "Opening Stikup…",
+    "signing_in": "Signing you in…",
+    "error_title": "Couldn't sign you in",
+    "error_body": "Something went wrong with your Telegram session. You can retry or sign in with email.",
+    "retry": "Retry",
+    "or_sign_in": "Sign in with email"
+  },
   "errors": {
     "not_found": {
       "title": "Page not found",

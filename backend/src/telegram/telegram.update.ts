@@ -10,14 +10,17 @@ import {
 import type { ConfigType } from '@nestjs/config';
 import { I18nService } from 'nestjs-i18n';
 import { Command, Ctx, InjectBot, Start, Update } from 'nestjs-telegraf';
-import { Context, Telegraf } from 'telegraf';
+import { Context, Markup, Telegraf } from 'telegraf';
 
 import { TelegramAdapter } from '../auth/channel/telegram-adapter';
 import { IdentityService } from '../auth/identity.service';
 import { TokenService } from '../auth/token.service';
 import { frontendConfig } from '../config/frontend.config';
+import { telegramConfig } from '../config/telegram.config';
 import { StickerQueueService } from '../queue/sticker.queue';
 import { resolveLang } from './telegram-i18n';
+
+const MINI_APP_PATH = '/app';
 
 const LOGO_PATH = resolve(process.cwd(), '../frontend/public/logo.png');
 
@@ -30,6 +33,8 @@ export class TelegramUpdate implements OnModuleInit {
     @InjectBot() private readonly bot: Telegraf<Context>,
     @Inject(frontendConfig.KEY)
     private readonly frontend: ConfigType<typeof frontendConfig>,
+    @Inject(telegramConfig.KEY)
+    private readonly telegramCfg: ConfigType<typeof telegramConfig>,
     private readonly telegramAdapter: TelegramAdapter,
     private readonly identity: IdentityService,
     private readonly tokens: TokenService,
@@ -50,12 +55,36 @@ export class TelegramUpdate implements OnModuleInit {
     return this.i18n.t(key, { lang, args });
   }
 
+  private get miniAppUrl(): string {
+    return (
+      this.telegramCfg.miniAppUrl ??
+      `${this.frontend.publicAppUrl}${MINI_APP_PATH}`
+    );
+  }
+
   async onModuleInit(): Promise<void> {
     await this.bot.telegram.setMyCommands([
       { command: 'login', description: 'Log in to the app' },
       { command: 'receive', description: 'Generate a sticker pack' },
       { command: 'open', description: 'Open the frontend' },
     ]);
+
+    // Set the persistent ☰ menu button to open the Mini App.
+    // Best-effort: a missing HTTPS URL in dev or any transient API error
+    // must not prevent the bot from starting.
+    try {
+      await this.bot.telegram.setChatMenuButton({
+        menuButton: {
+          type: 'web_app',
+          text: 'Open StikUp',
+          web_app: { url: this.miniAppUrl },
+        },
+      });
+    } catch (err) {
+      this.logger.warn(
+        `setChatMenuButton failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
   }
 
   @Command('open')
@@ -143,13 +172,24 @@ export class TelegramUpdate implements OnModuleInit {
     );
 
     const caption = this.t(ctx, 'telegram.login.caption');
-    const replyMarkup = {
-      inline_keyboard: [[{ text: this.t(ctx, 'telegram.login.button'), url }]],
-    };
+    const loginBtn = Markup.button.url(
+      this.t(ctx, 'telegram.login.button'),
+      url,
+    );
+    // The Telegram Bot API rejects web_app buttons whose URL is not HTTPS.
+    // Only attach the Mini App button when the URL is HTTPS (i.e. in prod or
+    // when TELEGRAM_MINI_APP_URL is set to an HTTPS tunnel in dev).
+    const miniAppUrl = this.miniAppUrl;
+    const buttons = miniAppUrl.startsWith('https://')
+      ? [Markup.button.webApp('Open StikUp', miniAppUrl), loginBtn]
+      : [loginBtn];
+    const replyMarkup = Markup.inlineKeyboard([buttons]).reply_markup;
 
     // The logo lives in the frontend package, which may not be present next to
     // the backend in production/Docker. Never let a missing/unreadable file
     // block the login link — fall back to a plain text reply with the button.
+    // The fallback uses a plain-URL-only markup so it is always safe to send.
+    const textOnlyMarkup = Markup.inlineKeyboard([[loginBtn]]).reply_markup;
     let sent: { chat: { id: number }; message_id: number };
     try {
       sent = await ctx.replyWithPhoto(
@@ -160,7 +200,7 @@ export class TelegramUpdate implements OnModuleInit {
       this.logger.warn(
         `replyWithPhoto failed (${err instanceof Error ? err.message : String(err)}); sending text login link instead`,
       );
-      sent = await ctx.reply(caption, { reply_markup: replyMarkup });
+      sent = await ctx.reply(caption, { reply_markup: textOnlyMarkup });
     }
 
     await this.tokens.attachTelegramMessage(

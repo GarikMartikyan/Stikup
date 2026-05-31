@@ -5,13 +5,18 @@ import type { Context, Telegraf } from 'telegraf';
 
 import type { TelegramAdapter } from '../../auth/channel/telegram-adapter';
 import type { frontendConfig } from '../../config/frontend.config';
+import type { telegramConfig } from '../../config/telegram.config';
 import type { IdentityService } from '../../auth/identity.service';
 import type { StickerQueueService } from '../../queue/sticker.queue';
 import type { TokenService } from '../../auth/token.service';
 import { TelegramUpdate } from '../telegram.update';
 
-function buildUpdate(overrides?: { fromContext?: jest.Mock }): {
+function buildUpdate(overrides?: {
+  fromContext?: jest.Mock;
+  miniAppUrl?: string;
+}): {
   update: TelegramUpdate;
+  bot: { telegram: Record<string, jest.Mock> };
   i18n: { t: jest.Mock };
   tokens: {
     mint: jest.Mock;
@@ -21,12 +26,22 @@ function buildUpdate(overrides?: { fromContext?: jest.Mock }): {
   identity: { resolveOrCreate: jest.Mock; linkChannel: jest.Mock };
 } {
   const bot = {
-    telegram: { setMyCommands: jest.fn(), editMessageReplyMarkup: jest.fn() },
+    telegram: {
+      setMyCommands: jest.fn(),
+      editMessageReplyMarkup: jest.fn(),
+      setChatMenuButton: jest.fn().mockResolvedValue(undefined),
+    },
   } as unknown as Telegraf<Context>;
 
   const frontend = {
     publicAppUrl: 'http://localhost:3000',
   } as unknown as ConfigType<typeof frontendConfig>;
+
+  const telegramCfg = {
+    botToken: 'fake:token',
+    initDataMaxAgeSec: 86400,
+    miniAppUrl: overrides?.miniAppUrl,
+  } as unknown as ConfigType<typeof telegramConfig>;
 
   const telegramAdapter = {
     fromContext:
@@ -61,6 +76,7 @@ function buildUpdate(overrides?: { fromContext?: jest.Mock }): {
   const update = new TelegramUpdate(
     bot,
     frontend,
+    telegramCfg,
     telegramAdapter,
     identity as unknown as IdentityService,
     tokens as unknown as TokenService,
@@ -68,7 +84,13 @@ function buildUpdate(overrides?: { fromContext?: jest.Mock }): {
     i18n as unknown as I18nService,
   );
 
-  return { update, i18n, tokens, identity };
+  return {
+    update,
+    bot: bot as unknown as { telegram: Record<string, jest.Mock> },
+    i18n,
+    tokens,
+    identity,
+  };
 }
 
 function buildCtx(
@@ -90,6 +112,51 @@ function buildCtx(
 }
 
 describe('TelegramUpdate', () => {
+  describe('onModuleInit', () => {
+    it('calls setChatMenuButton and setMyCommands when miniAppUrl is HTTPS', async () => {
+      const { update, bot } = buildUpdate({
+        miniAppUrl: 'https://stikup.app/app',
+      });
+
+      await update.onModuleInit();
+
+      expect(bot.telegram.setMyCommands).toHaveBeenCalledWith(
+        expect.arrayContaining([expect.objectContaining({ command: 'login' })]),
+      );
+      expect(bot.telegram.setChatMenuButton).toHaveBeenCalledWith({
+        menuButton: {
+          type: 'web_app',
+          text: 'Open StikUp',
+          web_app: { url: 'https://stikup.app/app' },
+        },
+      });
+    });
+
+    it('calls setChatMenuButton with the derived http URL when miniAppUrl is unset', async () => {
+      // miniAppUrl is undefined -> falls back to frontend.publicAppUrl + '/app'
+      const { update, bot } = buildUpdate();
+
+      await update.onModuleInit();
+
+      expect(bot.telegram.setChatMenuButton).toHaveBeenCalledWith({
+        menuButton: {
+          type: 'web_app',
+          text: 'Open StikUp',
+          web_app: { url: 'http://localhost:3000/app' },
+        },
+      });
+    });
+
+    it('resolves without throwing when setChatMenuButton rejects', async () => {
+      const { update, bot } = buildUpdate();
+      bot.telegram.setChatMenuButton.mockRejectedValueOnce(
+        new Error('Telegram API unavailable'),
+      );
+
+      await expect(update.onModuleInit()).resolves.toBeUndefined();
+    });
+  });
+
   describe('/login', () => {
     it('sends a photo + sign-in button with a translated caption (no ctx.t)', async () => {
       const { update, i18n, tokens } = buildUpdate();
@@ -107,11 +174,14 @@ describe('TelegramUpdate', () => {
       expect(photo).toEqual({ source: expect.stringContaining('logo.png') });
       expect(extra.caption).toBe('translated:telegram.login.caption');
 
-      const button = extra.reply_markup.inline_keyboard[0][0];
-      expect(button.text).toBe('translated:telegram.login.button');
-      expect(button.url).toBe(
+      // miniAppUrl is http:// so only the plain URL login button is sent (no web_app button).
+      const [loginButton] = extra.reply_markup.inline_keyboard[0];
+      expect(loginButton.text).toBe('translated:telegram.login.button');
+      expect(loginButton.url).toBe(
         'http://localhost:3000/auth/exchange?t=token-abc',
       );
+      // No web_app button in non-HTTPS dev.
+      expect(extra.reply_markup.inline_keyboard[0]).toHaveLength(1);
 
       expect(tokens.attachTelegramMessage).toHaveBeenCalledWith(
         'token-abc',
@@ -119,6 +189,35 @@ describe('TelegramUpdate', () => {
         100,
         7,
       );
+    });
+
+    it('includes the web_app button when miniAppUrl is HTTPS', async () => {
+      const { update } = buildUpdate({ miniAppUrl: 'https://stikup.app/app' });
+      const ctx = buildCtx('en');
+
+      await update.onLogin(ctx);
+
+      const [, extra] = ctx.replyWithPhoto.mock.calls[0];
+      const [webAppButton, loginButton] = extra.reply_markup.inline_keyboard[0];
+      expect(webAppButton.text).toBe('Open StikUp');
+      expect(webAppButton.web_app).toBeDefined();
+      expect(webAppButton.web_app.url).toBe('https://stikup.app/app');
+      expect(loginButton.url).toContain('/auth/exchange?t=');
+    });
+
+    it('falls back to a plain-URL-only markup when replyWithPhoto fails', async () => {
+      const { update } = buildUpdate({ miniAppUrl: 'https://stikup.app/app' });
+      const ctx = buildCtx('en');
+      ctx.replyWithPhoto.mockRejectedValueOnce(new Error('file not found'));
+
+      await expect(update.onLogin(ctx)).resolves.toBeUndefined();
+
+      // Fallback reply must use plain-URL markup only (no web_app button).
+      const [, extra] = ctx.reply.mock.calls[0];
+      const row = extra.reply_markup.inline_keyboard[0];
+      expect(row).toHaveLength(1);
+      expect(row[0].url).toContain('/auth/exchange?t=');
+      expect(row[0].web_app).toBeUndefined();
     });
 
     it('resolves Russian clients to the ru locale', async () => {

@@ -8,6 +8,7 @@ import type { Response } from 'express';
 
 import { frontendConfig } from '../../config/frontend.config';
 import { sessionConfig } from '../../config/session.config';
+import { telegramConfig } from '../../config/telegram.config';
 import { ReferralService } from '../../referral/referral.service';
 import { TelegramMessageService } from '../../telegram/telegram-message.service';
 import { AuthController } from '../auth.controller';
@@ -97,6 +98,10 @@ async function buildController(): Promise<AuthController> {
       },
       { provide: frontendConfig.KEY, useValue: FRONTEND_STUB },
       { provide: sessionConfig.KEY, useValue: SESSION_STUB },
+      {
+        provide: telegramConfig.KEY,
+        useValue: { botToken: 'test:token', initDataMaxAgeSec: 86400 },
+      },
     ],
   })
     .overridePipe(ValidationPipe)

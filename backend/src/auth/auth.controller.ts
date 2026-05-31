@@ -29,12 +29,15 @@ import type { CookieOptions, Request, Response } from 'express';
 
 import { frontendConfig } from '../config/frontend.config';
 import { sessionConfig } from '../config/session.config';
+import { telegramConfig } from '../config/telegram.config';
 import { ReferralService } from '../referral/referral.service';
 import { TelegramMessageService } from '../telegram/telegram-message.service';
 import { BOT_SENDER, type BotSender } from './channel/bot-sender';
 import { EmailAdapter } from './channel/email-adapter';
 import { GoogleAdapter } from './channel/google-adapter';
+import { validateInitData } from './channel/telegram-initdata.validator';
 import { EmailAuthDto } from './dto/email-auth.dto';
+import { TelegramWebAppAuthDto } from './dto/telegram-webapp-auth.dto';
 import { IdentityService } from './identity.service';
 import { SessionService } from './session.service';
 import { TokenService } from './token.service';
@@ -60,6 +63,8 @@ export class AuthController {
     private readonly frontend: ConfigType<typeof frontendConfig>,
     @Inject(sessionConfig.KEY)
     private readonly session: ConfigType<typeof sessionConfig>,
+    @Inject(telegramConfig.KEY)
+    private readonly telegram: ConfigType<typeof telegramConfig>,
     @Inject(BOT_SENDER)
     private readonly botSender: BotSender,
   ) {}
@@ -418,6 +423,80 @@ export class AuthController {
     res.cookie(OAUTH_STATE_COOKIE, state, cookieOpts);
     res.cookie(OAUTH_LINK_COOKIE, '1', cookieOpts);
     res.redirect(302, this.googleAdapter.buildAuthorizationUrl(state));
+  }
+
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @Post('telegram/webapp')
+  @ApiBody({ type: TelegramWebAppAuthDto })
+  @ApiOkResponse({
+    schema: {
+      properties: {
+        userId: { type: 'string', format: 'uuid' },
+        email: { type: 'string', nullable: true },
+        displayName: { type: 'string', nullable: true },
+        avatarUrl: { type: 'string', nullable: true },
+        channels: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              channel: { type: 'string' },
+              username: { type: 'string', nullable: true },
+              displayName: { type: 'string', nullable: true },
+            },
+            required: ['channel', 'username', 'displayName'],
+          },
+        },
+      },
+      required: ['userId', 'email', 'displayName', 'avatarUrl', 'channels'],
+    },
+  })
+  @ApiUnauthorizedResponse()
+  async telegramWebApp(
+    @Body() dto: TelegramWebAppAuthDto,
+    @Req() req: Request,
+    @Res() res: Response,
+  ): Promise<void> {
+    const result = validateInitData(
+      dto.initData,
+      this.telegram.botToken,
+      this.telegram.initDataMaxAgeSec,
+    );
+
+    if (!result.ok) {
+      res.status(401).json({ ok: false });
+      return;
+    }
+
+    const { user } = result;
+    const { userId, created } = await this.identity.resolveOrCreate({
+      channel: 'telegram',
+      channelUserId: user.channelUserId,
+      profile: {
+        displayName: user.displayName,
+        username: user.username,
+        avatarUrl: user.avatarUrl,
+      },
+    });
+
+    if (created) {
+      const cookies = (req.cookies ?? {}) as Record<string, string | undefined>;
+      const ref = cookies[REF_COOKIE];
+      await this.referrals.attribute(userId, ref, 'telegram');
+      if (ref) {
+        res.clearCookie(REF_COOKIE, { path: '/' });
+      }
+    }
+
+    const { sid, expiresAt } = await this.sessions.issue(userId, 'telegram');
+    res.cookie(this.session.cookieName, sid, this.cookieOptions(expiresAt));
+
+    const profile = await this.sessions.findUser(userId);
+    if (!profile) {
+      res.clearCookie(this.session.cookieName, this.cookieOptions(new Date(0)));
+      throw new UnauthorizedException();
+    }
+    res.status(200).json(profile);
   }
 
   private cookieOptions(expires: Date): CookieOptions {

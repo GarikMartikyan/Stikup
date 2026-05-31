@@ -5,6 +5,7 @@ import { AppHeader } from "@/components/app-header";
 import { LanguageProvider } from "@/components/language-provider";
 import { ThemeProvider } from "@/components/theme-provider";
 import { StoreProvider } from "@/lib/store/providers";
+import { TelegramProvider } from "@/components/telegram/telegram-provider";
 import { hasSession } from "@/lib/auth/has-session";
 import { ReferralCapture } from "@/components/referral-capture";
 import "./globals.css";
@@ -56,14 +57,20 @@ export default async function RootLayout({
         <Script id="no-flash-theme" strategy="beforeInteractive">
           {noFlashThemeScript}
         </Script>
+        <Script
+          src="https://telegram.org/js/telegram-web-app.js"
+          strategy="afterInteractive"
+        />
       </head>
       <body className="min-h-dvh flex flex-col">
         <ThemeProvider>
           <LanguageProvider>
             <StoreProvider>
-              <ReferralCapture />
-              <AppHeader loggedIn={loggedIn} />
-              {children}
+              <TelegramProvider>
+                <ReferralCapture />
+                <AppHeader loggedIn={loggedIn} />
+                {children}
+              </TelegramProvider>
             </StoreProvider>
           </LanguageProvider>
         </ThemeProvider>

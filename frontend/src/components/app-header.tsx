@@ -8,6 +8,7 @@ import { ThemeToggle } from '@/components/theme-toggle';
 import { SignInButton } from '@/components/auth/sign-in-button';
 import { UserDrawer } from '@/components/auth/user-drawer';
 import { useT } from '@/components/language-provider';
+import { useTelegram } from '@/components/telegram/telegram-provider';
 import { LANDING_NAV_LINKS, type NavLink } from '@/lib/nav-links';
 
 export type { NavLink };
@@ -41,6 +42,10 @@ type AppHeaderProps = {
 export function AppHeader({ navLinks, loggedIn, right }: AppHeaderProps) {
   const t = useT();
   const pathname = usePathname();
+  const { isTelegram } = useTelegram();
+
+  // Inside Telegram the SDK provides its own chrome — suppress our header.
+  if (isTelegram) return null;
 
   const resolvedNavLinks =
     navLinks ??

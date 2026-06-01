@@ -1,6 +1,7 @@
 import { registerAs } from '@nestjs/config';
 import { plainToInstance } from 'class-transformer';
 import {
+  IsBoolean,
   IsInt,
   IsOptional,
   IsPositive,
@@ -23,6 +24,19 @@ export class TelegramConfigSchema {
   @IsString()
   @IsUrl({ require_protocol: true, protocols: ['https'] })
   miniAppUrl?: string;
+
+  // Whether to launch the bot's long-polling (getUpdates) loop. Telegram
+  // allows only ONE poller per token, so the live production bot owning
+  // the token would otherwise crash a local instance with a 409 Conflict.
+  // The injected Telegraf client still works for outgoing calls (sending
+  // stickers/messages) regardless — only inbound polling is gated here.
+  @IsBoolean()
+  launchBot!: boolean;
+}
+
+function toBool(raw: string | undefined, fallback: boolean): boolean {
+  if (raw === undefined || raw.trim() === '') return fallback;
+  return ['1', 'true', 'yes', 'on'].includes(raw.trim().toLowerCase());
 }
 
 function toInt(raw: string | undefined, fallback: number): number {
@@ -43,6 +57,12 @@ export const telegramConfig = registerAs(
       // Use || undefined so an empty string is treated as unset and skips
       // the @IsUrl validator rather than failing it.
       miniAppUrl: process.env.TELEGRAM_MINI_APP_URL || undefined,
+      // Default: poll in production (single owner of the token), skip in
+      // dev/test so a local instance never fights the live bot for getUpdates.
+      launchBot: toBool(
+        process.env.TELEGRAM_BOT_LAUNCH,
+        getEnvProfile().isProd,
+      ),
     };
 
     const instance = plainToInstance(TelegramConfigSchema, raw);

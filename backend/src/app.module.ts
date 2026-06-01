@@ -42,6 +42,11 @@ import { TelegramModule } from './telegram/telegram.module';
       inject: [telegramConfig.KEY],
       useFactory: (tg: ConfigType<typeof telegramConfig>) => ({
         token: tg.botToken,
+        // launchOptions: false skips bot.launch() (the getUpdates polling
+        // loop) entirely. The injected Telegraf client still sends stickers
+        // and messages — we only avoid the 409 Conflict that would crash a
+        // local instance while the production bot owns the token.
+        ...(tg.launchBot ? {} : { launchOptions: false as const }),
       }),
     }),
     ImageProcessingModule,

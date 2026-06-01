@@ -13,6 +13,8 @@ undefined/
 /home.png
 # OpenAI smoke-test scratch output (backend/scripts/smoke-openai.ts)
 backend/openai-smoke-*/
+# Runtime-generated sticker packs (selfie + AI output served from /static)
+backend/public/packs/
 
 # OS
 .DS_Store

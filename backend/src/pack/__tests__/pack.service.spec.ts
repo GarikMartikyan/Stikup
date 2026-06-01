@@ -86,6 +86,7 @@ const OFFER_STUB = {
   priceAmountCents: 500,
   currency: 'USD',
   stickerDefaultEmoji: '😀',
+  unlimitedGenerations: false,
 };
 
 const FAKE_IMAGE = Buffer.from('fake-image-data');

@@ -15,6 +15,7 @@ const OFFER_STUB = {
   priceAmountCents: 500,
   currency: 'USD',
   stickerDefaultEmoji: '😀',
+  unlimitedGenerations: false,
 };
 
 function buildBotMock() {

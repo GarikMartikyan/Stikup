@@ -131,25 +131,29 @@ export class PackService {
         throw new Error(`user ${userId} not found`);
       }
 
-      // Accepting a pack (get/download/unlock) locks generation — even if the
-      // raw regeneration quota is not yet exhausted.
-      if (
-        this.isLocked({
-          generationLockedAt: rows[0].generation_locked_at,
-          fullPackUnlockedAt: rows[0].full_pack_unlocked_at,
-        })
-      ) {
-        throw new ForbiddenException('generation_locked');
-      }
+      // Local/testing escape hatch: skip both gates and the quota increment so
+      // packs can be (re)generated without limit. Default false in prod/dev.
+      if (!this.offer.unlimitedGenerations) {
+        // Accepting a pack (get/download/unlock) locks generation — even if the
+        // raw regeneration quota is not yet exhausted.
+        if (
+          this.isLocked({
+            generationLockedAt: rows[0].generation_locked_at,
+            fullPackUnlockedAt: rows[0].full_pack_unlocked_at,
+          })
+        ) {
+          throw new ForbiddenException('generation_locked');
+        }
 
-      if (rows[0].generations_used >= maxGenerations) {
-        throw new ForbiddenException('generation_limit_reached');
-      }
+        if (rows[0].generations_used >= maxGenerations) {
+          throw new ForbiddenException('generation_limit_reached');
+        }
 
-      await tx.user.update({
-        where: { id: userId },
-        data: { generationsUsed: { increment: 1 } },
-      });
+        await tx.user.update({
+          where: { id: userId },
+          data: { generationsUsed: { increment: 1 } },
+        });
+      }
 
       return tx.pack.create({
         data: {
@@ -224,13 +228,17 @@ export class PackService {
         generationLockedAt: true,
       },
     });
+    const unlimited = this.offer.unlimitedGenerations;
     const unlocked = user?.fullPackUnlockedAt != null;
-    const locked = user ? this.isLocked(user) : false;
+    const locked = unlimited ? false : user ? this.isLocked(user) : false;
     const maxGenerations = 1 + this.offer.freeRegenerations;
     // A locked user has no regenerations left regardless of raw quota.
-    const regensLeft = locked
-      ? 0
-      : Math.max(0, maxGenerations - (user?.generationsUsed ?? 0));
+    // In unlimited mode keep regenerations available regardless of usage/lock.
+    const regensLeft = unlimited
+      ? maxGenerations
+      : locked
+        ? 0
+        : Math.max(0, maxGenerations - (user?.generationsUsed ?? 0));
 
     return packs.map((pack) => ({
       id: pack.id,
@@ -271,8 +279,9 @@ export class PackService {
       },
     });
 
+    const unlimited = this.offer.unlimitedGenerations;
     const maxGenerations = 1 + this.offer.freeRegenerations;
-    const locked = user ? this.isLocked(user) : false;
+    const locked = unlimited ? false : user ? this.isLocked(user) : false;
 
     return {
       id: pack.id,
@@ -282,9 +291,12 @@ export class PackService {
       freeCount: this.offer.freeStickerCount,
       packSize: this.offer.packSize,
       // A locked user has no regenerations left regardless of raw quota.
-      regensLeft: locked
-        ? 0
-        : Math.max(0, maxGenerations - (user?.generationsUsed ?? 0)),
+      // In unlimited mode keep regenerations available regardless of usage/lock.
+      regensLeft: unlimited
+        ? maxGenerations
+        : locked
+          ? 0
+          : Math.max(0, maxGenerations - (user?.generationsUsed ?? 0)),
       stickers: pack.stickers,
       selfieUrl: pack.sourceImageUrl ?? null,
     };

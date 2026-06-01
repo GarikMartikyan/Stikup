@@ -61,6 +61,7 @@ const OFFER_STUB = {
   priceAmountCents: 500,
   currency: 'USD',
   stickerDefaultEmoji: '😀',
+  unlimitedGenerations: false,
 };
 
 const FRONTEND_STUB = { publicAppUrl: 'https://app.example.com' };

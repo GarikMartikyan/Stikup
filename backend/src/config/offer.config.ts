@@ -44,6 +44,12 @@ export class OfferConfigSchema {
 
   @IsString()
   stickerDefaultEmoji!: string;
+
+  // Local/testing escape hatch: when true, bypass the per-user generation
+  // quota AND the accept-lock so a pack can be (re)generated without limit.
+  // Defaults to false — production and normal dev keep the real limits.
+  @IsBoolean()
+  unlimitedGenerations!: boolean;
 }
 
 function toInt(raw: string | undefined, fallback: number): number {
@@ -71,6 +77,10 @@ export const offerConfig = registerAs('offer', (): OfferConfigSchema => {
     freeRegenerations: toInt(process.env.OFFER_FREE_REGENERATIONS, 1),
     referralUnlockEnabled: toBool(process.env.OFFER_REFERRAL_UNLOCK, true),
     stickerDefaultEmoji: process.env.STICKER_DEFAULT_EMOJI?.trim() || '😀',
+    unlimitedGenerations: toBool(
+      process.env.OFFER_UNLIMITED_GENERATIONS,
+      false,
+    ),
   };
 
   const instance = plainToInstance(OfferConfigSchema, raw);

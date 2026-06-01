@@ -11,6 +11,8 @@ dist/
 .playwright-mcp/
 undefined/
 /home.png
+# OpenAI smoke-test scratch output (backend/scripts/smoke-openai.ts)
+backend/openai-smoke-*/
 
 # OS
 .DS_Store

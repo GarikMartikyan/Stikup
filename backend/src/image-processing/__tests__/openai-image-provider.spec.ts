@@ -31,6 +31,8 @@ const FAKE_CONFIG = {
   apiKey: 'sk-test',
   model: 'gpt-image-1',
   size: '1024x1024',
+  quality: 'medium' as const,
+  inputFidelity: 'high' as const,
 };
 
 describe('OpenAIImageProvider', () => {
@@ -59,6 +61,10 @@ describe('OpenAIImageProvider', () => {
     expect(callArgs.model).toBe('gpt-image-1');
     expect(callArgs.size).toBe('1024x1024');
     expect(callArgs.prompt).toBe('make stickers');
+    // Hardening params the splitter + likeness depend on.
+    expect(callArgs.background).toBe('opaque');
+    expect(callArgs.quality).toBe('medium');
+    expect(callArgs.input_fidelity).toBe('high');
   });
 
   it('returns the decoded Buffer from b64_json', async () => {
@@ -96,6 +102,8 @@ describe('OpenAIImageProvider', () => {
       apiKey: 'sk-test',
       model: 'dall-e-3',
       size: '512x512',
+      quality: 'high',
+      inputFidelity: 'high',
     });
 
     await provider.generate(Buffer.from('valid-image'), 'prompt');

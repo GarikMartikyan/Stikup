@@ -149,6 +149,73 @@ def sort_row_major(items, row_tolerance_frac: float = 0.5):
     return ordered
 
 
+def keep_largest_component(rgba: np.ndarray) -> np.ndarray:
+    """Zero the alpha of everything except the largest opaque blob.
+
+    Used by the geometric splitter so a sliver of a neighbouring sticker that
+    bleeds across a cell boundary does not end up in this cell's crop.
+    """
+    alpha = rgba[:, :, 3]
+    mask = (alpha > 10).astype(np.uint8)
+    num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(mask, connectivity=8)
+    if num_labels <= 1:
+        return rgba
+    largest = 1 + int(np.argmax(stats[1:, cv2.CC_STAT_AREA]))
+    out = rgba.copy()
+    out[:, :, 3] = np.where(labels == largest, alpha, 0).astype(np.uint8)
+    return out
+
+
+def split_grid_geometric(
+    image_path: Path,
+    output_dir: Path,
+    rows: int,
+    cols: int,
+    size: int,
+    overlap: float = 0.08,
+) -> None:
+    """Split a KNOWN rows x cols grid into exactly rows*cols stickers.
+
+    Deterministic by construction: the sheet is diced into a regular grid of
+    cells (each grown by `overlap` so a figure slightly larger than its cell is
+    not clipped), green is keyed out per cell, and only the largest blob in each
+    cell is kept. Always emits rows*cols files — robust to adjacent figures
+    whose outlines touch (which defeats content-based connected components).
+    """
+    bgr = cv2.imread(str(image_path), cv2.IMREAD_COLOR)
+    if bgr is None:
+        raise FileNotFoundError(f"Could not read image: {image_path}")
+
+    full_rgba = remove_green_background(bgr)
+    H, W = full_rgba.shape[:2]
+    pad_x = int((W / cols) * overlap)
+    pad_y = int((H / rows) * overlap)
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    stem = image_path.stem
+
+    idx = 0
+    for r in range(rows):
+        for c in range(cols):
+            idx += 1
+            y0 = max(r * H // rows - pad_y, 0)
+            y1 = min((r + 1) * H // rows + pad_y, H)
+            x0 = max(c * W // cols - pad_x, 0)
+            x1 = min((c + 1) * W // cols + pad_x, W)
+            cell = keep_largest_component(full_rgba[y0:y1, x0:x1].copy())
+            # Skip an essentially-empty cell (model under-drew this slot) so the
+            # output count reflects real faces and the caller can reject a bad
+            # generation instead of shipping a blank sticker.
+            cell_alpha = cell[:, :, 3]
+            if int((cell_alpha > 10).sum()) < 0.02 * cell_alpha.size:
+                print(f"Skipping empty cell {idx:02d}")
+                continue
+            sticker = fit_into_square(crop_to_content(cell), size)
+            out_path = output_dir / f"{stem}_{idx:02d}.webp"
+            sticker.save(out_path, format="WEBP", lossless=True, quality=100)
+            print(f"Wrote {out_path}")
+
+
 def split_grid(image_path: Path, output_dir: Path, rows: int, cols: int, size: int) -> None:
     bgr = cv2.imread(str(image_path), cv2.IMREAD_COLOR)
     if bgr is None:
@@ -195,9 +262,17 @@ def main() -> None:
     parser.add_argument("--rows", type=int, default=3, help="Grid rows (default: 3)")
     parser.add_argument("--cols", type=int, default=4, help="Grid columns (default: 4)")
     parser.add_argument("--size", type=int, default=512, help="Output square size in pixels (default: 512)")
+    parser.add_argument(
+        "--grid",
+        action="store_true",
+        help="Geometric rows x cols tiling (deterministic count) instead of content-based detection",
+    )
     args = parser.parse_args()
 
-    split_grid(args.input, args.output, args.rows, args.cols, args.size)
+    if args.grid:
+        split_grid_geometric(args.input, args.output, args.rows, args.cols, args.size)
+    else:
+        split_grid(args.input, args.output, args.rows, args.cols, args.size)
 
 
 if __name__ == "__main__":

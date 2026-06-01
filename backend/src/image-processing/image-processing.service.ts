@@ -50,11 +50,16 @@ export class ImageProcessingService {
 
     await onProgress?.('post');
     try {
+      // --grid: deterministic 4x3 geometric tiling. The sheet prompt produces a
+      // known 3-row x 4-col grid, so tiling always yields 12 cleanly-separated
+      // stickers even when adjacent figures' outlines touch (which defeats
+      // content-based connected-component detection).
       const { stderr } = await execFileAsync(PYTHON_BIN, [
         PYTHON_SCRIPT,
         aiInputPath,
         '-o',
         outputDir,
+        '--grid',
       ]);
       if (stderr) {
         this.logger.warn(`python stderr: ${stderr}`);

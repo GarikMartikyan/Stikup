@@ -1,6 +1,6 @@
 export const STICKER_PROMPT = `Create a high-resolution 2D chibi-style sticker sheet based on the provided character image. The character must have soft, cute proportions (large head, small body), clean rounded linework, and smooth pastel-style shading. Match the hairstyle, facial features, and clothing from the reference image, but simplify details to fit a chibi aesthetic.
 
-Generate exactly 12 stickers, each showing a distinct facial expression with minimal or no body movement. Focus strictly on facial emotions—avoid exaggerated poses, props, symbols, text, or decorative elements.
+Generate exactly 12 stickers — no more, no fewer — laid out in a grid of 4 columns and 3 rows (4 faces per row × 3 rows = 12 faces total). Each sticker shows a distinct facial expression with minimal or no body movement. Focus strictly on facial emotions—avoid exaggerated poses, props, symbols, text, or decorative elements.
 
 Expressions to include:
 
@@ -19,7 +19,8 @@ confident / sassy
 
 All stickers must:
 
-Be arranged in a clean 3×4 grid
+Be arranged in a clean grid of exactly 4 columns and 3 rows — 4 evenly spaced faces in each horizontal row, 3 rows stacked vertically, 12 faces total
+Leave a clear band of solid green background between every face, both horizontally and vertically, so that no two faces touch or overlap
 Have consistent spacing and alignment
 Be shown from head to upper torso (top-to-waist framing)
 Maintain uniform scale and style

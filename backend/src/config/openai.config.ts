@@ -1,8 +1,11 @@
 import { registerAs } from '@nestjs/config';
 import { plainToInstance } from 'class-transformer';
-import { IsString, validateSync } from 'class-validator';
+import { IsIn, IsString, validateSync } from 'class-validator';
 
 import { getEnvProfile, isPlaceholder } from './environment';
+
+export type OpenAIImageQuality = 'low' | 'medium' | 'high' | 'auto';
+export type OpenAIInputFidelity = 'high' | 'low';
 
 export class OpenAIConfigSchema {
   @IsString()
@@ -13,13 +16,25 @@ export class OpenAIConfigSchema {
 
   @IsString()
   size!: string;
+
+  // Higher quality = cleaner gutters between the 12 cells → more reliable split.
+  @IsIn(['low', 'medium', 'high', 'auto'])
+  quality!: OpenAIImageQuality;
+
+  // 'high' makes the chibi preserve the reference person's hairstyle/features.
+  @IsIn(['high', 'low'])
+  inputFidelity!: OpenAIInputFidelity;
 }
 
 export const openaiConfig = registerAs('openai', (): OpenAIConfigSchema => {
   const raw = {
     apiKey: process.env.OPENAI_API_KEY ?? '',
     model: process.env.OPENAI_IMAGE_MODEL ?? 'gpt-image-1',
-    size: process.env.OPENAI_IMAGE_SIZE ?? '1024x1024',
+    size: process.env.OPENAI_IMAGE_SIZE ?? '1536x1024',
+    quality: (process.env.OPENAI_IMAGE_QUALITY ??
+      'medium') as OpenAIImageQuality,
+    inputFidelity: (process.env.OPENAI_IMAGE_INPUT_FIDELITY ??
+      'high') as OpenAIInputFidelity,
   };
 
   const instance = plainToInstance(OpenAIConfigSchema, raw);

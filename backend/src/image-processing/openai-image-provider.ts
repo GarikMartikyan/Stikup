@@ -11,11 +11,15 @@ export class OpenAIImageProvider implements AiImageProvider {
   private readonly client: OpenAI;
   private readonly model: string;
   private readonly size: string;
+  private readonly quality: 'low' | 'medium' | 'high' | 'auto';
+  private readonly inputFidelity: 'high' | 'low';
 
   constructor(config: ConfigType<typeof openaiConfig>) {
     this.client = new OpenAI({ apiKey: config.apiKey });
     this.model = config.model;
     this.size = config.size;
+    this.quality = config.quality;
+    this.inputFidelity = config.inputFidelity;
   }
 
   async generate(sourceImage: Buffer, prompt: string): Promise<Buffer> {
@@ -37,18 +41,26 @@ export class OpenAIImageProvider implements AiImageProvider {
       .toBuffer();
 
     this.logger.log(
-      `openai images.edit: model=${this.model} size=${this.size} sourceBytes=${pngBuffer.length}`,
+      `openai images.edit: model=${this.model} size=${this.size} ` +
+        `quality=${this.quality} inputFidelity=${this.inputFidelity} ` +
+        `sourceBytes=${pngBuffer.length}`,
     );
 
     let b64: string;
     try {
       // gpt-image models always return base64 (b64_json); response_format is
       // only meaningful for dall-e-2, so it is intentionally omitted here.
+      // background:'opaque' is REQUIRED — the downstream splitter reads the
+      // sheet with cv2.IMREAD_COLOR (alpha dropped), so a transparent sheet
+      // would chroma-key to nothing and yield zero stickers.
       const result = await this.client.images.edit({
         model: this.model,
         image: await toFile(pngBuffer, 'source.png', { type: 'image/png' }),
         prompt,
         size: this.size,
+        background: 'opaque',
+        quality: this.quality,
+        input_fidelity: this.inputFidelity,
       });
 
       const raw = result.data?.[0]?.b64_json;

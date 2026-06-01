@@ -116,6 +116,7 @@ model Pack {
   createdAt              DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
   telegramStickerSetName String?    @map("telegram_sticker_set_name")
   telegramStickerCount   Int        @default(0) @map("telegram_sticker_count")
+  sourceImageUrl         String?    @map("source_image_url")
 
   user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   stickers Sticker[]

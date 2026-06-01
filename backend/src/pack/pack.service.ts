@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -10,6 +10,7 @@ import { Prisma } from '@prisma/client';
 import { BOT_SENDER, type BotSender } from '../auth/channel/bot-sender';
 import { TelegramStickerService } from '../auth/channel/telegram-sticker.service';
 import { offerConfig } from '../config/offer.config';
+import { storageConfig } from '../config/storage.config';
 import { PrismaService } from '../prisma/prisma.service';
 import { StickerQueueService } from '../queue/sticker.queue';
 import { getPlaceholderFiles } from './sticker-assets';
@@ -48,6 +49,7 @@ export interface PackDetail {
   packSize: number;
   regensLeft: number;
   stickers: Array<{ index: number; url: string }>;
+  selfieUrl: string | null;
 }
 
 export interface PackSummary {
@@ -76,6 +78,8 @@ export class PackService {
     private readonly offer: ConfigType<typeof offerConfig>,
     private readonly telegramStickerService: TelegramStickerService,
     private readonly stickerQueue: StickerQueueService,
+    @Inject(storageConfig.KEY)
+    private readonly storage: ConfigType<typeof storageConfig>,
   ) {}
 
   /**
@@ -248,6 +252,7 @@ export class PackService {
         id: true,
         status: true,
         userId: true,
+        sourceImageUrl: true,
         stickers: {
           select: { index: true, url: true },
           orderBy: { index: 'asc' },
@@ -281,6 +286,7 @@ export class PackService {
         ? 0
         : Math.max(0, maxGenerations - (user?.generationsUsed ?? 0)),
       stickers: pack.stickers,
+      selfieUrl: pack.sourceImageUrl ?? null,
     };
   }
 
@@ -292,6 +298,20 @@ export class PackService {
     if (!pack || pack.userId !== userId) return false;
 
     await this.prisma.pack.delete({ where: { id: packId } });
+
+    // Best-effort: remove the on-disk pack directory (stickers + the persisted
+    // source-selfie thumbnail) so deleted packs don't leak the user's image.
+    await rm(join(this.storage.stickerDir, packId), {
+      recursive: true,
+      force: true,
+    }).catch((err: unknown) => {
+      this.logger.debug(
+        `failed to remove pack dir for ${packId}: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    });
+
     this.logger.log(`deleted pack ${packId} for user ${userId}`);
     return true;
   }

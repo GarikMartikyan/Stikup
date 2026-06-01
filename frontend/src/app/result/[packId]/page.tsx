@@ -24,6 +24,7 @@ type Pack = {
   packSize: number;
   stickers: StickerItem[];
   regensLeft: number;
+  selfieUrl: string | null;
 };
 
 type PageState =
@@ -43,6 +44,7 @@ function buildDemoPack(packId: string): Pack {
     packSize: PACK_SIZE,
     stickers: ALL_STICKERS.map((s, i) => ({ index: i, url: s.src })),
     regensLeft: 1,
+    selfieUrl: null,
   };
 }
 
@@ -55,6 +57,7 @@ function parsePack(data: {
   packSize: number;
   stickers: Array<{ index: number; url: string }>;
   regensLeft: number;
+  selfieUrl?: string | null;
 }): Pack {
   return {
     id: data.id,
@@ -65,6 +68,7 @@ function parsePack(data: {
     packSize: data.packSize,
     stickers: data.stickers,
     regensLeft: data.regensLeft ?? 1,
+    selfieUrl: data.selfieUrl ?? null,
   };
 }
 
@@ -183,6 +187,7 @@ export default function ResultPage({
           packSize: number;
           stickers: Array<{ index: number; url: string }>;
           regensLeft: number;
+          selfieUrl?: string | null;
         };
 
         if (cancelledRef.current) return;
@@ -224,7 +229,7 @@ export default function ResultPage({
   return (
     <div className="relative flex flex-1 flex-col">
       <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center px-5 py-6 md:py-10">
-        <ResultHeader />
+        <ResultHeader selfieUrl={activePack?.selfieUrl ?? null} />
 
         <section className="reveal mt-6 md:mt-8" style={{ animationDelay: "100ms" }}>
           {state.kind === "loading" ? (

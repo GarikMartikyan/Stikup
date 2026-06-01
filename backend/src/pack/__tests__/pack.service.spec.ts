@@ -102,15 +102,17 @@ function buildService(
     OFFER_STUB,
     stickerSvc ?? buildStickerServiceMock(),
     queue ?? buildQueueMock(),
+    { stickerDir: '/tmp/stikup-test-packs' },
   );
 }
 
 // Mock fs/promises so staging-file writes don't touch the real filesystem.
+const mockRm = jest.fn().mockResolvedValue(undefined);
 jest.mock('node:fs/promises', () => ({
   mkdir: jest.fn().mockResolvedValue(undefined),
   writeFile: jest.fn().mockResolvedValue(undefined),
   readFile: jest.fn().mockResolvedValue(Buffer.from('stub')),
-  rm: jest.fn().mockResolvedValue(undefined),
+  rm: (...args: unknown[]) => mockRm(...args),
 }));
 
 describe('PackService', () => {
@@ -259,6 +261,7 @@ describe('PackService', () => {
         id: 'pack-x',
         status: 'ready',
         userId: 'other-user',
+        sourceImageUrl: null,
         stickers: [],
       });
 
@@ -286,6 +289,7 @@ describe('PackService', () => {
         id: 'pack-1',
         status: 'ready',
         userId: 'user-abc',
+        sourceImageUrl: null,
         stickers: [{ index: 0, url: '/assets/sticker_1.webp' }],
       });
       (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
@@ -309,6 +313,7 @@ describe('PackService', () => {
         id: 'pack-1',
         status: 'ready',
         userId: 'user-abc',
+        sourceImageUrl: null,
         stickers: [],
       });
       (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
@@ -329,6 +334,7 @@ describe('PackService', () => {
         id: 'pack-1',
         status: 'ready',
         userId: 'user-abc',
+        sourceImageUrl: null,
         stickers: [],
       });
       (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
@@ -350,6 +356,7 @@ describe('PackService', () => {
         id: 'pack-1',
         status: 'ready',
         userId: 'user-abc',
+        sourceImageUrl: null,
         stickers: [],
       });
       (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
@@ -371,6 +378,7 @@ describe('PackService', () => {
         id: 'pack-1',
         status: 'ready',
         userId: 'user-abc',
+        sourceImageUrl: null,
         stickers: [],
       });
       // Only 1 generation used (quota would allow a regen) but the user has
@@ -395,6 +403,7 @@ describe('PackService', () => {
         id: 'pack-1',
         status: 'ready',
         userId: 'user-abc',
+        sourceImageUrl: null,
         stickers: [],
       });
       (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
@@ -406,6 +415,50 @@ describe('PackService', () => {
       const result = await service.getPack('pack-1', 'user-abc');
       expect(result!.locked).toBe(false);
       expect(result!.regensLeft).toBe(1);
+    });
+
+    it('returns selfieUrl when sourceImageUrl is set on the pack', async () => {
+      const prisma = buildPrismaMock();
+      const bot = buildBotSenderMock();
+      const service = buildService(prisma, bot);
+
+      (prisma.pack.findUnique as jest.Mock).mockResolvedValueOnce({
+        id: 'pack-1',
+        status: 'ready',
+        userId: 'user-abc',
+        sourceImageUrl: '/api/static/packs/pack-1/source.webp',
+        stickers: [],
+      });
+      (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
+        fullPackUnlockedAt: null,
+        generationsUsed: 1,
+        generationLockedAt: null,
+      });
+
+      const result = await service.getPack('pack-1', 'user-abc');
+      expect(result!.selfieUrl).toBe('/api/static/packs/pack-1/source.webp');
+    });
+
+    it('returns selfieUrl=null when sourceImageUrl is not set', async () => {
+      const prisma = buildPrismaMock();
+      const bot = buildBotSenderMock();
+      const service = buildService(prisma, bot);
+
+      (prisma.pack.findUnique as jest.Mock).mockResolvedValueOnce({
+        id: 'pack-1',
+        status: 'generating',
+        userId: 'user-abc',
+        sourceImageUrl: null,
+        stickers: [],
+      });
+      (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
+        fullPackUnlockedAt: null,
+        generationsUsed: 1,
+        generationLockedAt: null,
+      });
+
+      const result = await service.getPack('pack-1', 'user-abc');
+      expect(result!.selfieUrl).toBeNull();
     });
   });
 
@@ -508,6 +561,11 @@ describe('PackService', () => {
       expect(result).toBe(true);
       expect(prisma.pack.delete).toHaveBeenCalledWith({
         where: { id: 'pack-1' },
+      });
+      // The on-disk pack directory (stickers + source thumbnail) is removed.
+      expect(mockRm).toHaveBeenCalledWith('/tmp/stikup-test-packs/pack-1', {
+        recursive: true,
+        force: true,
       });
     });
   });

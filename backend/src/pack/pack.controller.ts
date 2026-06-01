@@ -167,6 +167,7 @@ export class PackController {
             required: ['index', 'url'],
           },
         },
+        selfieUrl: { type: 'string', nullable: true },
       },
       required: [
         'id',

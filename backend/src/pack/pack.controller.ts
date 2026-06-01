@@ -38,7 +38,7 @@ import {
   PackSummary,
 } from './pack.service';
 
-const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
+const MAX_IMAGE_SIZE_BYTES = 8 * 1024 * 1024; // 8 MB
 
 @ApiTags('packs')
 @Controller('packs')

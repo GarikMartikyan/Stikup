@@ -263,7 +263,7 @@
     "drop_zone": {
       "upload_aria": "Upload a selfie",
       "title": "Drop a selfie or tap to pick",
-      "formats": "JPEG · PNG · HEIC · up to 10 MB",
+      "formats": "JPEG · PNG · HEIC · up to 8 MB",
       "hint_drag": "Drag & drop",
       "hint_paste": "Paste",
       "hint_camera": "Open camera",
@@ -292,7 +292,7 @@
     "error": {
       "photo_not_accepted": "Photo not accepted",
       "invalid_format": "Use a JPEG, PNG, or HEIC photo.",
-      "too_large": "File is over 10 MB. Try a smaller export.",
+      "too_large": "File is over 8 MB. Try a smaller export.",
       "generation_failed": "Generation failed. Please try again.",
       "no_generations": "You've used all your generations."
     }

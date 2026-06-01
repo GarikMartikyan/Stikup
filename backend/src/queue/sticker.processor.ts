@@ -1,11 +1,10 @@
-import { copyFile, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Inject, Logger } from '@nestjs/common';
 import type { ConfigType } from '@nestjs/config';
 import type { Job } from 'bullmq';
-import sharp from 'sharp';
 
 import type { BotSender } from '../auth/channel/bot-sender';
 import { BOT_SENDER } from '../auth/channel/bot-sender';
@@ -89,28 +88,9 @@ export class StickerProcessor extends WorkerHost {
       const packDir = join(this.storage.stickerDir, packId);
       await mkdir(packDir, { recursive: true });
 
-      // Persist a browser-renderable thumbnail of the source selfie. Best-effort:
-      // some accepted upload formats (notably HEIC) can't be decoded by the
-      // bundled sharp binary, and the stub AI provider never decodes the source
-      // at all — so a thumbnail failure must NOT fail an otherwise-successful
-      // pack. On failure we leave sourceImageUrl null and the UI falls back to a
-      // stock avatar.
-      let sourceImageUrl: string | null = null;
-      try {
-        const sourceWebp = await sharp(sourceBuffer)
-          .rotate() // respect EXIF orientation
-          .resize(256, 256, { fit: 'inside', withoutEnlargement: true })
-          .webp({ quality: 80 })
-          .toBuffer();
-        await writeFile(join(packDir, 'source.webp'), sourceWebp);
-        sourceImageUrl = `/api/static/packs/${packId}/source.webp`;
-      } catch (err) {
-        this.logger.warn(
-          `web-pack job ${job.id}: failed to persist source thumbnail for pack ${packId}: ${
-            err instanceof Error ? err.message : String(err)
-          }`,
-        );
-      }
+      // Note: the source-selfie thumbnail (source.webp) is written up front at
+      // upload time (PackService.generatePack) so the result page can show it
+      // during generation — the worker no longer needs to produce it.
 
       // Copy in sorted order (the service already sorts); name as sticker_1..12
       const sorted = [...stickerPaths].sort();
@@ -131,7 +111,6 @@ export class StickerProcessor extends WorkerHost {
           where: { id: packId },
           data: {
             status: 'ready',
-            sourceImageUrl,
           },
         });
       });

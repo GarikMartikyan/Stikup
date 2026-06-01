@@ -3,30 +3,29 @@ import { join } from 'node:path';
 
 import { Logger } from '@nestjs/common';
 
-const PLACEHOLDER_DIR = join(
-  __dirname,
-  '..',
-  '..',
-  'public',
-  'sticker-placeholders',
-);
-
 const logger = new Logger('stickerAssets');
 
 /**
- * Return local file paths for placeholder stickers 1..count.
+ * Return local file paths for a pack's real generated stickers, `sticker_1..count`,
+ * located under `<stickerDir>/<packId>/`.
+ *
  * If any file in the range is missing the entire list is considered unavailable:
- * an empty array is returned and the caller must treat it as "no files available".
- * This prevents a sparse/compacted list from being consumed positionally by
- * ensureSet, which relies on a dense [sticker_1..sticker_N] list.
+ * an empty array is returned and the caller must treat it as "no files
+ * available". ensureSet consumes the list positionally and relies on a dense
+ * `[sticker_1..sticker_N]` range, so a sparse list must never be returned.
  */
-export function getPlaceholderFiles(count: number): string[] {
+export function getPackStickerFiles(
+  stickerDir: string,
+  packId: string,
+  count: number,
+): string[] {
+  const packDir = join(stickerDir, packId);
   const files: string[] = [];
   for (let i = 1; i <= count; i++) {
-    const filePath = join(PLACEHOLDER_DIR, `sticker_${i}.webp`);
+    const filePath = join(packDir, `sticker_${i}.webp`);
     if (!existsSync(filePath)) {
       logger.warn(
-        `placeholder file missing: ${filePath}; treating set as unavailable`,
+        `pack sticker missing: ${filePath}; treating set as unavailable`,
       );
       return [];
     }

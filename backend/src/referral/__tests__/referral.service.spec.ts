@@ -3,7 +3,16 @@ import { Prisma } from '@prisma/client';
 import type { BotSender } from '../../auth/channel/bot-sender';
 import type { TelegramStickerService } from '../../auth/channel/telegram-sticker.service';
 import { PrismaService } from '../../prisma/prisma.service';
+import { getPackStickerFiles } from '../../pack/sticker-assets';
 import { ReferralService } from '../referral.service';
+
+// Mock the sticker-assets helper so referral top-up resolves a dense list of
+// real sticker paths without touching the real filesystem.
+jest.mock('../../pack/sticker-assets', () => ({
+  getPackStickerFiles: jest
+    .fn()
+    .mockReturnValue(['/tmp/stikup-test-packs/p/sticker_1.webp']),
+}));
 
 function buildPrismaMock() {
   return {
@@ -77,6 +86,7 @@ function buildService(
     FRONTEND_STUB as never,
     botSender,
     stickerSvc ?? buildStickerServiceMock(),
+    { stickerDir: '/tmp/stikup-test-packs' },
   );
   return service;
 }
@@ -362,6 +372,41 @@ describe('ReferralService', () => {
       await new Promise((r) => setTimeout(r, 0));
       // Still sends the notification
       expect(bot.sendMessage).toHaveBeenCalled();
+    });
+
+    it('skips top-up for a pack whose real stickers are unavailable', async () => {
+      const prisma = buildPrismaMock();
+      const bot = buildBotSenderMock();
+      const stickerSvc = buildStickerServiceMock();
+      const service = buildService(prisma, bot, stickerSvc);
+
+      (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
+        id: 'referrer-id',
+        fullPackUnlockedAt: null,
+      });
+      (prisma.referral.create as jest.Mock).mockResolvedValueOnce({});
+      (prisma.user.update as jest.Mock).mockResolvedValueOnce({});
+      (prisma.channelIdentity.findFirst as jest.Mock).mockResolvedValueOnce({
+        channelUserId: '12345',
+        username: 'alice',
+      });
+      (prisma.pack.findMany as jest.Mock).mockResolvedValueOnce([
+        { id: 'pack-missing', telegramStickerCount: 3 },
+      ]);
+      // This pack's generated stickers are missing on disk → it must be skipped.
+      jest.mocked(getPackStickerFiles).mockReturnValueOnce([]);
+
+      await service.attribute('new-user-id', 'REFCODE', 'email');
+      await new Promise((r) => setTimeout(r, 0));
+
+      // The unavailable pack is skipped — no sticker set is built or updated.
+      expect(stickerSvc.ensureSet).not.toHaveBeenCalled();
+      expect(prisma.pack.update).not.toHaveBeenCalled();
+      // The unlock notification is still sent (without pack links).
+      expect(bot.sendMessage).toHaveBeenCalledWith(
+        '12345',
+        expect.stringContaining('unlocked'),
+      );
     });
   });
 });

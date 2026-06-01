@@ -35,7 +35,7 @@ export function ResultHeader({ selfieUrl }: { selfieUrl?: string | null }) {
           alt={t("result.header.selfie_alt")}
           width={120}
           height={120}
-          className="h-full w-full object-cover"
+          className="h-full w-full object-cover object-center"
           unoptimized={isApiSrc}
           onError={() => setErrored(true)}
         />

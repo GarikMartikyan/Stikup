@@ -105,7 +105,7 @@ function GeneratingState({ selfieUrl }: { selfieUrl: string | null }) {
           alt=""
           width={240}
           height={240}
-          className="h-full w-full object-cover"
+          className="h-full w-full object-cover object-center"
           unoptimized={isApiSrc}
           onError={() => setErrored(true)}
         />
@@ -248,11 +248,16 @@ export default function ResultPage({
   const activePack =
     state.kind === "ready" || state.kind === "demo" ? state.pack : null;
   const unoptimized = activePack ? isBackendPack(activePack) : false;
+  // Show the user's uploaded selfie in the header during generation too — not
+  // just once the pack is ready (the selfie thumbnail is available immediately).
+  const headerSelfieUrl =
+    activePack?.selfieUrl ??
+    (state.kind === "generating" ? state.selfieUrl : null);
 
   return (
     <div className="relative flex flex-1 flex-col">
       <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center px-5 py-6 md:py-10">
-        <ResultHeader selfieUrl={activePack?.selfieUrl ?? null} />
+        <ResultHeader selfieUrl={headerSelfieUrl} />
 
         <section className="reveal mt-6 md:mt-8" style={{ animationDelay: "100ms" }}>
           {state.kind === "loading" ? (

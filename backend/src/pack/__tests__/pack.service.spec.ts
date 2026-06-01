@@ -5,6 +5,7 @@ import type { TelegramStickerService } from '../../auth/channel/telegram-sticker
 import { PrismaService } from '../../prisma/prisma.service';
 import type { StickerQueueService } from '../../queue/sticker.queue';
 import { PackService } from '../pack.service';
+import { getPackStickerFiles } from '../sticker-assets';
 
 function buildPrismaMock() {
   const mock = {
@@ -116,6 +117,27 @@ jest.mock('node:fs/promises', () => ({
   rm: (...args: unknown[]) => mockRm(...args),
 }));
 
+// Mock the sticker-assets helper so deliverTelegram resolves a dense list of
+// real sticker paths without touching the real filesystem.
+jest.mock('../sticker-assets', () => ({
+  getPackStickerFiles: jest
+    .fn()
+    .mockReturnValue([
+      '/tmp/stikup-test-packs/pack-1/sticker_1.webp',
+      '/tmp/stikup-test-packs/pack-1/sticker_2.webp',
+      '/tmp/stikup-test-packs/pack-1/sticker_3.webp',
+    ]),
+}));
+
+// Mock sharp so persistSourceThumbnail doesn't require a native binary in tests.
+const mockSharpInstance = {
+  rotate: jest.fn().mockReturnThis(),
+  resize: jest.fn().mockReturnThis(),
+  webp: jest.fn().mockReturnThis(),
+  toBuffer: jest.fn().mockResolvedValue(Buffer.from('fake-webp')),
+};
+jest.mock('sharp', () => jest.fn(() => mockSharpInstance));
+
 describe('PackService', () => {
   describe('generatePack', () => {
     it('creates a pack with status generating (no stickers) and enqueues web-pack', async () => {
@@ -153,6 +175,62 @@ describe('PackService', () => {
       expect(queue.enqueueWebPack).toHaveBeenCalledWith(
         expect.objectContaining({ packId: 'pack-1', userId: 'user-abc' }),
       );
+    });
+
+    it('persists a source-selfie thumbnail and sets sourceImageUrl up front', async () => {
+      const prisma = buildPrismaMock();
+      const bot = buildBotSenderMock();
+      const queue = buildQueueMock();
+      const service = buildService(prisma, bot, undefined, queue);
+
+      (prisma.$queryRaw as jest.Mock).mockResolvedValueOnce([
+        {
+          generations_used: 0,
+          generation_locked_at: null,
+          full_pack_unlocked_at: null,
+        },
+      ]);
+      (prisma.pack.create as jest.Mock).mockResolvedValueOnce({ id: 'pack-1' });
+
+      await service.generatePack('user-abc', FAKE_IMAGE);
+
+      // The uploaded selfie is persisted immediately so the result page can show
+      // it during generation — not only once the pack is ready.
+      expect(prisma.pack.update).toHaveBeenCalledWith({
+        where: { id: 'pack-1' },
+        data: { sourceImageUrl: '/api/static/packs/pack-1/source.webp' },
+      });
+    });
+
+    it('still succeeds (no sourceImageUrl) when the selfie thumbnail fails to decode', async () => {
+      const prisma = buildPrismaMock();
+      const bot = buildBotSenderMock();
+      const queue = buildQueueMock();
+      const service = buildService(prisma, bot, undefined, queue);
+
+      (prisma.$queryRaw as jest.Mock).mockResolvedValueOnce([
+        {
+          generations_used: 0,
+          generation_locked_at: null,
+          full_pack_unlocked_at: null,
+        },
+      ]);
+      (prisma.pack.create as jest.Mock).mockResolvedValueOnce({ id: 'pack-1' });
+      // Simulate an undecodable upload (e.g. HEIC the bundled sharp can't read).
+      mockSharpInstance.toBuffer.mockRejectedValueOnce(
+        new Error('heif: Unsupported codec'),
+      );
+
+      const result = await service.generatePack('user-abc', FAKE_IMAGE);
+
+      // Pack creation still succeeds and the job is enqueued — thumbnailing is
+      // best-effort and must never block generation.
+      expect(result).toEqual({ packId: 'pack-1' });
+      expect(queue.enqueueWebPack).toHaveBeenCalledWith(
+        expect.objectContaining({ packId: 'pack-1', userId: 'user-abc' }),
+      );
+      // sourceImageUrl is NOT persisted when the thumbnail can't be produced.
+      expect(prisma.pack.update).not.toHaveBeenCalled();
     });
 
     it('throws ForbiddenException when generationsUsed >= maxGenerations', async () => {
@@ -732,6 +810,32 @@ describe('PackService', () => {
       // Now a re-delivery => delivered:true (not dead-end alreadyClaimed)
       expect(result.delivered).toBe(true);
       expect(prisma.packClaim.delete).not.toHaveBeenCalled();
+    });
+
+    it('aborts and rolls back its own claim when the pack has no generated stickers', async () => {
+      const prisma = buildPrismaMock();
+      const bot = buildBotSenderMock();
+      const stickerSvc = buildStickerServiceMock();
+      const service = buildService(prisma, bot, stickerSvc);
+
+      setupDeliverBase(prisma, bot);
+      (prisma.packClaim.create as jest.Mock).mockResolvedValueOnce({});
+      // No real sticker files on disk for this pack (e.g. not generated yet).
+      jest.mocked(getPackStickerFiles).mockReturnValueOnce([]);
+
+      const result = await service.deliverTelegram('pack-1', 'user-abc');
+
+      expect(result).toEqual({
+        delivered: false,
+        botUrl: 'https://t.me/stikup_bot',
+      });
+      // The set is never touched and generation is NOT locked on a failed delivery.
+      expect(stickerSvc.ensureSet).not.toHaveBeenCalled();
+      expect(prisma.user.updateMany).not.toHaveBeenCalled();
+      // The claim this call inserted is rolled back.
+      expect(prisma.packClaim.delete).toHaveBeenCalledWith({
+        where: { packId_userId: { packId: 'pack-1', userId: 'user-abc' } },
+      });
     });
   });
 

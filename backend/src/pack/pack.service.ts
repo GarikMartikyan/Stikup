@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { ForbiddenException, Inject, Injectable, Logger } from '@nestjs/common';
 import type { ConfigType } from '@nestjs/config';
 import { Prisma } from '@prisma/client';
+import sharp from 'sharp';
 
 import { BOT_SENDER, type BotSender } from '../auth/channel/bot-sender';
 import { TelegramStickerService } from '../auth/channel/telegram-sticker.service';
@@ -13,7 +14,7 @@ import { offerConfig } from '../config/offer.config';
 import { storageConfig } from '../config/storage.config';
 import { PrismaService } from '../prisma/prisma.service';
 import { StickerQueueService } from '../queue/sticker.queue';
-import { getPlaceholderFiles } from './sticker-assets';
+import { getPackStickerFiles } from './sticker-assets';
 
 const FREE_STICKER_DIR = join(__dirname, '..', '..', 'public', 'free-stickers');
 const FREE_STICKER_MANIFEST = join(FREE_STICKER_DIR, 'manifest.json');
@@ -164,6 +165,20 @@ export class PackService {
       });
     });
 
+    // Persist a thumbnail of the uploaded selfie up front so the result page can
+    // show the user's photo throughout generation (not just once the pack is
+    // ready). Best-effort — a thumbnail failure must not block pack creation.
+    const sourceImageUrl = await this.persistSourceThumbnail(
+      pack.id,
+      sourceImage,
+    );
+    if (sourceImageUrl) {
+      await this.prisma.pack.update({
+        where: { id: pack.id },
+        data: { sourceImageUrl },
+      });
+    }
+
     // Write the uploaded image to a staging directory outside the web-served
     // tree. The worker reads it from here and deletes it in its finally block.
     const stagingDir = join(tmpdir(), 'stikup-src');
@@ -193,6 +208,39 @@ export class PackService {
     return { packId: pack.id };
   }
 
+  /**
+   * Persist a small, browser-renderable WebP thumbnail of the uploaded selfie to
+   * the pack's public directory so the result page can show the user's photo
+   * immediately — during generation, not only once the pack is ready.
+   *
+   * Best-effort: some accepted formats (notably HEIC) can't be decoded by the
+   * bundled sharp binary, so a thumbnail failure must NOT fail pack creation. On
+   * failure we return null and the UI falls back to a stock avatar.
+   */
+  private async persistSourceThumbnail(
+    packId: string,
+    sourceImage: Buffer,
+  ): Promise<string | null> {
+    try {
+      const thumbnail = await sharp(sourceImage)
+        .rotate() // respect EXIF orientation
+        .resize(256, 256, { fit: 'inside', withoutEnlargement: true })
+        .webp({ quality: 80 })
+        .toBuffer();
+      const packDir = join(this.storage.stickerDir, packId);
+      await mkdir(packDir, { recursive: true });
+      await writeFile(join(packDir, 'source.webp'), thumbnail);
+      return `/api/static/packs/${packId}/source.webp`;
+    } catch (err) {
+      this.logger.warn(
+        `failed to persist source thumbnail for pack ${packId}: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+      return null;
+    }
+  }
+
   /** Set pack status to failed and refund one generationsUsed credit. */
   private async markPackFailed(packId: string, userId: string): Promise<void> {
     await this.prisma.pack.update({
@@ -203,6 +251,12 @@ export class PackService {
       where: { id: userId, generationsUsed: { gt: 0 } },
       data: { generationsUsed: { decrement: 1 } },
     });
+    // Remove any partially-written pack dir (e.g. the source thumbnail written
+    // before enqueue) so a failed pack doesn't leak the user's image on disk.
+    await rm(join(this.storage.stickerDir, packId), {
+      recursive: true,
+      force: true,
+    }).catch(() => {});
   }
 
   async listPacks(userId: string): Promise<PackSummary[]> {
@@ -408,10 +462,10 @@ export class PackService {
       }
     }
 
-    const files = getPlaceholderFiles(count);
+    const files = getPackStickerFiles(this.storage.stickerDir, packId, count);
     if (files.length === 0) {
       this.logger.warn(
-        `deliver-telegram: no placeholder files found; aborting delivery`,
+        `deliver-telegram: no generated sticker files for pack ${packId}; aborting delivery`,
       );
       if (thisCallOwnsClaim) {
         await this.prisma.packClaim.delete({

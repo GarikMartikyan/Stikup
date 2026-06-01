@@ -9,7 +9,8 @@ import { BOT_SENDER, type BotSender } from '../auth/channel/bot-sender';
 import { TelegramStickerService } from '../auth/channel/telegram-sticker.service';
 import { frontendConfig } from '../config/frontend.config';
 import { offerConfig } from '../config/offer.config';
-import { getPlaceholderFiles } from '../pack/sticker-assets';
+import { storageConfig } from '../config/storage.config';
+import { getPackStickerFiles } from '../pack/sticker-assets';
 import { PrismaService } from '../prisma/prisma.service';
 
 const REFERRAL_CODE_BYTES = 6; // 6 bytes → 8 base62 chars
@@ -41,6 +42,8 @@ export class ReferralService {
     private readonly frontend: ConfigType<typeof frontendConfig>,
     @Inject(BOT_SENDER) private readonly botSender: BotSender,
     private readonly telegramStickerService: TelegramStickerService,
+    @Inject(storageConfig.KEY)
+    private readonly storage: ConfigType<typeof storageConfig>,
   ) {}
 
   async getOrCreateReferralInfo(userId: string): Promise<{
@@ -134,16 +137,22 @@ export class ReferralService {
           const setLinks: string[] = [];
 
           if (eligiblePacks.length > 0) {
-            const files = getPlaceholderFiles(packSize);
-            if (files.length === 0) {
-              this.logger.warn(
-                `referral top-up: placeholder files unavailable for packSize=${packSize}; skipping top-up`,
-              );
-            }
             const usernameOrFallback =
               tgIdentity.username ?? `user${tgIdentity.channelUserId}`;
 
-            for (const pack of files.length > 0 ? eligiblePacks : []) {
+            for (const pack of eligiblePacks) {
+              // Each pack is topped up with ITS OWN real generated stickers.
+              const files = getPackStickerFiles(
+                this.storage.stickerDir,
+                pack.id,
+                packSize,
+              );
+              if (files.length === 0) {
+                this.logger.warn(
+                  `referral top-up: real stickers unavailable for pack ${pack.id}; skipping`,
+                );
+                continue;
+              }
               try {
                 const result = await this.telegramStickerService.ensureSet({
                   channelUserId: tgIdentity.channelUserId,

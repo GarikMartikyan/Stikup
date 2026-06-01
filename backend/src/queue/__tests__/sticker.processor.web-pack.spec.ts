@@ -27,15 +27,6 @@ jest.mock('node:fs/promises', () => ({
   writeFile: (...args: unknown[]) => mockWriteFile(...args),
 }));
 
-// Mock sharp so the processor does not require a native binary in tests.
-const mockSharpInstance = {
-  rotate: jest.fn().mockReturnThis(),
-  resize: jest.fn().mockReturnThis(),
-  webp: jest.fn().mockReturnThis(),
-  toBuffer: jest.fn().mockResolvedValue(Buffer.from('fake-webp')),
-};
-jest.mock('sharp', () => jest.fn(() => mockSharpInstance));
-
 const FAKE_STICKER_DIR = join(tmpdir(), 'stikup-test-packs');
 const FAKE_PACK_ID = 'pack-test-uuid';
 const FAKE_USER_ID = 'user-test-uuid';
@@ -120,11 +111,6 @@ describe('StickerProcessor — web-pack branch', () => {
     mockRm.mockResolvedValue(undefined);
     mockReadFile.mockResolvedValue(Buffer.from('fake-source-image'));
     mockWriteFile.mockResolvedValue(undefined);
-    // Restore sharp chain mocks.
-    mockSharpInstance.rotate.mockReturnThis();
-    mockSharpInstance.resize.mockReturnThis();
-    mockSharpInstance.webp.mockReturnThis();
-    mockSharpInstance.toBuffer.mockResolvedValue(Buffer.from('fake-webp'));
   });
 
   it('success: creates 12 sticker rows, sets status ready, and calls cleanup', async () => {
@@ -154,21 +140,12 @@ describe('StickerProcessor — web-pack branch', () => {
       .calls[0][0].data as Array<{ index: number }>;
     expect(stickersArg).toHaveLength(12);
 
-    // Pack marked ready with sourceImageUrl
+    // Pack marked ready. The source-selfie thumbnail is written at upload time
+    // (PackService.generatePack), not by the worker.
     expect(prisma.pack.update).toHaveBeenCalledWith({
       where: { id: FAKE_PACK_ID },
-      data: {
-        status: 'ready',
-        sourceImageUrl: `/api/static/packs/${FAKE_PACK_ID}/source.webp`,
-      },
+      data: { status: 'ready' },
     });
-
-    // source.webp written to pack directory
-    const packDir = join(FAKE_STICKER_DIR, FAKE_PACK_ID);
-    expect(mockWriteFile).toHaveBeenCalledWith(
-      join(packDir, 'source.webp'),
-      expect.any(Buffer),
-    );
 
     // No refund
     expect(prisma.user.updateMany).not.toHaveBeenCalled();
@@ -249,38 +226,6 @@ describe('StickerProcessor — web-pack branch', () => {
     const updateData = (prisma.pack.update as jest.Mock).mock.calls[0][0]
       .data as Record<string, unknown>;
     expect(updateData).not.toHaveProperty('sourceImageUrl');
-  });
-
-  it('selfie thumbnail failure (sharp throws): pack still succeeds with sourceImageUrl null', async () => {
-    const prisma = buildPrismaMock();
-    const imgSvc = buildImageProcessingMock(12);
-    const bot = buildBotSenderMock();
-    // Simulate an undecodable upload (e.g. HEIC the bundled sharp can't read).
-    mockSharpInstance.toBuffer.mockRejectedValueOnce(
-      new Error('heif: Unsupported codec'),
-    );
-    const processor = buildProcessor(imgSvc, prisma, bot);
-
-    await processor.process(makeJob(JOB_DATA));
-
-    // Pack still marked ready, but sourceImageUrl is null (best-effort skip).
-    expect(prisma.pack.update).toHaveBeenCalledWith({
-      where: { id: FAKE_PACK_ID },
-      data: { status: 'ready', sourceImageUrl: null },
-    });
-
-    // 12 stickers still created — the pack is not failed.
-    const stickersArg = (prisma.sticker.createMany as jest.Mock).mock
-      .calls[0][0].data as unknown[];
-    expect(stickersArg).toHaveLength(12);
-
-    // source.webp NOT written, and no generation refund.
-    const packDir = join(FAKE_STICKER_DIR, FAKE_PACK_ID);
-    expect(mockWriteFile).not.toHaveBeenCalledWith(
-      join(packDir, 'source.webp'),
-      expect.any(Buffer),
-    );
-    expect(prisma.user.updateMany).not.toHaveBeenCalled();
   });
 
   it('copies sticker files into the pack directory', async () => {

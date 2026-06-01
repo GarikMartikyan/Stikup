@@ -40,9 +40,16 @@ export class OpenAIImageProvider implements AiImageProvider {
       .png()
       .toBuffer();
 
+    // input_fidelity is only valid on gpt-image-1. gpt-image-2 processes every
+    // input at high fidelity automatically and rejects the parameter with a
+    // 400 ("does not support the 'input_fidelity' parameter"), which fails the
+    // whole generation — so it must be omitted for any other model.
+    const usesInputFidelity = this.model === 'gpt-image-1';
+
     this.logger.log(
       `openai images.edit: model=${this.model} size=${this.size} ` +
-        `quality=${this.quality} inputFidelity=${this.inputFidelity} ` +
+        `quality=${this.quality} ` +
+        `inputFidelity=${usesInputFidelity ? this.inputFidelity : 'n/a'} ` +
         `sourceBytes=${pngBuffer.length}`,
     );
 
@@ -60,7 +67,7 @@ export class OpenAIImageProvider implements AiImageProvider {
         size: this.size,
         background: 'opaque',
         quality: this.quality,
-        input_fidelity: this.inputFidelity,
+        ...(usesInputFidelity ? { input_fidelity: this.inputFidelity } : {}),
       });
 
       const raw = result.data?.[0]?.b64_json;

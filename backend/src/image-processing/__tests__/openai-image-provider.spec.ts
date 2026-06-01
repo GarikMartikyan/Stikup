@@ -67,6 +67,22 @@ describe('OpenAIImageProvider', () => {
     expect(callArgs.input_fidelity).toBe('high');
   });
 
+  it('omits input_fidelity for gpt-image-2 (the model rejects it with a 400)', async () => {
+    const provider = new OpenAIImageProvider({
+      ...FAKE_CONFIG,
+      model: 'gpt-image-2',
+    });
+
+    await provider.generate(Buffer.from('valid-image-bytes'), 'make stickers');
+
+    const callArgs = mockEdit.mock.calls[0][0] as Record<string, unknown>;
+    expect(callArgs.model).toBe('gpt-image-2');
+    expect(callArgs).not.toHaveProperty('input_fidelity');
+    // Other hardening params must still be sent.
+    expect(callArgs.background).toBe('opaque');
+    expect(callArgs.quality).toBe('medium');
+  });
+
   it('returns the decoded Buffer from b64_json', async () => {
     const provider = new OpenAIImageProvider(FAKE_CONFIG);
     const result = await provider.generate(

@@ -29,7 +29,7 @@ export class OpenAIConfigSchema {
 export const openaiConfig = registerAs('openai', (): OpenAIConfigSchema => {
   const raw = {
     apiKey: process.env.OPENAI_API_KEY ?? '',
-    model: process.env.OPENAI_IMAGE_MODEL ?? 'gpt-image-1',
+    model: process.env.OPENAI_IMAGE_MODEL ?? 'gpt-image-2',
     size: process.env.OPENAI_IMAGE_SIZE ?? '1536x1024',
     quality: (process.env.OPENAI_IMAGE_QUALITY ??
       'medium') as OpenAIImageQuality,

@@ -78,14 +78,14 @@ async function main(): Promise<void> {
     );
     console.error('\nMost common causes:');
     console.error(
-      '  • 403 "must be verified": your OpenAI organization is not verified for gpt-image-1',
+      '  • 403 "must be verified": your OpenAI organization is not verified for gpt-image-2',
     );
     console.error(
       '      → https://platform.openai.com/settings/organization/general → Verify Organization',
     );
     console.error('  • 401: invalid or expired API key');
     console.error(
-      '  • 400 "model"/access: the key/project has no access to gpt-image-1',
+      '  • 400 "model"/access: the key/project has no access to gpt-image-2',
     );
     console.error(
       '  • moderation: the uploaded photo was rejected by safety filters',

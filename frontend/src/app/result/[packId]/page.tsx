@@ -1,6 +1,7 @@
 "use client";
 
 import { use, useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { AlertCircle, RefreshCw } from "lucide-react";
 import { ResultHeader } from "@/components/result/result-header";
@@ -14,6 +15,9 @@ import type { StickerItem } from "@/components/result/sticker-grid";
 const POLL_TIMEOUT_MS = 3 * 60 * 1000;
 // Interval between polls (awaited sequentially, not overlapping).
 const POLL_INTERVAL_MS = 2000;
+// Fallback shown in the generating card when the uploaded selfie isn't
+// available yet (or fails to load).
+const STOCK_SRC = "/assets/real_image.webp";
 
 type Pack = {
   id: string;
@@ -29,7 +33,7 @@ type Pack = {
 
 type PageState =
   | { kind: "loading" }
-  | { kind: "generating" }
+  | { kind: "generating"; selfieUrl: string | null }
   | { kind: "ready"; pack: Pack }
   | { kind: "failed" }
   | { kind: "demo"; pack: Pack };
@@ -81,23 +85,42 @@ function isBackendPack(pack: Pack): boolean {
 // Generating state
 // ---------------------------------------------------------------------------
 
-function GeneratingState() {
+function GeneratingState({ selfieUrl }: { selfieUrl: string | null }) {
   const t = useT();
+  const [errored, setErrored] = useState(false);
+  const src = selfieUrl && !errored ? selfieUrl : STOCK_SRC;
+  const isApiSrc = src.startsWith("/api/");
+
   return (
     <div
-      className="flex flex-col items-center justify-center gap-5 rounded-[2rem] border border-[var(--color-border)] bg-[var(--color-bg-elev)] p-20 shadow-[var(--shadow-card)]"
+      className="flex flex-col items-center justify-center gap-6 rounded-[2rem] border border-[var(--color-border)] bg-[var(--color-bg-elev)] p-12 shadow-[var(--shadow-card)]"
       aria-label={t("result.generating.label")}
       role="status"
     >
-      <div className="h-10 w-10 animate-spin rounded-full border-[3px] border-[var(--color-brand)]/30 border-t-[var(--color-brand)]" />
-      <div className="text-center">
+      {/* The user's uploaded selfie with a sweeping scan overlay to convey
+          that it's being processed into stickers. */}
+      <div className="relative h-44 w-44 overflow-hidden rounded-[1.5rem] ring-2 ring-[var(--color-brand)]/30 shadow-[var(--shadow-card)]">
+        <Image
+          src={src}
+          alt=""
+          width={240}
+          height={240}
+          className="h-full w-full object-cover"
+          unoptimized={isApiSrc}
+          onError={() => setErrored(true)}
+        />
+        <div className="pointer-events-none absolute inset-0 animate-pulse bg-[var(--color-brand)]/10" />
+        <div className="pointer-events-none absolute inset-0 bg-[length:200%_100%] bg-gradient-to-r from-transparent via-white/45 to-transparent [animation:shimmer-x_1.8s_linear_infinite]" />
+      </div>
+      <div className="flex items-center gap-3">
+        <div className="h-5 w-5 animate-spin rounded-full border-[3px] border-[var(--color-brand)]/30 border-t-[var(--color-brand)]" />
         <p className="font-semibold text-[var(--color-fg)]">
           {t("result.generating.title")}
         </p>
-        <p className="mt-1 text-sm text-[var(--color-fg-muted)]">
-          {t("result.generating.description")}
-        </p>
       </div>
+      <p className="-mt-2 text-center text-sm text-[var(--color-fg-muted)]">
+        {t("result.generating.description")}
+      </p>
     </div>
   );
 }
@@ -193,7 +216,7 @@ export default function ResultPage({
         if (cancelledRef.current) return;
 
         if (data.status === "generating") {
-          setState({ kind: "generating" });
+          setState({ kind: "generating", selfieUrl: data.selfieUrl ?? null });
           // Schedule next poll, but don't overlap — await the full interval.
           timeoutId = setTimeout(poll, POLL_INTERVAL_MS);
           return;
@@ -237,7 +260,7 @@ export default function ResultPage({
               <div className="h-8 w-8 animate-spin rounded-full border-[3px] border-[var(--color-brand)]/30 border-t-[var(--color-brand)]" />
             </div>
           ) : state.kind === "generating" ? (
-            <GeneratingState />
+            <GeneratingState selfieUrl={state.selfieUrl} />
           ) : state.kind === "failed" ? (
             <FailedState />
           ) : activePack ? (

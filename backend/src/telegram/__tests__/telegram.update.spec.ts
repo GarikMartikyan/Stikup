@@ -161,7 +161,7 @@ describe('TelegramUpdate', () => {
   });
 
   describe('/start without payload', () => {
-    it('replies with the open caption and a plain-URL open button in non-HTTPS dev', async () => {
+    it('sends the logo + open caption with a plain-URL open button in non-HTTPS dev', async () => {
       const { update, i18n } = buildUpdate();
       const ctx = buildCtx('en', '/start');
 
@@ -172,8 +172,9 @@ describe('TelegramUpdate', () => {
         args: undefined,
       });
 
-      const [text, extra] = ctx.reply.mock.calls[0];
-      expect(text).toBe('translated:telegram.open.caption');
+      const [photo, extra] = ctx.replyWithPhoto.mock.calls[0];
+      expect(photo).toEqual({ source: expect.stringContaining('logo.png') });
+      expect(extra.caption).toBe('translated:telegram.open.caption');
 
       const row = extra.reply_markup.inline_keyboard[0];
       expect(row).toHaveLength(1);
@@ -181,8 +182,8 @@ describe('TelegramUpdate', () => {
       // Non-HTTPS dev: plain URL button to the public app, no web_app button.
       expect(row[0].url).toBe('http://localhost:3000');
       expect(row[0].web_app).toBeUndefined();
-      // No login token is minted and no photo is sent.
-      expect(ctx.replyWithPhoto).not.toHaveBeenCalled();
+      // Photo succeeded — no text fallback.
+      expect(ctx.reply).not.toHaveBeenCalled();
     });
 
     it('uses a web_app Mini App button when miniAppUrl is HTTPS', async () => {
@@ -191,11 +192,25 @@ describe('TelegramUpdate', () => {
 
       await update.onStart(ctx);
 
-      const [, extra] = ctx.reply.mock.calls[0];
+      const [, extra] = ctx.replyWithPhoto.mock.calls[0];
       const button = extra.reply_markup.inline_keyboard[0][0];
       expect(button.text).toBe('translated:telegram.open.button');
       expect(button.web_app).toBeDefined();
       expect(button.web_app.url).toBe('https://stikup.app/app');
+    });
+
+    it('falls back to a text reply when the logo photo cannot be sent', async () => {
+      const { update } = buildUpdate();
+      const ctx = buildCtx('en', '/start');
+      ctx.replyWithPhoto.mockRejectedValueOnce(new Error('file not found'));
+
+      await update.onStart(ctx);
+
+      const [text, extra] = ctx.reply.mock.calls[0];
+      expect(text).toBe('translated:telegram.open.caption');
+      expect(extra.reply_markup.inline_keyboard[0][0].text).toBe(
+        'translated:telegram.open.button',
+      );
     });
 
     it('resolves Russian clients to the ru locale', async () => {

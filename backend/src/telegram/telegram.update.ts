@@ -1,3 +1,5 @@
+import { resolve } from 'node:path';
+
 import {
   ConflictException,
   Inject,
@@ -19,6 +21,10 @@ import { PackService } from '../pack/pack.service';
 import { resolveLang } from './telegram-i18n';
 
 const MINI_APP_PATH = '/app';
+
+// Vendored into the backend package (backend/assets) so it ships inside the
+// backend Docker image — `node dist/main.js` runs with cwd = the backend root.
+const LOGO_PATH = resolve(process.cwd(), 'assets/logo.png');
 
 @Update()
 @Injectable()
@@ -177,9 +183,10 @@ export class TelegramUpdate implements OnModuleInit {
   }
 
   /**
-   * Reply with a short welcome message and a single button that opens the app.
-   * Telegram rejects `web_app` buttons whose URL is not HTTPS, so fall back to
-   * a plain URL button (opening the app in a browser) when no HTTPS URL exists.
+   * Reply with the logo, a short welcome caption, and a single button that
+   * opens the app. Telegram rejects `web_app` buttons whose URL is not HTTPS,
+   * so fall back to a plain URL button (opening the app in a browser) when no
+   * HTTPS URL exists.
    */
   private async sendOpenApp(ctx: Context): Promise<void> {
     const miniAppUrl = this.miniAppUrl;
@@ -190,8 +197,21 @@ export class TelegramUpdate implements OnModuleInit {
           this.frontend.publicAppUrl,
         );
 
-    await ctx.reply(this.t(ctx, 'telegram.open.caption'), {
-      reply_markup: Markup.inlineKeyboard([[button]]).reply_markup,
-    });
+    const caption = this.t(ctx, 'telegram.open.caption');
+    const replyMarkup = Markup.inlineKeyboard([[button]]).reply_markup;
+
+    // Lead with the logo. Best-effort: should the asset ever be missing or
+    // unreadable, never let it block the welcome — fall back to a text reply.
+    try {
+      await ctx.replyWithPhoto(
+        { source: LOGO_PATH },
+        { caption, reply_markup: replyMarkup },
+      );
+    } catch (err) {
+      this.logger.warn(
+        `replyWithPhoto failed (${err instanceof Error ? err.message : String(err)}); sending text welcome instead`,
+      );
+      await ctx.reply(caption, { reply_markup: replyMarkup });
+    }
   }
 }

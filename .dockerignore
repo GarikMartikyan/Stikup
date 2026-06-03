@@ -20,6 +20,9 @@ frontend/undefined
 
 **/*.cpuprofile
 *.png
+# ...but the backend ships the app logo as a runtime asset (the bot attaches it
+# to the /start welcome), so it must stay in the build context.
+!backend/assets/logo.png
 
 backups
 

@@ -4,6 +4,7 @@
     "button": "Sign in"
   },
   "open": {
+    "caption": "Welcome to StikUp! Tap the button below to open the app and start making stickers.",
     "button": "Open"
   },
   "errors": {

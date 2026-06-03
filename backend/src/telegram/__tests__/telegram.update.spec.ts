@@ -7,7 +7,6 @@ import type { TelegramAdapter } from '../../auth/channel/telegram-adapter';
 import type { frontendConfig } from '../../config/frontend.config';
 import type { telegramConfig } from '../../config/telegram.config';
 import type { IdentityService } from '../../auth/identity.service';
-import type { StickerQueueService } from '../../queue/sticker.queue';
 import type { TokenService } from '../../auth/token.service';
 import { TelegramUpdate } from '../telegram.update';
 
@@ -19,8 +18,6 @@ function buildUpdate(overrides?: {
   bot: { telegram: Record<string, jest.Mock> };
   i18n: { t: jest.Mock };
   tokens: {
-    mint: jest.Mock;
-    attachTelegramMessage: jest.Mock;
     consumeLink: jest.Mock;
   };
   identity: { resolveOrCreate: jest.Mock; linkChannel: jest.Mock };
@@ -61,14 +58,8 @@ function buildUpdate(overrides?: {
   };
 
   const tokens = {
-    mint: jest.fn(() => Promise.resolve('token-abc')),
-    attachTelegramMessage: jest.fn(() => Promise.resolve(undefined)),
     consumeLink: jest.fn(() => Promise.resolve(null)),
   };
-
-  const stickerQueue = {
-    enqueue: jest.fn(() => Promise.resolve(undefined)),
-  } as unknown as StickerQueueService;
 
   // Stand-in for nestjs-i18n: echo the key so we can assert it was translated.
   const i18n = { t: jest.fn((key: string) => `translated:${key}`) };
@@ -80,7 +71,6 @@ function buildUpdate(overrides?: {
     telegramAdapter,
     identity as unknown as IdentityService,
     tokens as unknown as TokenService,
-    stickerQueue,
     i18n as unknown as I18nService,
   );
 
@@ -113,16 +103,15 @@ function buildCtx(
 
 describe('TelegramUpdate', () => {
   describe('onModuleInit', () => {
-    it('calls setChatMenuButton and setMyCommands when miniAppUrl is HTTPS', async () => {
+    it('clears slash commands and sets the menu button when miniAppUrl is HTTPS', async () => {
       const { update, bot } = buildUpdate({
         miniAppUrl: 'https://stikup.app/app',
       });
 
       await update.onModuleInit();
 
-      expect(bot.telegram.setMyCommands).toHaveBeenCalledWith(
-        expect.arrayContaining([expect.objectContaining({ command: 'login' })]),
-      );
+      // The bot exposes no slash commands — the menu is cleared with [].
+      expect(bot.telegram.setMyCommands).toHaveBeenCalledWith([]);
       expect(bot.telegram.setChatMenuButton).toHaveBeenCalledWith({
         menuButton: {
           type: 'web_app',
@@ -132,7 +121,7 @@ describe('TelegramUpdate', () => {
       });
     });
 
-    it('calls setChatMenuButton with the derived http URL when miniAppUrl is unset', async () => {
+    it('sets the menu button with the derived http URL when miniAppUrl is unset', async () => {
       // miniAppUrl is undefined -> falls back to frontend.publicAppUrl + '/app'
       const { update, bot } = buildUpdate();
 
@@ -157,93 +146,54 @@ describe('TelegramUpdate', () => {
     });
   });
 
-  describe('/login', () => {
-    it('sends a photo + sign-in button with a translated caption (no ctx.t)', async () => {
-      const { update, i18n, tokens } = buildUpdate();
-      const ctx = buildCtx('en');
+  describe('/start without payload', () => {
+    it('replies with the open caption and a plain-URL open button in non-HTTPS dev', async () => {
+      const { update, i18n } = buildUpdate();
+      const ctx = buildCtx('en', '/start');
 
-      // Regression: previously threw `TypeError: ctx.t is not a function`.
-      await expect(update.onLogin(ctx)).resolves.toBeUndefined();
+      await update.onStart(ctx);
 
-      expect(i18n.t).toHaveBeenCalledWith('telegram.login.caption', {
+      expect(i18n.t).toHaveBeenCalledWith('telegram.open.caption', {
         lang: 'en',
         args: undefined,
       });
 
-      const [photo, extra] = ctx.replyWithPhoto.mock.calls[0];
-      expect(photo).toEqual({ source: expect.stringContaining('logo.png') });
-      expect(extra.caption).toBe('translated:telegram.login.caption');
+      const [text, extra] = ctx.reply.mock.calls[0];
+      expect(text).toBe('translated:telegram.open.caption');
 
-      // miniAppUrl is http:// so only the plain URL login button is sent (no web_app button).
-      const [loginButton] = extra.reply_markup.inline_keyboard[0];
-      expect(loginButton.text).toBe('translated:telegram.login.button');
-      expect(loginButton.url).toBe(
-        'http://localhost:3000/auth/exchange?t=token-abc',
-      );
-      // No web_app button in non-HTTPS dev.
-      expect(extra.reply_markup.inline_keyboard[0]).toHaveLength(1);
-
-      expect(tokens.attachTelegramMessage).toHaveBeenCalledWith(
-        'token-abc',
-        BigInt(99),
-        100,
-        7,
-      );
-    });
-
-    it('includes the web_app button when miniAppUrl is HTTPS', async () => {
-      const { update } = buildUpdate({ miniAppUrl: 'https://stikup.app/app' });
-      const ctx = buildCtx('en');
-
-      await update.onLogin(ctx);
-
-      const [, extra] = ctx.replyWithPhoto.mock.calls[0];
-      const [webAppButton, loginButton] = extra.reply_markup.inline_keyboard[0];
-      expect(webAppButton.text).toBe('Open StikUp');
-      expect(webAppButton.web_app).toBeDefined();
-      expect(webAppButton.web_app.url).toBe('https://stikup.app/app');
-      expect(loginButton.url).toContain('/auth/exchange?t=');
-    });
-
-    it('falls back to a plain-URL-only markup when replyWithPhoto fails', async () => {
-      const { update } = buildUpdate({ miniAppUrl: 'https://stikup.app/app' });
-      const ctx = buildCtx('en');
-      ctx.replyWithPhoto.mockRejectedValueOnce(new Error('file not found'));
-
-      await expect(update.onLogin(ctx)).resolves.toBeUndefined();
-
-      // Fallback reply must use plain-URL markup only (no web_app button).
-      const [, extra] = ctx.reply.mock.calls[0];
       const row = extra.reply_markup.inline_keyboard[0];
       expect(row).toHaveLength(1);
-      expect(row[0].url).toContain('/auth/exchange?t=');
+      expect(row[0].text).toBe('translated:telegram.open.button');
+      // Non-HTTPS dev: plain URL button to the public app, no web_app button.
+      expect(row[0].url).toBe('http://localhost:3000');
       expect(row[0].web_app).toBeUndefined();
+      // No login token is minted and no photo is sent.
+      expect(ctx.replyWithPhoto).not.toHaveBeenCalled();
+    });
+
+    it('uses a web_app Mini App button when miniAppUrl is HTTPS', async () => {
+      const { update } = buildUpdate({ miniAppUrl: 'https://stikup.app/app' });
+      const ctx = buildCtx('en', '/start');
+
+      await update.onStart(ctx);
+
+      const [, extra] = ctx.reply.mock.calls[0];
+      const button = extra.reply_markup.inline_keyboard[0][0];
+      expect(button.text).toBe('translated:telegram.open.button');
+      expect(button.web_app).toBeDefined();
+      expect(button.web_app.url).toBe('https://stikup.app/app');
     });
 
     it('resolves Russian clients to the ru locale', async () => {
       const { update, i18n } = buildUpdate();
-      const ctx = buildCtx('ru-RU');
+      const ctx = buildCtx('ru-RU', '/start');
 
-      await update.onLogin(ctx);
+      await update.onStart(ctx);
 
-      expect(i18n.t).toHaveBeenCalledWith('telegram.login.caption', {
+      expect(i18n.t).toHaveBeenCalledWith('telegram.open.caption', {
         lang: 'ru',
         args: undefined,
       });
-    });
-
-    it('replies with a translated error when no profile can be read', async () => {
-      const { update } = buildUpdate({
-        fromContext: jest.fn(() => Promise.resolve(null)),
-      });
-      const ctx = buildCtx('en');
-
-      await update.onLogin(ctx);
-
-      expect(ctx.reply).toHaveBeenCalledWith(
-        'translated:telegram.errors.no_profile',
-      );
-      expect(ctx.replyWithPhoto).not.toHaveBeenCalled();
     });
   });
 
@@ -329,16 +279,6 @@ describe('TelegramUpdate', () => {
       await update.onStart(ctx);
 
       expect(ctx.reply).toHaveBeenCalledWith('translated:telegram.link.failed');
-    });
-
-    it('falls through to normal login flow when no payload is present', async () => {
-      const { update } = buildUpdate();
-
-      const ctx = buildCtx('en', '/start');
-      await update.onStart(ctx);
-
-      // Normal login flow sends a photo
-      expect(ctx.replyWithPhoto).toHaveBeenCalled();
     });
   });
 });

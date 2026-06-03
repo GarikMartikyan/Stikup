@@ -1,5 +1,3 @@
-import { resolve } from 'node:path';
-
 import {
   ConflictException,
   Inject,
@@ -9,7 +7,7 @@ import {
 } from '@nestjs/common';
 import type { ConfigType } from '@nestjs/config';
 import { I18nService } from 'nestjs-i18n';
-import { Command, Ctx, InjectBot, Start, Update } from 'nestjs-telegraf';
+import { Ctx, InjectBot, Start, Update } from 'nestjs-telegraf';
 import { Context, Markup, Telegraf } from 'telegraf';
 
 import { TelegramAdapter } from '../auth/channel/telegram-adapter';
@@ -17,12 +15,9 @@ import { IdentityService } from '../auth/identity.service';
 import { TokenService } from '../auth/token.service';
 import { frontendConfig } from '../config/frontend.config';
 import { telegramConfig } from '../config/telegram.config';
-import { StickerQueueService } from '../queue/sticker.queue';
 import { resolveLang } from './telegram-i18n';
 
 const MINI_APP_PATH = '/app';
-
-const LOGO_PATH = resolve(process.cwd(), '../frontend/public/logo.png');
 
 @Update()
 @Injectable()
@@ -38,7 +33,6 @@ export class TelegramUpdate implements OnModuleInit {
     private readonly telegramAdapter: TelegramAdapter,
     private readonly identity: IdentityService,
     private readonly tokens: TokenService,
-    private readonly stickerQueue: StickerQueueService,
     private readonly i18n: I18nService,
   ) {}
 
@@ -63,11 +57,8 @@ export class TelegramUpdate implements OnModuleInit {
   }
 
   async onModuleInit(): Promise<void> {
-    await this.bot.telegram.setMyCommands([
-      { command: 'login', description: 'Log in to the app' },
-      { command: 'receive', description: 'Generate a sticker pack' },
-      { command: 'open', description: 'Open the frontend' },
-    ]);
+    // The bot exposes no slash commands — clear any previously registered menu.
+    await this.bot.telegram.setMyCommands([]);
 
     // Set the persistent ☰ menu button to open the Mini App.
     // Best-effort: a missing HTTPS URL in dev or any transient API error
@@ -87,16 +78,6 @@ export class TelegramUpdate implements OnModuleInit {
     }
   }
 
-  @Command('open')
-  async onOpen(@Ctx() ctx: Context): Promise<void> {
-    const url = this.frontend.publicAppUrl;
-    await ctx.reply(url, {
-      reply_markup: {
-        inline_keyboard: [[{ text: this.t(ctx, 'telegram.open.button'), url }]],
-      },
-    });
-  }
-
   @Start()
   async onStart(@Ctx() ctx: Context): Promise<void> {
     this.logger.log(
@@ -113,7 +94,7 @@ export class TelegramUpdate implements OnModuleInit {
       return;
     }
 
-    await this.sendLoginLink(ctx, 'start');
+    await this.sendOpenApp(ctx);
   }
 
   private async handleLinkPayload(ctx: Context, token: string): Promise<void> {
@@ -144,104 +125,22 @@ export class TelegramUpdate implements OnModuleInit {
     }
   }
 
-  @Command('login')
-  async onLogin(@Ctx() ctx: Context): Promise<void> {
-    await this.sendLoginLink(ctx, 'login');
-  }
-
-  private async sendLoginLink(
-    ctx: Context,
-    source: 'start' | 'login',
-  ): Promise<void> {
-    const event = await this.telegramAdapter.fromContext(ctx);
-    if (!event) {
-      await ctx.reply(this.t(ctx, 'telegram.errors.no_profile'));
-      return;
-    }
-
-    const userMessageId = ctx.message?.message_id ?? null;
-
-    const { userId } = await this.identity.resolveOrCreate(event);
-    // Note: `created` flag is available here if attribution is needed in the
-    // Telegram flow. Currently Telegram-channel registration is not attributed
-    // via web-cookie referrals (no web cookie context in the bot).
-    const token = await this.tokens.mint(userId, 'telegram');
-    const url = `${this.frontend.publicAppUrl}/auth/exchange?t=${token}`;
-    this.logger.log(
-      `/${source} -> issued login token for user ${userId} via telegram`,
-    );
-
-    const caption = this.t(ctx, 'telegram.login.caption');
-    const loginBtn = Markup.button.url(
-      this.t(ctx, 'telegram.login.button'),
-      url,
-    );
-    // The Telegram Bot API rejects web_app buttons whose URL is not HTTPS.
-    // Only attach the Mini App button when the URL is HTTPS (i.e. in prod or
-    // when TELEGRAM_MINI_APP_URL is set to an HTTPS tunnel in dev).
+  /**
+   * Reply with a short welcome message and a single button that opens the app.
+   * Telegram rejects `web_app` buttons whose URL is not HTTPS, so fall back to
+   * a plain URL button (opening the app in a browser) when no HTTPS URL exists.
+   */
+  private async sendOpenApp(ctx: Context): Promise<void> {
     const miniAppUrl = this.miniAppUrl;
-    const buttons = miniAppUrl.startsWith('https://')
-      ? [Markup.button.webApp('Open StikUp', miniAppUrl), loginBtn]
-      : [loginBtn];
-    const replyMarkup = Markup.inlineKeyboard([buttons]).reply_markup;
+    const button = miniAppUrl.startsWith('https://')
+      ? Markup.button.webApp(this.t(ctx, 'telegram.open.button'), miniAppUrl)
+      : Markup.button.url(
+          this.t(ctx, 'telegram.open.button'),
+          this.frontend.publicAppUrl,
+        );
 
-    // The logo lives in the frontend package, which may not be present next to
-    // the backend in production/Docker. Never let a missing/unreadable file
-    // block the login link — fall back to a plain text reply with the button.
-    // The fallback uses a plain-URL-only markup so it is always safe to send.
-    const textOnlyMarkup = Markup.inlineKeyboard([[loginBtn]]).reply_markup;
-    let sent: { chat: { id: number }; message_id: number };
-    try {
-      sent = await ctx.replyWithPhoto(
-        { source: LOGO_PATH },
-        { caption, reply_markup: replyMarkup },
-      );
-    } catch (err) {
-      this.logger.warn(
-        `replyWithPhoto failed (${err instanceof Error ? err.message : String(err)}); sending text login link instead`,
-      );
-      sent = await ctx.reply(caption, { reply_markup: textOnlyMarkup });
-    }
-
-    await this.tokens.attachTelegramMessage(
-      token,
-      BigInt(sent.chat.id),
-      sent.message_id,
-      userMessageId,
-    );
-
-    // +5 s buffer so the auth-exchange path wins the race when the user clicks right at expiry
-    const timer = setTimeout(
-      () => {
-        this.bot.telegram
-          .editMessageReplyMarkup(
-            sent.chat.id,
-            sent.message_id,
-            undefined,
-            undefined,
-          )
-          .catch(() => {});
-      },
-      5 * 60 * 1000 + 5_000,
-    );
-    timer.unref();
-  }
-
-  @Command('receive')
-  async onReceive(@Ctx() ctx: Context): Promise<void> {
-    const fromId = ctx.from?.id;
-    const chatId = ctx.chat?.id;
-    if (fromId === undefined || chatId === undefined) {
-      await ctx.reply(this.t(ctx, 'telegram.errors.no_chat_info'));
-      return;
-    }
-
-    await this.stickerQueue.enqueue({
-      channelUserId: String(fromId),
-      chatId,
-      prompt: 'sticker pack',
+    await ctx.reply(this.t(ctx, 'telegram.open.caption'), {
+      reply_markup: Markup.inlineKeyboard([[button]]).reply_markup,
     });
-
-    await ctx.reply(this.t(ctx, 'telegram.queue.working_on_it'));
   }
 }

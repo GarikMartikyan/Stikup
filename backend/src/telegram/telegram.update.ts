@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import type { ConfigType } from '@nestjs/config';
 import { I18nService } from 'nestjs-i18n';
-import { Ctx, InjectBot, Start, Update } from 'nestjs-telegraf';
+import { Command, Ctx, InjectBot, Start, Update } from 'nestjs-telegraf';
 import { Context, Markup, Telegraf } from 'telegraf';
 
 import { TelegramAdapter } from '../auth/channel/telegram-adapter';
@@ -15,6 +15,7 @@ import { IdentityService } from '../auth/identity.service';
 import { TokenService } from '../auth/token.service';
 import { frontendConfig } from '../config/frontend.config';
 import { telegramConfig } from '../config/telegram.config';
+import { PackService } from '../pack/pack.service';
 import { resolveLang } from './telegram-i18n';
 
 const MINI_APP_PATH = '/app';
@@ -33,6 +34,7 @@ export class TelegramUpdate implements OnModuleInit {
     private readonly telegramAdapter: TelegramAdapter,
     private readonly identity: IdentityService,
     private readonly tokens: TokenService,
+    private readonly packs: PackService,
     private readonly i18n: I18nService,
   ) {}
 
@@ -57,8 +59,9 @@ export class TelegramUpdate implements OnModuleInit {
   }
 
   async onModuleInit(): Promise<void> {
-    // The bot exposes no slash commands — clear any previously registered menu.
-    await this.bot.telegram.setMyCommands([]);
+    await this.bot.telegram.setMyCommands([
+      { command: 'receive', description: 'Get my sticker packs' },
+    ]);
 
     // Set the persistent ☰ menu button to open the Mini App.
     // Best-effort: a missing HTTPS URL in dev or any transient API error
@@ -95,6 +98,54 @@ export class TelegramUpdate implements OnModuleInit {
     }
 
     await this.sendOpenApp(ctx);
+  }
+
+  /**
+   * Re-send the user every sticker pack they've created. Each ready pack is
+   * delivered as a Telegram sticker set (via the same flow as the in-app "get
+   * stickers" action), so the user receives an "Add stickers" link per pack.
+   */
+  @Command('receive')
+  async onReceive(@Ctx() ctx: Context): Promise<void> {
+    const event = await this.telegramAdapter.fromContext(ctx);
+    if (!event) {
+      await ctx.reply(this.t(ctx, 'telegram.errors.no_profile'));
+      return;
+    }
+
+    const { userId } = await this.identity.resolveOrCreate(event);
+
+    const packs = await this.packs.listPacks(userId);
+    const ready = packs.filter((pack) => pack.status === 'ready');
+
+    this.logger.log(
+      `/receive: user ${userId} has ${ready.length}/${packs.length} ready pack(s)`,
+    );
+
+    if (ready.length === 0) {
+      await ctx.reply(this.t(ctx, 'telegram.receive.none'));
+      return;
+    }
+
+    await ctx.reply(this.t(ctx, 'telegram.receive.working'));
+
+    // Deliver oldest-first so the set links arrive in creation order. Each
+    // deliverTelegram() call sends its own "Add it to Telegram: <link>" message.
+    let delivered = 0;
+    for (const pack of [...ready].reverse()) {
+      try {
+        const result = await this.packs.deliverTelegram(pack.id, userId);
+        if (result.delivered) delivered += 1;
+      } catch (err) {
+        this.logger.warn(
+          `/receive: deliverTelegram failed for pack ${pack.id}: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
+
+    if (delivered === 0) {
+      await ctx.reply(this.t(ctx, 'telegram.receive.failed'));
+    }
   }
 
   private async handleLinkPayload(ctx: Context, token: string): Promise<void> {

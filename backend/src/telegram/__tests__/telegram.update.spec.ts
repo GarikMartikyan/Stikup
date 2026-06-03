@@ -7,12 +7,15 @@ import type { TelegramAdapter } from '../../auth/channel/telegram-adapter';
 import type { frontendConfig } from '../../config/frontend.config';
 import type { telegramConfig } from '../../config/telegram.config';
 import type { IdentityService } from '../../auth/identity.service';
+import type { PackService } from '../../pack/pack.service';
 import type { TokenService } from '../../auth/token.service';
 import { TelegramUpdate } from '../telegram.update';
 
 function buildUpdate(overrides?: {
   fromContext?: jest.Mock;
   miniAppUrl?: string;
+  listPacks?: jest.Mock;
+  deliverTelegram?: jest.Mock;
 }): {
   update: TelegramUpdate;
   bot: { telegram: Record<string, jest.Mock> };
@@ -21,6 +24,7 @@ function buildUpdate(overrides?: {
     consumeLink: jest.Mock;
   };
   identity: { resolveOrCreate: jest.Mock; linkChannel: jest.Mock };
+  packs: { listPacks: jest.Mock; deliverTelegram: jest.Mock };
 } {
   const bot = {
     telegram: {
@@ -61,6 +65,13 @@ function buildUpdate(overrides?: {
     consumeLink: jest.fn(() => Promise.resolve(null)),
   };
 
+  const packs = {
+    listPacks: overrides?.listPacks ?? jest.fn(() => Promise.resolve([])),
+    deliverTelegram:
+      overrides?.deliverTelegram ??
+      jest.fn(() => Promise.resolve({ delivered: true })),
+  };
+
   // Stand-in for nestjs-i18n: echo the key so we can assert it was translated.
   const i18n = { t: jest.fn((key: string) => `translated:${key}`) };
 
@@ -71,6 +82,7 @@ function buildUpdate(overrides?: {
     telegramAdapter,
     identity as unknown as IdentityService,
     tokens as unknown as TokenService,
+    packs as unknown as PackService,
     i18n as unknown as I18nService,
   );
 
@@ -80,6 +92,7 @@ function buildUpdate(overrides?: {
     i18n,
     tokens,
     identity,
+    packs,
   };
 }
 
@@ -103,15 +116,16 @@ function buildCtx(
 
 describe('TelegramUpdate', () => {
   describe('onModuleInit', () => {
-    it('clears slash commands and sets the menu button when miniAppUrl is HTTPS', async () => {
+    it('registers the /receive command and sets the menu button when miniAppUrl is HTTPS', async () => {
       const { update, bot } = buildUpdate({
         miniAppUrl: 'https://stikup.app/app',
       });
 
       await update.onModuleInit();
 
-      // The bot exposes no slash commands — the menu is cleared with [].
-      expect(bot.telegram.setMyCommands).toHaveBeenCalledWith([]);
+      expect(bot.telegram.setMyCommands).toHaveBeenCalledWith([
+        { command: 'receive', description: 'Get my sticker packs' },
+      ]);
       expect(bot.telegram.setChatMenuButton).toHaveBeenCalledWith({
         menuButton: {
           type: 'web_app',
@@ -194,6 +208,90 @@ describe('TelegramUpdate', () => {
         lang: 'ru',
         args: undefined,
       });
+    });
+  });
+
+  describe('/receive', () => {
+    it('replies with no_profile when the Telegram profile cannot be read', async () => {
+      const { update, packs } = buildUpdate({
+        fromContext: jest.fn(() => Promise.resolve(null)),
+      });
+      const ctx = buildCtx('en');
+
+      await update.onReceive(ctx);
+
+      expect(ctx.reply).toHaveBeenCalledWith(
+        'translated:telegram.errors.no_profile',
+      );
+      expect(packs.listPacks).not.toHaveBeenCalled();
+    });
+
+    it('replies that there are no packs when the user has none ready', async () => {
+      const { update, packs } = buildUpdate({
+        listPacks: jest.fn(() =>
+          Promise.resolve([
+            { id: 'p1', status: 'generating' },
+            { id: 'p2', status: 'failed' },
+          ]),
+        ),
+      });
+      const ctx = buildCtx('en');
+
+      await update.onReceive(ctx);
+
+      expect(ctx.reply).toHaveBeenCalledWith(
+        'translated:telegram.receive.none',
+      );
+      expect(packs.deliverTelegram).not.toHaveBeenCalled();
+    });
+
+    it('delivers every ready pack oldest-first via deliverTelegram', async () => {
+      const deliverTelegram = jest.fn(
+        (packId: string): Promise<{ delivered: boolean }> => {
+          void packId;
+          return Promise.resolve({ delivered: true });
+        },
+      );
+      const { update } = buildUpdate({
+        // listPacks returns newest-first (createdAt desc).
+        listPacks: jest.fn(() =>
+          Promise.resolve([
+            { id: 'new', status: 'ready' },
+            { id: 'mid', status: 'generating' },
+            { id: 'old', status: 'ready' },
+          ]),
+        ),
+        deliverTelegram,
+      });
+      const ctx = buildCtx('en');
+
+      await update.onReceive(ctx);
+
+      expect(ctx.reply).toHaveBeenCalledWith(
+        'translated:telegram.receive.working',
+      );
+      // Only the two ready packs, delivered oldest-first.
+      expect(deliverTelegram.mock.calls.map((c) => c[0])).toEqual([
+        'old',
+        'new',
+      ]);
+      expect(deliverTelegram).toHaveBeenCalledWith('old', 'user-1');
+    });
+
+    it('replies with a failure message when no pack could be delivered', async () => {
+      const { update } = buildUpdate({
+        listPacks: jest.fn(() =>
+          Promise.resolve([{ id: 'p1', status: 'ready' }]),
+        ),
+        deliverTelegram: jest.fn(() => Promise.reject(new Error('boom'))),
+      });
+      const ctx = buildCtx('en');
+
+      await update.onReceive(ctx);
+
+      expect(ctx.reply).toHaveBeenCalledWith(
+        'translated:telegram.receive.failed',
+      );
     });
   });
 

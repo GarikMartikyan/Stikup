@@ -14,6 +14,11 @@
   "queue": {
     "working_on_it": "⏳ Working on it. I'll send the stickers as soon as they're ready."
   },
+  "receive": {
+    "none": "You don't have any sticker packs yet. Open the app to create one first.",
+    "working": "📦 Sending you your sticker packs — you'll get an \"Add stickers\" link for each one.",
+    "failed": "Sorry, I couldn't send your sticker packs right now. Please try again in a moment."
+  },
   "link": {
     "success": "✅ Your Telegram account is now connected to Stikup.",
     "conflict": "This Telegram account is already linked to a different Stikup account.",

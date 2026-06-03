@@ -49,12 +49,32 @@ type TFunction = (key: string, vars?: Record<string, string | number>) => string
 type LanguageContextValue = {
   language: Language;
   setLanguage: (l: Language) => void;
+  /**
+   * Adopt a locale derived from an external language code (e.g. the Telegram
+   * user's `language_code`) — but only on first open, when the user has no
+   * stored preference yet. A no-op when the code is unsupported or a choice
+   * already exists, so it never overrides a manual selection.
+   */
+  adoptTelegramLanguage: (code: string | null | undefined) => void;
   t: TFunction;
 };
 
 const LanguageContext = createContext<LanguageContextValue | null>(null);
 
 const STORAGE_KEY = "stikup:lang";
+
+/**
+ * Map a Telegram (BCP-47-ish) language code such as "ru", "ru-RU" or "en-US"
+ * to one of the app's supported {@link Language}s, or `null` when unsupported.
+ * Only the primary subtag is considered ("ru-RU" → "ru").
+ */
+export function normalizeLanguage(
+  code: string | null | undefined,
+): Language | null {
+  if (!code) return null;
+  const base = code.toLowerCase().split("-")[0];
+  return LANGUAGES.some((l) => l.value === base) ? (base as Language) : null;
+}
 
 function readStoredLanguage(): Language | null {
   if (typeof window === "undefined") return null;
@@ -99,6 +119,17 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     setLanguageState(l);
   }, []);
 
+  const adoptTelegramLanguage = useCallback(
+    (code: string | null | undefined) => {
+      // First-open only: a stored value (manual switch or a previously adopted
+      // language) always wins, so we never override the user's choice.
+      if (readStoredLanguage() !== null) return;
+      const detected = normalizeLanguage(code);
+      if (detected) setLanguage(detected);
+    },
+    [setLanguage],
+  );
+
   const t = useCallback(
     (key: string, vars?: Record<string, string | number>): string => {
       const parts = key.split(".");
@@ -112,7 +143,9 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <LanguageContext.Provider value={{ language, setLanguage, t }}>
+    <LanguageContext.Provider
+      value={{ language, setLanguage, adoptTelegramLanguage, t }}
+    >
       {children}
     </LanguageContext.Provider>
   );
@@ -124,12 +157,18 @@ function fallbackT(key: string, vars?: Record<string, string | number>): string 
   return interpolate(value, vars);
 }
 
+// Stable fallback used when no provider is mounted. It must be a single shared
+// reference (not rebuilt per render) so consumers that list these callbacks in
+// effect deps don't re-fire on every render.
+const FALLBACK_CONTEXT: LanguageContextValue = {
+  language: "en",
+  setLanguage: () => {},
+  adoptTelegramLanguage: () => {},
+  t: fallbackT,
+};
+
 export function useLanguage(): LanguageContextValue {
-  const ctx = useContext(LanguageContext);
-  if (!ctx) {
-    return { language: "en", setLanguage: () => {}, t: fallbackT };
-  }
-  return ctx;
+  return useContext(LanguageContext) ?? FALLBACK_CONTEXT;
 }
 
 export function useT(): TFunction {

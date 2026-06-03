@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { useLanguage } from "@/components/language-provider";
 import { useTheme } from "@/components/theme-provider";
 import { getWebApp, isTelegramEnv } from "@/lib/telegram/webapp";
 import type { AuthMeResponse } from "@/lib/api-types";
@@ -82,6 +83,7 @@ async function fetchWithTimeout(
 
 export function TelegramProvider({ children }: { children: React.ReactNode }) {
   const { setTheme } = useTheme();
+  const { adoptTelegramLanguage } = useLanguage();
   const [status, setStatus] = useState<TelegramStatus>("idle");
   const [user, setUser] = useState<AuthMeResponse | null>(null);
   // Increment to re-trigger the login effect on retry.
@@ -150,6 +152,12 @@ export function TelegramProvider({ children }: { children: React.ReactNode }) {
     if (!isInTelegram) return;
 
     const app = getWebApp()!;
+
+    // --- First-open locale ---
+    // Adopt the user's Telegram language when it's one we support; otherwise the
+    // app keeps its default (English). Only applies when no stored preference
+    // exists, so a manual language switch is never overridden.
+    adoptTelegramLanguage(app.initDataUnsafe.user?.language_code);
 
     // --- SDK lifecycle ---
     app.ready();
@@ -225,8 +233,10 @@ export function TelegramProvider({ children }: { children: React.ReactNode }) {
       }
     };
     // retryCount intentionally re-runs the effect on retry.
-    // setTheme is a stable useCallback([]) — safe to include for lint hygiene.
-  }, [isInTelegram, retryCount, setTheme]);
+    // setTheme / adoptTelegramLanguage are stable useCallbacks — included for
+    // lint hygiene. adoptTelegramLanguage is idempotent (it no-ops once a
+    // preference is stored), so re-running on retry is harmless.
+  }, [isInTelegram, retryCount, setTheme, adoptTelegramLanguage]);
 
   // Fix 5: Wire Telegram BackButton to drive in-app back navigation.
   // Shown on non-home routes inside Telegram; hidden on home routes.

@@ -28,3 +28,13 @@ export const SESSION_COOKIE_NAME =
  */
 export const TELEGRAM_BOT_URL =
   process.env.NEXT_PUBLIC_TELEGRAM_BOT_URL ?? "https://t.me/stikup_bot";
+
+/**
+ * Adsgram interstitial block id (e.g. "int-36357"). NEXT_PUBLIC so the browser
+ * can read it. Exposed as a function (not a top-level const) so it can be
+ * stubbed in tests with `vi.stubEnv` while Next still inlines the static
+ * `process.env.NEXT_PUBLIC_*` expression at build time. Empty string disables ads.
+ */
+export function adsgramBlockId(): string {
+  return process.env.NEXT_PUBLIC_ADSGRAM_BLOCK_ID ?? '';
+}

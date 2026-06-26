@@ -1,85 +1,97 @@
 import React from 'react';
 import {AbsoluteFill, Img, interpolate, spring, staticFile, useCurrentFrame, useVideoConfig} from 'remotion';
-import {AppScreen} from '../components/AppScreen';
+import {AppScreen, COLORS} from '../components/AppScreen';
 import {Caption} from '../components/Caption';
 
 const STYLES = [
-  {id: 'chibi', name: 'Chibi', tagline: 'Cute & soft', img: null},
+  {id: 'chibi', name: 'Chibi', tagline: 'Cute & soft', img: staticFile('chibi/sticker_8.webp')},
   {id: 'disney3d', name: 'Disney 3D', tagline: 'Pixar-style 3D', img: staticFile('disney/disney-styled_08.webp')},
-  {id: 'anime', name: 'Anime', tagline: 'Crisp cel-shaded', img: null},
-  {id: 'pixel', name: 'Pixel', tagline: 'Retro 16-bit', img: null},
+  {id: 'anime', name: 'Anime', tagline: 'Crisp cel-shaded', img: staticFile('anime/anime-styled_08.webp')},
+  {id: 'pixel', name: 'Pixel', tagline: 'Retro 16-bit', img: staticFile('pixel/pixel-styled_08.webp')},
 ] as const;
 
 export const PickStyle: React.FC = () => {
   const frame = useCurrentFrame();
   const {fps} = useVideoConfig();
 
-  const highlightFrame = Math.max(0, frame - 30);
-  const highlightSpring = spring({frame: highlightFrame, fps, config: {stiffness: 220, damping: 18}});
-  const isHighlighted = frame >= 30;
-  const contentOpacity = interpolate(frame, [0, 18], [0, 1], {extrapolateRight: 'clamp'});
+  // Disney 3D tile highlights at frame 20
+  const highlightSp = spring({frame: Math.max(0, frame - 20), fps, config: {stiffness: 240, damping: 18}});
+  const isHighlighted = frame >= 20;
+  const contentOpacity = interpolate(frame, [0, 12], [0, 1], {extrapolateRight: 'clamp'});
 
   return (
-    <AbsoluteFill style={{background: '#0a0a0a'}}>
+    <AbsoluteFill style={{background: COLORS.bg}}>
       <AppScreen frame={frame}>
-        <div style={{opacity: contentOpacity, padding: '44px 44px 28px', display: 'flex', flexDirection: 'column', gap: 28}}>
+        <div style={{opacity: contentOpacity, padding: '36px 40px 24px', display: 'flex', flexDirection: 'column', gap: 24}}>
+          {/* Header — real copy */}
           <div>
-            <div style={{fontSize: 15, fontWeight: 700, color: '#10a37f', fontFamily: 'system-ui', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 8}}>
-              Step 1
+            <div style={{
+              fontSize: 13,
+              fontWeight: 700,
+              color: COLORS.brand,
+              fontFamily: 'system-ui',
+              letterSpacing: '0.18em',
+              textTransform: 'uppercase',
+              marginBottom: 6,
+            }}>
+              Step 01 of 03
             </div>
-            <div style={{fontSize: 40, fontWeight: 800, color: '#fff', fontFamily: 'system-ui', letterSpacing: '-1px', lineHeight: 1.1}}>
-              Pick your style
+            <div style={{
+              fontSize: 38,
+              fontWeight: 900,
+              color: COLORS.fg,
+              fontFamily: 'system-ui',
+              letterSpacing: '-1.5px',
+              lineHeight: 1.05,
+              marginBottom: 6,
+            }}>
+              Pick your style.
+            </div>
+            <div style={{fontSize: 17, color: COLORS.fgMuted, fontFamily: 'system-ui', lineHeight: 1.4}}>
+              Choose an art style and we'll build the ChatGPT prompt for you.
             </div>
           </div>
 
-          <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18}}>
+          {/* 2×2 style grid */}
+          <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14}}>
             {STYLES.map((style) => {
-              const selected = style.id === 'disney3d' && isHighlighted;
-              const sc = selected ? 0.96 + highlightSpring * 0.04 : 1;
+              const sel = style.id === 'disney3d' && isHighlighted;
+              const sc = sel ? 0.97 + highlightSp * 0.03 : 1;
               return (
                 <div key={style.id} style={{
-                  background: selected ? 'rgba(16,163,127,0.1)' : '#1a1a1a',
-                  border: `2px solid ${selected ? '#10a37f' : '#2a2a2a'}`,
-                  borderRadius: 22,
-                  padding: '22px 16px',
+                  background: sel ? `rgba(224,52,154,0.08)` : COLORS.bgElev,
+                  border: `2px solid ${sel ? COLORS.brand : COLORS.borderStrong}`,
+                  borderRadius: 20,
+                  padding: '18px 14px',
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
-                  gap: 14,
+                  gap: 12,
                   transform: `scale(${sc})`,
-                  boxShadow: selected
-                    ? '0 0 0 4px rgba(16,163,127,0.2), 0 8px 24px -6px rgba(16,163,127,0.35)'
+                  boxShadow: sel
+                    ? `0 0 0 4px rgba(224,52,154,0.18), 0 8px 24px -6px rgba(224,52,154,0.3)`
                     : 'none',
                   position: 'relative',
                 }}>
-                  {selected && (
+                  {sel && (
                     <div style={{
-                      position: 'absolute',
-                      top: 14,
-                      right: 14,
-                      width: 24,
-                      height: 24,
-                      background: '#10a37f',
-                      borderRadius: '50%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
+                      position: 'absolute', top: 12, right: 12,
+                      width: 22, height: 22, background: COLORS.brand,
+                      borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}>
-                      <svg width="12" height="9" viewBox="0 0 12 9" fill="none">
-                        <path d="M1 4.5l3 3L11 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <svg width="11" height="8" viewBox="0 0 11 8" fill="none">
+                        <path d="M1 4l2.5 2.5L10 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
                     </div>
                   )}
-                  <div style={{width: 130, height: 130, borderRadius: 14, overflow: 'hidden', background: '#2a2a2a', flexShrink: 0}}>
-                    {style.img && (
-                      <Img src={style.img} style={{width: '100%', height: '100%', objectFit: 'cover'}} />
-                    )}
+                  <div style={{width: 118, height: 118, borderRadius: 12, overflow: 'hidden', background: COLORS.bgSunk, flexShrink: 0}}>
+                    <Img src={style.img} style={{width: '100%', height: '100%', objectFit: 'cover'}} />
                   </div>
                   <div style={{textAlign: 'center'}}>
-                    <div style={{fontSize: 20, fontWeight: 700, color: selected ? '#10a37f' : '#fff', fontFamily: 'system-ui'}}>
+                    <div style={{fontSize: 18, fontWeight: 700, color: sel ? COLORS.brand : COLORS.fg, fontFamily: 'system-ui'}}>
                       {style.name}
                     </div>
-                    <div style={{fontSize: 15, color: '#777', fontFamily: 'system-ui', marginTop: 3}}>
+                    <div style={{fontSize: 13, color: COLORS.fgMuted, fontFamily: 'system-ui', marginTop: 2}}>
                       {style.tagline}
                     </div>
                   </div>

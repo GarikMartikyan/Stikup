@@ -12,14 +12,14 @@ import {Outro} from './scenes/Outro';
 export const HowToVideo: React.FC = () => {
   return (
     <Series>
-      <Series.Sequence durationInFrames={90}><Intro /></Series.Sequence>
-      <Series.Sequence durationInFrames={120}><PickStyle /></Series.Sequence>
-      <Series.Sequence durationInFrames={90}><OpenChatGPT /></Series.Sequence>
-      <Series.Sequence durationInFrames={150}><AttachPhoto /></Series.Sequence>
-      <Series.Sequence durationInFrames={150}><ChatGPTGenerates /></Series.Sequence>
-      <Series.Sequence durationInFrames={120}><UploadGrid /></Series.Sequence>
-      <Series.Sequence durationInFrames={180}><StickersReady /></Series.Sequence>
-      <Series.Sequence durationInFrames={90}><Outro /></Series.Sequence>
+      <Series.Sequence durationInFrames={60}><Intro /></Series.Sequence>
+      <Series.Sequence durationInFrames={75}><PickStyle /></Series.Sequence>
+      <Series.Sequence durationInFrames={60}><OpenChatGPT /></Series.Sequence>
+      <Series.Sequence durationInFrames={90}><AttachPhoto /></Series.Sequence>
+      <Series.Sequence durationInFrames={90}><ChatGPTGenerates /></Series.Sequence>
+      <Series.Sequence durationInFrames={75}><UploadGrid /></Series.Sequence>
+      <Series.Sequence durationInFrames={120}><StickersReady /></Series.Sequence>
+      <Series.Sequence durationInFrames={60}><Outro /></Series.Sequence>
     </Series>
   );
 };

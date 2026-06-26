@@ -1,6 +1,6 @@
 import React from 'react';
 import {AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig} from 'remotion';
-import {AppScreen} from '../components/AppScreen';
+import {AppScreen, COLORS} from '../components/AppScreen';
 import {Caption} from '../components/Caption';
 import {Cursor} from '../components/Cursor';
 
@@ -8,59 +8,59 @@ export const OpenChatGPT: React.FC = () => {
   const frame = useCurrentFrame();
   const {fps} = useVideoConfig();
 
-  const rippleProgress = interpolate(frame, [42, 72], [0, 1], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
+  // Click at frame 28, ripple through frame 48
+  const rippleProgress = interpolate(frame, [28, 50], [0, 1], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
   const rippleScale = rippleProgress * 4;
-  const rippleOpacity = (1 - rippleProgress) * 0.5;
+  const rippleOpacity = (1 - rippleProgress) * 0.45;
+  const contentOpacity = interpolate(frame, [0, 10], [0, 1], {extrapolateRight: 'clamp'});
 
   return (
-    <AbsoluteFill style={{background: '#0a0a0a'}}>
+    <AbsoluteFill style={{background: COLORS.bg}}>
       <AppScreen frame={frame}>
         <div style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          padding: '0 44px',
-          gap: 28,
-          height: '100%',
+          flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center',
+          padding: '0 40px', gap: 24, height: '100%',
         }}>
-          {/* Prompt preview (dimmed) */}
+          {/* Prompt area — dimmed, shows style label */}
           <div style={{
-            background: '#1a1a1a',
-            borderRadius: 18,
-            padding: '22px 28px',
-            border: '1px solid #2a2a2a',
-            opacity: 0.35,
+            background: COLORS.bgElev,
+            borderRadius: 16,
+            padding: '18px 24px',
+            border: `1px solid ${COLORS.border}`,
+            opacity: contentOpacity * 0.4,
           }}>
-            <div style={{fontSize: 16, color: '#888', fontFamily: 'system-ui', lineHeight: 1.5}}>
-              Create a high-resolution sticker sheet in Disney 3D style — 12 stickers in a 4×3 grid...
+            <div style={{fontSize: 11, fontWeight: 700, color: COLORS.brand, fontFamily: 'system-ui', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 6}}>
+              Your ChatGPT prompt — Disney 3D
+            </div>
+            <div style={{fontSize: 15, color: COLORS.fgMuted, fontFamily: 'system-ui', lineHeight: 1.5}}>
+              Create a high-resolution sticker sheet based on the provided character image. Render the character as a polished 3D animated movie character in the style of modern Disney·Pixar films…
             </div>
           </div>
 
-          {/* Button row */}
-          <div style={{display: 'flex', gap: 16, position: 'relative'}}>
+          {/* Buttons — real Stikup styling */}
+          <div style={{opacity: contentOpacity, display: 'flex', flexDirection: 'column', gap: 12}}>
+            {/* Copy prompt — outline */}
             <div style={{
-              flex: 1,
-              border: '2px solid #2a2a2a',
+              border: `2px solid ${COLORS.borderStrong}`,
               borderRadius: 100,
-              padding: '20px 20px',
+              padding: '18px 28px',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
               gap: 10,
+              justifyContent: 'center',
             }}>
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                <rect x="5" y="5" width="10" height="12" rx="2" stroke="#666" strokeWidth="1.8"/>
-                <rect x="3" y="3" width="10" height="12" rx="2" stroke="#666" strokeWidth="1.8" fill="#111"/>
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <rect x="4" y="4" width="10" height="11" rx="2" stroke={COLORS.fgMuted} strokeWidth="1.6"/>
+                <rect x="2" y="2" width="10" height="11" rx="2" stroke={COLORS.fgMuted} strokeWidth="1.6" fill={COLORS.bg}/>
               </svg>
-              <div style={{fontSize: 18, color: '#666', fontWeight: 600, fontFamily: 'system-ui'}}>Copy Prompt</div>
+              <div style={{fontSize: 17, color: COLORS.fgMuted, fontWeight: 600, fontFamily: 'system-ui'}}>Copy prompt</div>
             </div>
 
+            {/* Open ChatGPT — green (ChatGPT brand color) */}
             <div style={{
-              flex: 1,
               background: '#10a37f',
               borderRadius: 100,
-              padding: '20px 20px',
+              padding: '18px 28px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -70,33 +70,23 @@ export const OpenChatGPT: React.FC = () => {
             }}>
               <div style={{
                 position: 'absolute',
-                width: 48,
-                height: 48,
-                background: 'rgba(255,255,255,0.4)',
+                width: 48, height: 48,
+                background: 'rgba(255,255,255,0.35)',
                 borderRadius: '50%',
                 transform: `scale(${rippleScale})`,
                 opacity: rippleOpacity,
               }} />
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                <path d="M7 3H17M17 3V13M17 3L3 17" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <path d="M6 2H16M16 2V12M16 2L2 16" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
-              <div style={{fontSize: 18, color: 'white', fontWeight: 600, fontFamily: 'system-ui'}}>Open ChatGPT</div>
+              <div style={{fontSize: 17, color: 'white', fontWeight: 700, fontFamily: 'system-ui'}}>Open ChatGPT</div>
             </div>
           </div>
         </div>
       </AppScreen>
 
-      <Cursor
-        frame={frame}
-        fps={fps}
-        fromX={160}
-        fromY={820}
-        toX={680}
-        toY={820}
-        clickFrame={42}
-      />
-
-      <Caption frame={frame} text="Open ChatGPT with one tap" startFrame={10} />
+      <Cursor frame={frame} fps={fps} fromX={180} fromY={880} toX={540} toY={880} clickFrame={28} />
+      <Caption frame={frame} text="Open ChatGPT with one tap" startFrame={8} />
     </AbsoluteFill>
   );
 };

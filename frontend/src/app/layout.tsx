@@ -8,6 +8,7 @@ import { StoreProvider } from "@/lib/store/providers";
 import { TelegramProvider } from "@/components/telegram/telegram-provider";
 import { hasSession } from "@/lib/auth/has-session";
 import { ReferralCapture } from "@/components/referral-capture";
+import { ScrollToTop } from "@/components/scroll-to-top";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -67,6 +68,7 @@ export default async function RootLayout({
           <LanguageProvider>
             <StoreProvider>
               <TelegramProvider>
+                <ScrollToTop />
                 <ReferralCapture />
                 <AppHeader loggedIn={loggedIn} />
                 {children}

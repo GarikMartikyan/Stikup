@@ -6,17 +6,10 @@ import { Inject, Logger } from '@nestjs/common';
 import type { ConfigType } from '@nestjs/config';
 import type { Job } from 'bullmq';
 
-import type { BotSender } from '../auth/channel/bot-sender';
-import { BOT_SENDER } from '../auth/channel/bot-sender';
 import { storageConfig } from '../config/storage.config';
 import { ImageProcessingService } from '../image-processing/image-processing.service';
-import { STICKER_PROMPT } from '../image-processing/sticker-prompt';
 import { PrismaService } from '../prisma/prisma.service';
-import {
-  STICKER_QUEUE_NAME,
-  StickerJobData,
-  WebPackJobData,
-} from './sticker.queue';
+import { STICKER_QUEUE_NAME, WebPackJobData } from './sticker.queue';
 
 @Processor(STICKER_QUEUE_NAME)
 export class StickerProcessor extends WorkerHost {
@@ -24,7 +17,6 @@ export class StickerProcessor extends WorkerHost {
 
   constructor(
     private readonly imageProcessing: ImageProcessingService,
-    @Inject(BOT_SENDER) private readonly botSender: BotSender,
     private readonly prisma: PrismaService,
     @Inject(storageConfig.KEY)
     private readonly storage: ConfigType<typeof storageConfig>,
@@ -32,39 +24,8 @@ export class StickerProcessor extends WorkerHost {
     super();
   }
 
-  async process(job: Job<StickerJobData | WebPackJobData>): Promise<void> {
-    if (job.name === 'web-pack') {
-      return this.processWebPack(job as Job<WebPackJobData>);
-    }
-    return this.processGenerate(job as Job<StickerJobData>);
-  }
-
-  private async processGenerate(job: Job<StickerJobData>): Promise<void> {
-    const { channelUserId, prompt } = job.data;
-    try {
-      const { stickerPaths, cleanup } =
-        await this.imageProcessing.generateStickers(Buffer.alloc(0), prompt);
-
-      try {
-        if (stickerPaths.length === 0) {
-          this.logger.warn(
-            `job ${job.id}: no stickers produced for user ${channelUserId}`,
-          );
-          return;
-        }
-
-        for (const stickerPath of stickerPaths) {
-          await this.botSender.sendSticker(channelUserId, stickerPath);
-        }
-      } finally {
-        await cleanup();
-      }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      this.logger.error(
-        `job ${job.id} failed for user ${channelUserId}: ${message}`,
-      );
-    }
+  async process(job: Job<WebPackJobData>): Promise<void> {
+    return this.processWebPack(job);
   }
 
   private async processWebPack(job: Job<WebPackJobData>): Promise<void> {
@@ -74,15 +35,39 @@ export class StickerProcessor extends WorkerHost {
     try {
       const sourceBuffer = await readFile(sourceImagePath);
 
-      const result = await this.imageProcessing.generateStickers(
-        sourceBuffer,
-        STICKER_PROMPT,
-      );
+      // Split the uploaded 4×3 grid directly — no AI call.
+      const result = await this.imageProcessing.generateStickers(sourceBuffer);
       cleanup = result.cleanup;
       const { stickerPaths } = result;
 
       if (stickerPaths.length < 12) {
-        throw new Error(`expected 12 stickers, got ${stickerPaths.length}`);
+        // The Python splitter skips cells it judges empty, so a messy grid can
+        // yield fewer than 12 stickers. Mark the pack failed and refund the
+        // generation so the user can re-upload a clean 3×4 grid. Do NOT throw
+        // (that would log as a generic system error); this is an expected user
+        // error and is surfaced to the frontend via pack.status = 'failed'.
+        this.logger.warn(
+          `web-pack job ${job.id}: grid split yielded ${stickerPaths.length} sticker(s) for pack ${packId}; expected 12 — marking failed, refunding generation`,
+        );
+        await this.prisma.pack.update({
+          where: { id: packId },
+          data: { status: 'failed' },
+        });
+        await this.prisma.user.updateMany({
+          where: { id: userId, generationsUsed: { gt: 0 } },
+          data: { generationsUsed: { decrement: 1 } },
+        });
+        await rm(join(this.storage.stickerDir, packId), {
+          recursive: true,
+          force: true,
+        }).catch((rmErr: unknown) => {
+          this.logger.debug(
+            `failed to remove pack dir for ${packId}: ${
+              rmErr instanceof Error ? rmErr.message : String(rmErr)
+            }`,
+          );
+        });
+        return;
       }
 
       const packDir = join(this.storage.stickerDir, packId);
@@ -90,7 +75,7 @@ export class StickerProcessor extends WorkerHost {
 
       // Note: the source-selfie thumbnail (source.webp) is written up front at
       // upload time (PackService.generatePack) so the result page can show it
-      // during generation — the worker no longer needs to produce it.
+      // during generation — the worker does not need to produce it.
 
       // Copy in sorted order (the service already sorts); name as sticker_1..12
       const sorted = [...stickerPaths].sort();
@@ -109,9 +94,7 @@ export class StickerProcessor extends WorkerHost {
         });
         await tx.pack.update({
           where: { id: packId },
-          data: {
-            status: 'ready',
-          },
+          data: { status: 'ready' },
         });
       });
 

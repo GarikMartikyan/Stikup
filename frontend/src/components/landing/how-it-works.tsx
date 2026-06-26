@@ -1,10 +1,10 @@
 "use client";
 
-import { MessageCircle, Sparkles, Upload } from "lucide-react";
+import { Gift, MessageCircle, Upload, UploadCloud } from "lucide-react";
 import { useT } from "@/components/language-provider";
 
-const STEP_ICONS = [MessageCircle, Upload, Sparkles];
-const STEP_EYEBROWS = ["01", "02", "03"];
+const STEP_ICONS = [MessageCircle, UploadCloud, Upload, Gift];
+const STEP_EYEBROWS = ["01", "02", "03", "04"];
 
 export function HowItWorks() {
   const t = useT();
@@ -28,6 +28,12 @@ export function HowItWorks() {
       title: t("landing.how_it_works.steps.step_03_title"),
       body: t("landing.how_it_works.steps.step_03_body"),
     },
+    {
+      icon: STEP_ICONS[3],
+      eyebrow: STEP_EYEBROWS[3],
+      title: t("landing.how_it_works.steps.step_04_title"),
+      body: t("landing.how_it_works.steps.step_04_body"),
+    },
   ];
 
   return (
@@ -47,7 +53,7 @@ export function HowItWorks() {
           </p>
         </div>
 
-        <ol className="mt-14 grid gap-6 md:grid-cols-3">
+        <ol className="mt-14 grid gap-6 md:grid-cols-4">
           {steps.map((step, i) => (
             <li
               key={step.eyebrow}

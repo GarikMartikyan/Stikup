@@ -1,21 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { Check } from "lucide-react";
 import { useT } from "@/components/language-provider";
-import { PRICE_LABEL } from "@/components/result/data";
-
-const PRICING_BULLET_KEYS = [
-  "landing.pricing.bullets.b1",
-  "landing.pricing.bullets.b2",
-  "landing.pricing.bullets.b3",
-  "landing.pricing.bullets.b4",
-  "landing.pricing.bullets.b5",
-  "landing.pricing.bullets.b6",
-] as const;
+import { uploadCtaHref } from "@/lib/auth/cta-href";
 
 export function Pricing({ loggedIn }: { loggedIn: boolean }) {
   const t = useT();
+
+  const steps = [
+    t("landing.pricing.step_chatgpt"),
+    t("landing.pricing.step_upload"),
+    t("landing.pricing.step_free"),
+    t("landing.pricing.step_refer"),
+  ];
+
   return (
     <section id="pricing" className="snap-section relative flex min-h-dvh flex-col justify-center py-16 md:py-20">
       <div className="mx-auto w-full max-w-3xl px-5 text-center">
@@ -42,56 +40,38 @@ export function Pricing({ loggedIn }: { loggedIn: boolean }) {
             }}
           />
           <div className="relative overflow-hidden rounded-[2.5rem] border border-[var(--color-border)] bg-[var(--color-bg-elev)] p-8 text-left shadow-[var(--shadow-card)] md:p-10">
-            <div className="flex flex-wrap items-baseline justify-between gap-4">
-              <div>
-                <div className="inline-flex items-center gap-2 rounded-full bg-[var(--color-brand)]/15 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-brand)]">
-                  {t("landing.pricing.full_pack_badge")}
-                </div>
-                <div className="mt-4 flex items-baseline gap-2">
-                  <span className="font-[family-name:var(--font-display)] text-6xl font-black tracking-[-0.04em] md:text-7xl">
-                    {PRICE_LABEL}
-                  </span>
-                  <span className="text-[var(--color-fg-muted)]">{t("landing.pricing.one_time")}</span>
-                </div>
-                <div className="mt-1 text-sm text-[var(--color-fg-subtle)]">
-                  {t("landing.pricing.regional_pricing")}
-                </div>
+            <div className="mb-6">
+              <div className="inline-flex items-center gap-2 rounded-full bg-[var(--color-success)]/15 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-success)]">
+                {t("landing.pricing.how_label")}
               </div>
-              <Link
-                href="/subscribe"
-                className="inline-flex items-center gap-2 rounded-full bg-[var(--color-fg)] px-6 py-3.5 text-base font-bold text-[var(--color-bg)] transition hover:opacity-90"
-              >
-                {loggedIn ? t("landing.pricing.cta_authenticated") : t("landing.pricing.cta_anonymous")}
-                <span className="inline-flex items-center rounded-full border border-current/40 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider">
-                  {t("common.coming_soon")}
-                </span>
-              </Link>
             </div>
+
+            <ol className="space-y-4">
+              {steps.map((step, i) => (
+                <li key={i} className="flex items-start gap-3">
+                  <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[var(--color-brand)]/15 text-xs font-bold text-[var(--color-brand)]">
+                    {i + 1}
+                  </span>
+                  <span className="text-sm text-[var(--color-fg)]">{step}</span>
+                </li>
+              ))}
+            </ol>
 
             <div className="my-7 hr-dotted" />
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              {PRICING_BULLET_KEYS.map((key) => (
-                <div
-                  key={key}
-                  className="flex items-center gap-2 text-[var(--color-fg)]"
-                >
-                  <span className="grid h-5 w-5 place-items-center rounded-full bg-[var(--color-success)]/15 text-[var(--color-success)]">
-                    <Check className="h-3 w-3" strokeWidth={3} />
-                  </span>
-                  <span className="text-sm font-medium">{t(key)}</span>
-                </div>
-              ))}
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <p className="text-sm text-[var(--color-fg-muted)]">
+                {t("landing.pricing.referral_note")}
+              </p>
+              <Link
+                href={uploadCtaHref(loggedIn)}
+                className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[var(--color-brand)] via-[#ff5e72] to-[var(--color-brand-2)] px-6 py-3.5 text-base font-bold text-white transition hover:opacity-90"
+              >
+                {loggedIn ? t("landing.pricing.cta_authenticated") : t("landing.pricing.cta_anonymous")}
+              </Link>
             </div>
           </div>
         </div>
-
-        <p className="mt-6 text-xs text-[var(--color-fg-subtle)]">
-          {t("landing.pricing.payment_methods")}
-        </p>
-        <p className="mt-3 text-xs text-[var(--color-fg-subtle)]">
-          {t("landing.pricing.referral_note")}
-        </p>
       </div>
     </section>
   );

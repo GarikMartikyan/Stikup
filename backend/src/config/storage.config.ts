@@ -9,8 +9,7 @@ export interface StorageConfig {
 export const storageConfig = registerAs(
   'storage',
   (): StorageConfig => ({
-    // Default resolves relative to the compiled module directory, mirroring the
-    // pattern used by StubAiImageProvider for its static assets.
+    // Default resolves relative to the compiled module directory.
     stickerDir:
       process.env.STICKER_STORAGE_DIR ??
       join(__dirname, '..', '..', 'public', 'packs'),

@@ -5,10 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 
-import { Inject, Injectable, Logger } from '@nestjs/common';
-
-import { AI_IMAGE_PROVIDER } from './ai-image-provider';
-import type { AiImageProvider } from './ai-image-provider';
+import { Injectable, Logger } from '@nestjs/common';
 
 const execFileAsync = promisify(execFile);
 
@@ -20,47 +17,37 @@ const PYTHON_SCRIPT = join(
   'python',
   'split_stickers.py',
 );
-
-export type StickerStage = 'ai' | 'post';
-export type StickerProgress = (stage: StickerStage) => Promise<void> | void;
+// Kill the subprocess if it hasn't finished within 2 minutes.
+const SUBPROCESS_TIMEOUT = 120_000;
 
 @Injectable()
 export class ImageProcessingService {
   private readonly logger = new Logger(ImageProcessingService.name);
 
-  constructor(
-    @Inject(AI_IMAGE_PROVIDER)
-    private readonly aiProvider: AiImageProvider,
-  ) {}
-
+  /**
+   * Split a pre-rendered 4×3 sticker-grid image into 12 individual WebP
+   * stickers. The caller is responsible for invoking `cleanup()` once it has
+   * finished reading the returned sticker files.
+   */
   async generateStickers(
     sourceImage: Buffer,
-    prompt: string,
-    onProgress?: StickerProgress,
   ): Promise<{ stickerPaths: string[]; cleanup: () => Promise<void> }> {
-    await onProgress?.('ai');
-    const aiOutput = await this.aiProvider.generate(sourceImage, prompt);
-
     const jobId = randomUUID();
-    const aiInputPath = join(tmpdir(), `sticker_${jobId}_ai.png`);
+    const inputPath = join(tmpdir(), `sticker_${jobId}_input.png`);
     const outputDir = join(tmpdir(), `stickers_${jobId}`);
 
-    await writeFile(aiInputPath, aiOutput);
+    await writeFile(inputPath, sourceImage);
     await mkdir(outputDir, { recursive: true });
 
-    await onProgress?.('post');
     try {
-      // --grid: deterministic 4x3 geometric tiling. The sheet prompt produces a
-      // known 3-row x 4-col grid, so tiling always yields 12 cleanly-separated
-      // stickers even when adjacent figures' outlines touch (which defeats
-      // content-based connected-component detection).
-      const { stderr } = await execFileAsync(PYTHON_BIN, [
-        PYTHON_SCRIPT,
-        aiInputPath,
-        '-o',
-        outputDir,
-        '--grid',
-      ]);
+      // --grid: deterministic 4×3 geometric tiling so the split is reliable
+      // even when adjacent sticker outlines touch (content-based detection
+      // would fail in that case).
+      const { stderr } = await execFileAsync(
+        PYTHON_BIN,
+        [PYTHON_SCRIPT, inputPath, '-o', outputDir, '--grid'],
+        { timeout: SUBPROCESS_TIMEOUT },
+      );
       if (stderr) {
         this.logger.warn(`python stderr: ${stderr}`);
       }
@@ -92,10 +79,10 @@ export class ImageProcessingService {
         );
       }
       try {
-        await rm(aiInputPath, { force: true });
+        await rm(inputPath, { force: true });
       } catch (err) {
         this.logger.debug(
-          `failed to remove aiInputPath ${aiInputPath}: ${
+          `failed to remove inputPath ${inputPath}: ${
             err instanceof Error ? err.message : String(err)
           }`,
         );

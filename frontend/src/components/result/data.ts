@@ -5,4 +5,3 @@ export const ALL_STICKERS = Array.from({ length: 12 }, (_, i) => ({
 
 export const FREE_COUNT = 3;
 export const PACK_SIZE = 12;
-export const PRICE_LABEL = "$5";

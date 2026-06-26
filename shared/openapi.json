@@ -1,6 +1,25 @@
 {
   "openapi": "3.0.0",
   "paths": {
+    "/config/offer": {
+      "get": {
+        "operationId": "ConfigController_getOffer",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OfferDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["config"]
+      }
+    },
     "/auth/exchange": {
       "get": {
         "operationId": "AuthController_exchange",
@@ -273,6 +292,82 @@
         "tags": ["auth"]
       }
     },
+    "/auth/telegram/webapp": {
+      "post": {
+        "operationId": "AuthController_telegramWebApp",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TelegramWebAppAuthDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "userId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "email": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "displayName": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "avatarUrl": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "channels": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "channel": {
+                            "type": "string"
+                          },
+                          "username": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "displayName": {
+                            "type": "string",
+                            "nullable": true
+                          }
+                        },
+                        "required": ["channel", "username", "displayName"]
+                      }
+                    }
+                  },
+                  "required": [
+                    "userId",
+                    "email",
+                    "displayName",
+                    "avatarUrl",
+                    "channels"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": ""
+          }
+        },
+        "tags": ["auth"]
+      }
+    },
     "/telegram/avatar/{channelUserId}": {
       "get": {
         "operationId": "TelegramAvatarController_getAvatar",
@@ -292,6 +387,43 @@
           }
         },
         "tags": ["TelegramAvatar"]
+      }
+    },
+    "/referral/me": {
+      "get": {
+        "operationId": "ReferralController_me",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "link": {
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "unlocked": {
+                      "type": "boolean"
+                    },
+                    "referredCount": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": ["code", "link", "unlocked", "referredCount"]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": ""
+          }
+        },
+        "tags": ["referral"]
       }
     },
     "/packs/bot-url": {
@@ -314,6 +446,301 @@
                 }
               }
             }
+          }
+        },
+        "tags": ["packs"]
+      }
+    },
+    "/packs": {
+      "get": {
+        "operationId": "PackController_listMine",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "createdAt": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "status": {
+                        "type": "string"
+                      },
+                      "unlocked": {
+                        "type": "boolean"
+                      },
+                      "locked": {
+                        "type": "boolean"
+                      },
+                      "freeCount": {
+                        "type": "integer"
+                      },
+                      "packSize": {
+                        "type": "integer"
+                      },
+                      "regensLeft": {
+                        "type": "integer"
+                      },
+                      "stickers": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "index": {
+                              "type": "integer"
+                            },
+                            "url": {
+                              "type": "string"
+                            }
+                          },
+                          "required": ["index", "url"]
+                        }
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "createdAt",
+                      "status",
+                      "unlocked",
+                      "locked",
+                      "freeCount",
+                      "packSize",
+                      "regensLeft",
+                      "stickers"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": ""
+          }
+        },
+        "tags": ["packs"]
+      },
+      "post": {
+        "operationId": "PackController_create",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "packId": {
+                      "type": "string",
+                      "format": "uuid"
+                    }
+                  },
+                  "required": ["packId"]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": ""
+          }
+        },
+        "tags": ["packs"]
+      }
+    },
+    "/packs/{packId}": {
+      "get": {
+        "operationId": "PackController_getOne",
+        "parameters": [
+          {
+            "name": "packId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "unlocked": {
+                      "type": "boolean"
+                    },
+                    "locked": {
+                      "type": "boolean"
+                    },
+                    "freeCount": {
+                      "type": "integer"
+                    },
+                    "packSize": {
+                      "type": "integer"
+                    },
+                    "regensLeft": {
+                      "type": "integer"
+                    },
+                    "stickers": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "index": {
+                            "type": "integer"
+                          },
+                          "url": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["index", "url"]
+                      }
+                    },
+                    "selfieUrl": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "status",
+                    "unlocked",
+                    "locked",
+                    "freeCount",
+                    "packSize",
+                    "regensLeft",
+                    "stickers"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": ""
+          }
+        },
+        "tags": ["packs"]
+      },
+      "delete": {
+        "operationId": "PackController_remove",
+        "parameters": [
+          {
+            "name": "packId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Pack deleted"
+          },
+          "401": {
+            "description": ""
+          }
+        },
+        "tags": ["packs"]
+      }
+    },
+    "/packs/{packId}/deliver-telegram": {
+      "post": {
+        "operationId": "PackController_deliverTelegram",
+        "parameters": [
+          {
+            "name": "packId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "delivered": {
+                      "type": "boolean"
+                    },
+                    "botUrl": {
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "needsTelegram": {
+                      "type": "boolean",
+                      "nullable": true
+                    },
+                    "stickerSetUrl": {
+                      "type": "string",
+                      "format": "uri",
+                      "nullable": true
+                    }
+                  },
+                  "required": ["delivered", "botUrl"]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": ""
+          }
+        },
+        "tags": ["packs"]
+      }
+    },
+    "/packs/{packId}/download": {
+      "post": {
+        "operationId": "PackController_download",
+        "parameters": [
+          {
+            "name": "packId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "locked": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": ["locked"]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": ""
           }
         },
         "tags": ["packs"]
@@ -535,6 +962,33 @@
       }
     },
     "schemas": {
+      "OfferDto": {
+        "type": "object",
+        "properties": {
+          "packSize": {
+            "type": "number"
+          },
+          "freeStickerCount": {
+            "type": "number"
+          },
+          "baseGenerations": {
+            "type": "number"
+          },
+          "referralBonusGenerations": {
+            "type": "number"
+          },
+          "referralUnlockEnabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "packSize",
+          "freeStickerCount",
+          "baseGenerations",
+          "referralBonusGenerations",
+          "referralUnlockEnabled"
+        ]
+      },
       "EmailAuthDto": {
         "type": "object",
         "properties": {
@@ -549,6 +1003,17 @@
           }
         },
         "required": ["email", "password"]
+      },
+      "TelegramWebAppAuthDto": {
+        "type": "object",
+        "properties": {
+          "initData": {
+            "type": "string",
+            "description": "Raw initData string from Telegram WebApp",
+            "maxLength": 4096
+          }
+        },
+        "required": ["initData"]
       }
     }
   }

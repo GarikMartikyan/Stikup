@@ -1,14 +1,12 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 
-import { aiConfig } from './ai.config';
 import { appConfig } from './app.config';
 import { ConfigController } from './config.controller';
 import { resolveAppEnv } from './environment';
 import { frontendConfig } from './frontend.config';
 import { googleOAuthConfig } from './google-oauth.config';
 import { offerConfig } from './offer.config';
-import { openaiConfig } from './openai.config';
 import { redisConfig } from './redis.config';
 import { sessionConfig } from './session.config';
 import { storageConfig } from './storage.config';
@@ -36,11 +34,9 @@ const env = resolveAppEnv();
         telegramConfig,
         frontendConfig,
         sessionConfig,
-        aiConfig,
         redisConfig,
         googleOAuthConfig,
         offerConfig,
-        openaiConfig,
         storageConfig,
       ],
     }),

@@ -17,7 +17,7 @@ This guide is the human checklist. Each step says who does it.
 - [ ] **Step 3** — create DO droplet + claim name.com domain + DNS. _(you, below)_
 - [ ] **Step 4** — run bootstrap + first deploy on the droplet. _(you run, after Step 3)_
 - [ ] **Step 5** — CI/CD: build → GHCR → deploy on tag. _(code + you add GH secrets)_
-- [ ] **Step 6+** — features: real AI, DO Spaces, Stripe, Telegram delivery.
+- [ ] **Step 6+** — features: DO Spaces (object storage), Telegram delivery, referral unlock. (No AI generation and no payments — see PRD.)
 
 ---
 

@@ -27,8 +27,7 @@
     "prisma:status": "dotenv -e ../.env -- prisma migrate status",
     "prisma:deploy": "dotenv -e ../.env -- prisma migrate deploy",
     "prisma:studio": "dotenv -e ../.env -- prisma studio",
-    "openapi:dump": "dotenv -e ../.env -- ts-node --transpile-only scripts/dump-openapi.ts",
-    "smoke:openai": "dotenv -e ../.env.development.local -- ts-node --transpile-only scripts/smoke-openai.ts"
+    "openapi:dump": "dotenv -e ../.env -- ts-node --transpile-only scripts/dump-openapi.ts"
   },
   "dependencies": {
     "@nestjs/bullmq": "^11.0.4",
@@ -51,7 +50,6 @@
     "multer": "^2.1.1",
     "nestjs-i18n": "^10.8.4",
     "nestjs-telegraf": "^2.9.1",
-    "openai": "^6.39.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "sharp": "^0.34.5",

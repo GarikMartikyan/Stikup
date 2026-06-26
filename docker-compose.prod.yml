@@ -77,14 +77,6 @@ services:
       # Reach Postgres/Redis over the compose network (override any host value).
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
       REDIS_URL: redis://redis:6379
-      # AI image generation — default stub so production never spends OpenAI
-      # credits until AI_PROVIDER=openai + a real OPENAI_API_KEY are explicitly set.
-      AI_PROVIDER: ${AI_PROVIDER:-stub}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      OPENAI_IMAGE_MODEL: ${OPENAI_IMAGE_MODEL:-gpt-image-2}
-      OPENAI_IMAGE_SIZE: ${OPENAI_IMAGE_SIZE:-1536x1024}
-      OPENAI_IMAGE_QUALITY: ${OPENAI_IMAGE_QUALITY:-medium}
-      OPENAI_IMAGE_INPUT_FIDELITY: ${OPENAI_IMAGE_INPUT_FIDELITY:-high}
       # Stable in-container path; matches the named volume mount below.
       STICKER_STORAGE_DIR: /app/backend/public/packs
     volumes:

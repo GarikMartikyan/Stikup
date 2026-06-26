@@ -41,10 +41,12 @@ export default async function MyStickersPage() {
   // warming up right after a deploy, must not 500 the whole dashboard).
   let regensLeft = summaries[0]?.regensLeft;
   if (regensLeft === undefined) {
-    const offer = await serverFetch<{ freeRegenerations: number }>(
+    // No packs yet → fall back to the offer's base allowance (a user with zero
+    // referrals can generate exactly baseGenerations packs).
+    const offer = await serverFetch<{ baseGenerations: number }>(
       '/config/offer',
     ).catch(() => null);
-    regensLeft = 1 + (offer?.freeRegenerations ?? 0);
+    regensLeft = offer?.baseGenerations ?? 2;
   }
 
   const packs: DashboardPack[] = summaries.map((p) => ({

@@ -1,18 +1,23 @@
 import { Controller, Get, Inject } from '@nestjs/common';
 import type { ConfigType } from '@nestjs/config';
-import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
+import { ApiOkResponse, ApiProperty, ApiTags } from '@nestjs/swagger';
 
 import { offerConfig } from './offer.config';
 
 export class OfferDto {
-  priceLabel!: string;
-  priceAmountCents!: number;
-  currency!: string;
+  @ApiProperty()
   packSize!: number;
+
+  @ApiProperty()
   freeStickerCount!: number;
-  paidGenerations!: number;
-  freeGenerations!: number;
-  freeRegenerations!: number;
+
+  @ApiProperty()
+  baseGenerations!: number;
+
+  @ApiProperty()
+  referralBonusGenerations!: number;
+
+  @ApiProperty()
   referralUnlockEnabled!: boolean;
 }
 
@@ -28,14 +33,10 @@ export class ConfigController {
   @ApiOkResponse({ type: OfferDto })
   getOffer(): OfferDto {
     return {
-      priceLabel: this.offer.priceLabel,
-      priceAmountCents: this.offer.priceAmountCents,
-      currency: this.offer.currency,
       packSize: this.offer.packSize,
       freeStickerCount: this.offer.freeStickerCount,
-      paidGenerations: this.offer.paidGenerations,
-      freeGenerations: this.offer.freeGenerations,
-      freeRegenerations: this.offer.freeRegenerations,
+      baseGenerations: this.offer.baseGenerations,
+      referralBonusGenerations: this.offer.referralBonusGenerations,
       referralUnlockEnabled: this.offer.referralUnlockEnabled,
     };
   }

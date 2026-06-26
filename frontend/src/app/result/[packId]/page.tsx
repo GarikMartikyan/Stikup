@@ -1,7 +1,6 @@
 "use client";
 
 import { use, useEffect, useRef, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { AlertCircle, RefreshCw } from "lucide-react";
 import { ResultHeader } from "@/components/result/result-header";
@@ -15,9 +14,6 @@ import type { StickerItem } from "@/components/result/sticker-grid";
 const POLL_TIMEOUT_MS = 3 * 60 * 1000;
 // Interval between polls (awaited sequentially, not overlapping).
 const POLL_INTERVAL_MS = 2000;
-// Fallback shown in the generating card when the uploaded selfie isn't
-// available yet (or fails to load).
-const STOCK_SRC = "/assets/real_image.webp";
 
 type Pack = {
   id: string;
@@ -28,12 +24,11 @@ type Pack = {
   packSize: number;
   stickers: StickerItem[];
   regensLeft: number;
-  selfieUrl: string | null;
 };
 
 type PageState =
   | { kind: "loading" }
-  | { kind: "generating"; selfieUrl: string | null }
+  | { kind: "generating" }
   | { kind: "ready"; pack: Pack }
   | { kind: "failed" }
   | { kind: "demo"; pack: Pack };
@@ -48,7 +43,6 @@ function buildDemoPack(packId: string): Pack {
     packSize: PACK_SIZE,
     stickers: ALL_STICKERS.map((s, i) => ({ index: i, url: s.src })),
     regensLeft: 1,
-    selfieUrl: null,
   };
 }
 
@@ -61,7 +55,6 @@ function parsePack(data: {
   packSize: number;
   stickers: Array<{ index: number; url: string }>;
   regensLeft: number;
-  selfieUrl?: string | null;
 }): Pack {
   return {
     id: data.id,
@@ -72,7 +65,6 @@ function parsePack(data: {
     packSize: data.packSize,
     stickers: data.stickers,
     regensLeft: data.regensLeft ?? 1,
-    selfieUrl: data.selfieUrl ?? null,
   };
 }
 
@@ -85,11 +77,8 @@ function isBackendPack(pack: Pack): boolean {
 // Generating state
 // ---------------------------------------------------------------------------
 
-function GeneratingState({ selfieUrl }: { selfieUrl: string | null }) {
+function GeneratingState() {
   const t = useT();
-  const [errored, setErrored] = useState(false);
-  const src = selfieUrl && !errored ? selfieUrl : STOCK_SRC;
-  const isApiSrc = src.startsWith("/api/");
 
   return (
     <div
@@ -97,21 +86,6 @@ function GeneratingState({ selfieUrl }: { selfieUrl: string | null }) {
       aria-label={t("result.generating.label")}
       role="status"
     >
-      {/* The user's uploaded selfie with a sweeping scan overlay to convey
-          that it's being processed into stickers. */}
-      <div className="relative h-44 w-44 overflow-hidden rounded-[1.5rem] ring-2 ring-[var(--color-brand)]/30 shadow-[var(--shadow-card)]">
-        <Image
-          src={src}
-          alt=""
-          width={240}
-          height={240}
-          className="h-full w-full object-cover object-center"
-          unoptimized={isApiSrc}
-          onError={() => setErrored(true)}
-        />
-        <div className="pointer-events-none absolute inset-0 animate-pulse bg-[var(--color-brand)]/10" />
-        <div className="pointer-events-none absolute inset-0 bg-[length:200%_100%] bg-gradient-to-r from-transparent via-white/45 to-transparent [animation:shimmer-x_1.8s_linear_infinite]" />
-      </div>
       <div className="flex items-center gap-3">
         <div className="h-5 w-5 animate-spin rounded-full border-[3px] border-[var(--color-brand)]/30 border-t-[var(--color-brand)]" />
         <p className="font-semibold text-[var(--color-fg)]">
@@ -145,7 +119,7 @@ function FailedState() {
         </p>
       </div>
       <Link
-        href="/upload"
+        href="/create"
         className="inline-flex items-center gap-2 rounded-full bg-[var(--color-brand)] px-5 py-2 text-sm font-bold text-white shadow-[0_8px_24px_-8px_rgba(224,52,154,0.55)] transition hover:-translate-y-0.5"
       >
         <RefreshCw className="h-4 w-4" strokeWidth={2.2} />
@@ -210,13 +184,12 @@ export default function ResultPage({
           packSize: number;
           stickers: Array<{ index: number; url: string }>;
           regensLeft: number;
-          selfieUrl?: string | null;
         };
 
         if (cancelledRef.current) return;
 
         if (data.status === "generating") {
-          setState({ kind: "generating", selfieUrl: data.selfieUrl ?? null });
+          setState({ kind: "generating" });
           // Schedule next poll, but don't overlap — await the full interval.
           timeoutId = setTimeout(poll, POLL_INTERVAL_MS);
           return;
@@ -248,16 +221,11 @@ export default function ResultPage({
   const activePack =
     state.kind === "ready" || state.kind === "demo" ? state.pack : null;
   const unoptimized = activePack ? isBackendPack(activePack) : false;
-  // Show the user's uploaded selfie in the header during generation too — not
-  // just once the pack is ready (the selfie thumbnail is available immediately).
-  const headerSelfieUrl =
-    activePack?.selfieUrl ??
-    (state.kind === "generating" ? state.selfieUrl : null);
 
   return (
     <div className="relative flex flex-1 flex-col">
       <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center px-5 py-6 md:py-10">
-        <ResultHeader selfieUrl={headerSelfieUrl} />
+        <ResultHeader />
 
         <section className="reveal mt-6 md:mt-8" style={{ animationDelay: "100ms" }}>
           {state.kind === "loading" ? (
@@ -265,7 +233,7 @@ export default function ResultPage({
               <div className="h-8 w-8 animate-spin rounded-full border-[3px] border-[var(--color-brand)]/30 border-t-[var(--color-brand)]" />
             </div>
           ) : state.kind === "generating" ? (
-            <GeneratingState selfieUrl={state.selfieUrl} />
+            <GeneratingState />
           ) : state.kind === "failed" ? (
             <FailedState />
           ) : activePack ? (

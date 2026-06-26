@@ -70,7 +70,7 @@ export function PackActions({ packId, packSize, unlocked, locked: lockedInitial,
       method: "DELETE",
       credentials: "include",
     }).catch(() => {});
-    router.push("/upload");
+    router.push("/create");
   }, [packId, regenBusy, router]);
 
   return (

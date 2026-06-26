@@ -5,20 +5,11 @@ import {
   IsInt,
   IsPositive,
   IsString,
+  Min,
   validateSync,
 } from 'class-validator';
 
 export class OfferConfigSchema {
-  @IsString()
-  priceLabel!: string;
-
-  @IsInt()
-  @IsPositive()
-  priceAmountCents!: number;
-
-  @IsString()
-  currency!: string;
-
   @IsInt()
   @IsPositive()
   packSize!: number;
@@ -27,17 +18,15 @@ export class OfferConfigSchema {
   @IsPositive()
   freeStickerCount!: number;
 
+  /** Generations granted to every new user. */
   @IsInt()
   @IsPositive()
-  paidGenerations!: number;
+  baseGenerations!: number;
 
+  /** Additional generations earned per referred user who signs up. 0 disables the bonus. */
   @IsInt()
-  @IsPositive()
-  freeGenerations!: number;
-
-  @IsInt()
-  @IsPositive()
-  freeRegenerations!: number;
+  @Min(0)
+  referralBonusGenerations!: number;
 
   @IsBoolean()
   referralUnlockEnabled!: boolean;
@@ -46,7 +35,7 @@ export class OfferConfigSchema {
   stickerDefaultEmoji!: string;
 
   // Local/testing escape hatch: when true, bypass the per-user generation
-  // quota AND the accept-lock so a pack can be (re)generated without limit.
+  // quota so a pack can be (re)generated without limit.
   // Defaults to false — production and normal dev keep the real limits.
   @IsBoolean()
   unlimitedGenerations!: boolean;
@@ -67,14 +56,13 @@ function toBool(raw: string | undefined, fallback: boolean): boolean {
 
 export const offerConfig = registerAs('offer', (): OfferConfigSchema => {
   const raw = {
-    priceLabel: process.env.OFFER_PRICE_LABEL || '$5',
-    priceAmountCents: toInt(process.env.OFFER_PRICE_CENTS, 500),
-    currency: process.env.OFFER_CURRENCY || 'USD',
     packSize: toInt(process.env.OFFER_PACK_SIZE, 12),
     freeStickerCount: toInt(process.env.OFFER_FREE_STICKER_COUNT, 3),
-    paidGenerations: toInt(process.env.OFFER_PAID_GENERATIONS, 10),
-    freeGenerations: toInt(process.env.OFFER_FREE_GENERATIONS, 1),
-    freeRegenerations: toInt(process.env.OFFER_FREE_REGENERATIONS, 1),
+    baseGenerations: toInt(process.env.OFFER_BASE_GENERATIONS, 2),
+    referralBonusGenerations: toInt(
+      process.env.OFFER_REFERRAL_BONUS_GENERATIONS,
+      2,
+    ),
     referralUnlockEnabled: toBool(process.env.OFFER_REFERRAL_UNLOCK, true),
     stickerDefaultEmoji: process.env.STICKER_DEFAULT_EMOJI?.trim() || '😀',
     unlimitedGenerations: toBool(

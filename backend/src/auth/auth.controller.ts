@@ -260,7 +260,8 @@ export class AuthController {
     res.status(204).send();
   }
 
-  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  // Limit: 5 registrations per hour per IP. Tunable via ThrottlerModule config.
+  @Throttle({ default: { limit: 5, ttl: 3_600_000 } })
   @Post('register')
   @HttpCode(204)
   @ApiBody({ type: EmailAuthDto })

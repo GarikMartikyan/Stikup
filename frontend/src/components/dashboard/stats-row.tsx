@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
-import { Layers, Sparkles, RefreshCw, Crown } from "lucide-react";
+import { Layers, Sparkles, RefreshCw } from "lucide-react";
 import { useT } from "@/components/language-provider";
 
 type Accent = {
@@ -85,7 +85,7 @@ export function StatsRow({
 }) {
   const t = useT();
   return (
-    <div className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
+    <div className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4">
       <Stat
         label={t("dashboard.stats.packs_label")}
         value={String(packCount)}
@@ -109,15 +109,6 @@ export function StatsRow({
         icon={RefreshCw}
         accent={{ color: "#6366f1", soft: "color-mix(in oklab, #6366f1 14%, transparent)" }}
         delay={240}
-      />
-      <Stat
-        label={t("dashboard.stats.subscription_label")}
-        value={t("dashboard.stats.subscription_value")}
-        hint={t("dashboard.stats.subscription_hint")}
-        icon={Crown}
-        accent={{ color: "var(--color-success)", soft: "color-mix(in oklab, var(--color-success) 14%, transparent)" }}
-        delay={320}
-        href="/subscribe"
       />
     </div>
   );

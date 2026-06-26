@@ -44,7 +44,7 @@ export interface PackDetail {
   id: string;
   status: string;
   unlocked: boolean;
-  /** The user has accepted a pack (got/downloaded/unlocked) — generation is locked. */
+  /** locked = quota exhausted (generationsUsed >= cap). */
   locked: boolean;
   freeCount: number;
   packSize: number;
@@ -58,7 +58,7 @@ export interface PackSummary {
   createdAt: string;
   status: string;
   unlocked: boolean;
-  /** The user has accepted a pack (got/downloaded/unlocked) — generation is locked. */
+  /** locked = quota exhausted (generationsUsed >= cap). */
   locked: boolean;
   freeCount: number;
   packSize: number;
@@ -83,48 +83,15 @@ export class PackService {
     private readonly storage: ConfigType<typeof storageConfig>,
   ) {}
 
-  /**
-   * Whether the user has "accepted" a pack and is therefore locked out of
-   * generating or regenerating. Acceptance = getting the pack on Telegram,
-   * downloading it, or unlocking the full pack. `fullPackUnlockedAt` is folded
-   * in so an unlock (via referral) locks generation even though it sets a
-   * different column.
-   */
-  private isLocked(user: {
-    generationLockedAt: Date | null;
-    fullPackUnlockedAt: Date | null;
-  }): boolean {
-    return user.generationLockedAt != null || user.fullPackUnlockedAt != null;
-  }
-
-  /**
-   * Mark the user as having accepted a pack. Set-once (never overwrites an
-   * earlier timestamp), idempotent, and safe to call from every accept path.
-   */
-  private async lockGeneration(userId: string): Promise<void> {
-    await this.prisma.user.updateMany({
-      where: { id: userId, generationLockedAt: null },
-      data: { generationLockedAt: new Date() },
-    });
-  }
-
   async generatePack(
     userId: string,
     sourceImage: Buffer,
   ): Promise<{ packId: string }> {
-    const maxGenerations = 1 + this.offer.freeRegenerations;
-
     const pack = await this.prisma.$transaction(async (tx) => {
       // Lock the user row so concurrent POST /packs requests serialize and
       // cannot both pass the quota check at the same time.
-      const rows = await tx.$queryRaw<
-        Array<{
-          generations_used: number;
-          generation_locked_at: Date | null;
-          full_pack_unlocked_at: Date | null;
-        }>
-      >`
-        SELECT generations_used, generation_locked_at, full_pack_unlocked_at
+      const rows = await tx.$queryRaw<Array<{ generations_used: number }>>`
+        SELECT generations_used
         FROM users WHERE id = ${userId}::uuid FOR UPDATE
       `;
 
@@ -132,21 +99,17 @@ export class PackService {
         throw new Error(`user ${userId} not found`);
       }
 
-      // Local/testing escape hatch: skip both gates and the quota increment so
+      // Local/testing escape hatch: skip the quota gate and the increment so
       // packs can be (re)generated without limit. Default false in prod/dev.
       if (!this.offer.unlimitedGenerations) {
-        // Accepting a pack (get/download/unlock) locks generation — even if the
-        // raw regeneration quota is not yet exhausted.
-        if (
-          this.isLocked({
-            generationLockedAt: rows[0].generation_locked_at,
-            fullPackUnlockedAt: rows[0].full_pack_unlocked_at,
-          })
-        ) {
-          throw new ForbiddenException('generation_locked');
-        }
+        const referralCount = await tx.referral.count({
+          where: { referrerId: userId },
+        });
+        const cap =
+          this.offer.baseGenerations +
+          this.offer.referralBonusGenerations * referralCount;
 
-        if (rows[0].generations_used >= maxGenerations) {
+        if (rows[0].generations_used >= cap) {
           throw new ForbiddenException('generation_limit_reached');
         }
 
@@ -260,39 +223,38 @@ export class PackService {
   }
 
   async listPacks(userId: string): Promise<PackSummary[]> {
-    const packs = await this.prisma.pack.findMany({
-      where: { userId },
-      orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        status: true,
-        createdAt: true,
-        stickers: {
-          select: { index: true, url: true },
-          orderBy: { index: 'asc' },
+    const [packs, user, referralCount] = await Promise.all([
+      this.prisma.pack.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          status: true,
+          createdAt: true,
+          stickers: {
+            select: { index: true, url: true },
+            orderBy: { index: 'asc' },
+          },
         },
-      },
-    });
+      }),
+      this.prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          fullPackUnlockedAt: true,
+          generationsUsed: true,
+        },
+      }),
+      this.prisma.referral.count({ where: { referrerId: userId } }),
+    ]);
 
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        fullPackUnlockedAt: true,
-        generationsUsed: true,
-        generationLockedAt: true,
-      },
-    });
     const unlimited = this.offer.unlimitedGenerations;
     const unlocked = user?.fullPackUnlockedAt != null;
-    const locked = unlimited ? false : user ? this.isLocked(user) : false;
-    const maxGenerations = 1 + this.offer.freeRegenerations;
-    // A locked user has no regenerations left regardless of raw quota.
-    // In unlimited mode keep regenerations available regardless of usage/lock.
-    const regensLeft = unlimited
-      ? maxGenerations
-      : locked
-        ? 0
-        : Math.max(0, maxGenerations - (user?.generationsUsed ?? 0));
+    const cap =
+      this.offer.baseGenerations +
+      this.offer.referralBonusGenerations * referralCount;
+    const generationsUsed = user?.generationsUsed ?? 0;
+    const locked = !unlimited && generationsUsed >= cap;
+    const regensLeft = unlimited ? cap : Math.max(0, cap - generationsUsed);
 
     return packs.map((pack) => ({
       id: pack.id,
@@ -324,18 +286,23 @@ export class PackService {
 
     if (!pack || pack.userId !== userId) return null;
 
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        fullPackUnlockedAt: true,
-        generationsUsed: true,
-        generationLockedAt: true,
-      },
-    });
+    const [user, referralCount] = await Promise.all([
+      this.prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          fullPackUnlockedAt: true,
+          generationsUsed: true,
+        },
+      }),
+      this.prisma.referral.count({ where: { referrerId: userId } }),
+    ]);
 
     const unlimited = this.offer.unlimitedGenerations;
-    const maxGenerations = 1 + this.offer.freeRegenerations;
-    const locked = unlimited ? false : user ? this.isLocked(user) : false;
+    const cap =
+      this.offer.baseGenerations +
+      this.offer.referralBonusGenerations * referralCount;
+    const generationsUsed = user?.generationsUsed ?? 0;
+    const locked = !unlimited && generationsUsed >= cap;
 
     return {
       id: pack.id,
@@ -344,13 +311,7 @@ export class PackService {
       locked,
       freeCount: this.offer.freeStickerCount,
       packSize: this.offer.packSize,
-      // A locked user has no regenerations left regardless of raw quota.
-      // In unlimited mode keep regenerations available regardless of usage/lock.
-      regensLeft: unlimited
-        ? maxGenerations
-        : locked
-          ? 0
-          : Math.max(0, maxGenerations - (user?.generationsUsed ?? 0)),
+      regensLeft: unlimited ? cap : Math.max(0, cap - generationsUsed),
       stickers: pack.stickers,
       selfieUrl: pack.sourceImageUrl ?? null,
     };
@@ -383,9 +344,8 @@ export class PackService {
   }
 
   /**
-   * Record that the user downloaded their pack. Downloading counts as
-   * accepting the pack, so this locks generation/regeneration. No-op (and
-   * does not lock) if the pack is missing or not owned by the user.
+   * Record that the user downloaded their pack. No-op (returns locked:false)
+   * if the pack is missing or not owned by the user.
    */
   async markDownloaded(
     packId: string,
@@ -402,11 +362,10 @@ export class PackService {
       return { locked: false };
     }
 
-    await this.lockGeneration(userId);
     this.logger.log(
-      `mark-downloaded: locked generation for user ${userId} (pack ${packId})`,
+      `mark-downloaded: noted download for user ${userId} (pack ${packId})`,
     );
-    return { locked: true };
+    return { locked: false };
   }
 
   async deliverTelegram(
@@ -520,9 +479,6 @@ export class PackService {
       );
     }
 
-    // Getting the pack on Telegram counts as accepting it — lock generation.
-    await this.lockGeneration(userId);
-
     this.logger.log(
       `deliver-telegram: delivered sticker set to ${this.botSender.channel} user ${identity.channelUserId}, url=${ensureResult.shareUrl}`,
     );
@@ -580,9 +536,6 @@ export class PackService {
         this.logger.log(
           `claim-free: pack ${packId} already claimed by user ${userId}; skipping resend`,
         );
-        // A claim already exists → the pack was accepted; make sure the lock is
-        // set even if the original accept's lock write was lost.
-        await this.lockGeneration(userId);
         return { delivered: false, botUrl, alreadyClaimed: true };
       }
       throw err;
@@ -593,9 +546,6 @@ export class PackService {
       const path = join(FREE_STICKER_DIR, filename);
       await this.botSender.sendSticker(identity.channelUserId, path);
     }
-
-    // Claiming the free stickers counts as accepting the pack — lock generation.
-    await this.lockGeneration(userId);
 
     this.logger.log(
       `claim-free: sent ${stickers.length} stickers to ${this.botSender.channel} user ${identity.channelUserId}`,

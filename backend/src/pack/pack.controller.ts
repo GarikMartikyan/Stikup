@@ -23,6 +23,7 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import type { Request } from 'express';
 import { memoryStorage } from 'multer';
 
@@ -111,6 +112,8 @@ export class PackController {
     return this.packs.listPacks(session.userId);
   }
 
+  // Limit: 10 pack-creation requests per hour per IP. Tunable via ThrottlerModule config.
+  @Throttle({ default: { limit: 10, ttl: 3_600_000 } })
   @Post()
   @HttpCode(201)
   @UseInterceptors(

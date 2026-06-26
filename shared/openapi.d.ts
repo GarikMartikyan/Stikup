@@ -4,6 +4,22 @@
  */
 
 export interface paths {
+    "/config/offer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ConfigController_getOffer"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/exchange": {
         parameters: {
             query?: never;
@@ -180,6 +196,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/telegram/webapp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AuthController_telegramWebApp"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/telegram/avatar/{channelUserId}": {
         parameters: {
             query?: never;
@@ -188,6 +220,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["TelegramAvatarController_getAvatar"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/referral/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ReferralController_me"];
         put?: never;
         post?: never;
         delete?: never;
@@ -206,6 +254,70 @@ export interface paths {
         get: operations["PackController_botUrl"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/packs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PackController_listMine"];
+        put?: never;
+        post: operations["PackController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/packs/{packId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PackController_getOne"];
+        put?: never;
+        post?: never;
+        delete: operations["PackController_remove"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/packs/{packId}/deliver-telegram": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["PackController_deliverTelegram"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/packs/{packId}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["PackController_download"];
         delete?: never;
         options?: never;
         head?: never;
@@ -248,10 +360,21 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        OfferDto: {
+            packSize: number;
+            freeStickerCount: number;
+            baseGenerations: number;
+            referralBonusGenerations: number;
+            referralUnlockEnabled: boolean;
+        };
         EmailAuthDto: {
             /** @example user@example.com */
             email: string;
             password: string;
+        };
+        TelegramWebAppAuthDto: {
+            /** @description Raw initData string from Telegram WebApp */
+            initData: string;
         };
     };
     responses: never;
@@ -262,6 +385,25 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    ConfigController_getOffer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferDto"];
+                };
+            };
+        };
+    };
     AuthController_exchange: {
         parameters: {
             query?: {
@@ -562,6 +704,46 @@ export interface operations {
             };
         };
     };
+    AuthController_telegramWebApp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TelegramWebAppAuthDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        userId: string;
+                        email: string | null;
+                        displayName: string | null;
+                        avatarUrl: string | null;
+                        channels: {
+                            channel: string;
+                            username: string | null;
+                            displayName: string | null;
+                        }[];
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     TelegramAvatarController_getAvatar: {
         parameters: {
             query?: never;
@@ -574,6 +756,37 @@ export interface operations {
         requestBody?: never;
         responses: {
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ReferralController_me: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        /** Format: uri */
+                        link: string;
+                        unlocked: boolean;
+                        referredCount: number;
+                    };
+                };
+            };
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -600,6 +813,204 @@ export interface operations {
                         botUrl: string;
                     };
                 };
+            };
+        };
+    };
+    PackController_listMine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: date-time */
+                        createdAt: string;
+                        status: string;
+                        unlocked: boolean;
+                        locked: boolean;
+                        freeCount: number;
+                        packSize: number;
+                        regensLeft: number;
+                        stickers: {
+                            index: number;
+                            url: string;
+                        }[];
+                    }[];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PackController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        packId: string;
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PackController_getOne: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                packId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        status: string;
+                        unlocked: boolean;
+                        locked: boolean;
+                        freeCount: number;
+                        packSize: number;
+                        regensLeft: number;
+                        stickers: {
+                            index: number;
+                            url: string;
+                        }[];
+                        selfieUrl?: string | null;
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PackController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                packId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Pack deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PackController_deliverTelegram: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                packId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        delivered: boolean;
+                        /** Format: uri */
+                        botUrl: string;
+                        needsTelegram?: boolean | null;
+                        /** Format: uri */
+                        stickerSetUrl?: string | null;
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PackController_download: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                packId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        locked: boolean;
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

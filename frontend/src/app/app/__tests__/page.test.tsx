@@ -116,10 +116,10 @@ describe("/app page — inside Telegram, status=authed, no packs", () => {
     });
   });
 
-  it("redirects to /upload when packs array is empty", async () => {
+  it("redirects to /create when packs array is empty", async () => {
     await renderPage();
     await waitFor(() => {
-      expect(mockRouterReplace).toHaveBeenCalledWith("/upload");
+      expect(mockRouterReplace).toHaveBeenCalledWith("/create");
     });
   });
 });

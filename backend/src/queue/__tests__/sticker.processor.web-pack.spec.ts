@@ -3,7 +3,6 @@ import { tmpdir } from 'node:os';
 
 import type { Job } from 'bullmq';
 
-import type { BotSender } from '../../auth/channel/bot-sender';
 import type { ImageProcessingService } from '../../image-processing/image-processing.service';
 import type { PrismaService } from '../../prisma/prisma.service';
 import { StickerProcessor } from '../sticker.processor';
@@ -73,21 +72,11 @@ function buildImageProcessingMock(stickerCount = 12) {
   };
 }
 
-function buildBotSenderMock(): jest.Mocked<BotSender> {
-  return {
-    channel: 'telegram' as const,
-    sendSticker: jest.fn().mockResolvedValue(undefined),
-    sendMessage: jest.fn().mockResolvedValue(undefined),
-    getBotUrl: jest.fn().mockResolvedValue('https://t.me/stikup_bot'),
-  };
-}
-
 function buildProcessor(
   imageProcessing: ImageProcessingService,
   prisma: jest.Mocked<PrismaService>,
-  botSender: jest.Mocked<BotSender>,
 ) {
-  return new StickerProcessor(imageProcessing, botSender, prisma, {
+  return new StickerProcessor(imageProcessing, prisma, {
     stickerDir: FAKE_STICKER_DIR,
   });
 }
@@ -116,10 +105,14 @@ describe('StickerProcessor — web-pack branch', () => {
   it('success: creates 12 sticker rows, sets status ready, and calls cleanup', async () => {
     const prisma = buildPrismaMock();
     const imgSvc = buildImageProcessingMock(12);
-    const bot = buildBotSenderMock();
-    const processor = buildProcessor(imgSvc, prisma, bot);
+    const processor = buildProcessor(imgSvc, prisma);
 
     await processor.process(makeJob(JOB_DATA));
+
+    // Grid is split directly — no AI call; only the source buffer is passed.
+    expect(imgSvc.generateStickers).toHaveBeenCalledWith(
+      Buffer.from('fake-source-image'),
+    );
 
     // Stickers created
     expect(prisma.sticker.createMany).toHaveBeenCalledWith({
@@ -160,8 +153,7 @@ describe('StickerProcessor — web-pack branch', () => {
   it('failure (fewer than 12 stickers): sets status failed, refunds generationsUsed, calls cleanup', async () => {
     const prisma = buildPrismaMock();
     const imgSvc = buildImageProcessingMock(5); // only 5 stickers
-    const bot = buildBotSenderMock();
-    const processor = buildProcessor(imgSvc, prisma, bot);
+    const processor = buildProcessor(imgSvc, prisma);
 
     await processor.process(makeJob(JOB_DATA));
 
@@ -186,14 +178,13 @@ describe('StickerProcessor — web-pack branch', () => {
 
   it('failure (generateStickers throws): sets status failed, refunds, staging file removed', async () => {
     const prisma = buildPrismaMock();
-    const bot = buildBotSenderMock();
     const neverCalledCleanup = jest.fn().mockResolvedValue(undefined);
     const imgSvc = {
       generateStickers: jest
         .fn()
         .mockRejectedValue(new Error('python crashed')),
     } as unknown as jest.Mocked<ImageProcessingService>;
-    const processor = buildProcessor(imgSvc, prisma, bot);
+    const processor = buildProcessor(imgSvc, prisma);
 
     await processor.process(makeJob(JOB_DATA));
 
@@ -213,8 +204,7 @@ describe('StickerProcessor — web-pack branch', () => {
   it('failure: does not set sourceImageUrl on the pack', async () => {
     const prisma = buildPrismaMock();
     const imgSvc = buildImageProcessingMock(5); // fewer than 12 → failure
-    const bot = buildBotSenderMock();
-    const processor = buildProcessor(imgSvc, prisma, bot);
+    const processor = buildProcessor(imgSvc, prisma);
 
     await processor.process(makeJob(JOB_DATA));
 
@@ -231,8 +221,7 @@ describe('StickerProcessor — web-pack branch', () => {
   it('copies sticker files into the pack directory', async () => {
     const prisma = buildPrismaMock();
     const imgSvc = buildImageProcessingMock(12);
-    const bot = buildBotSenderMock();
-    const processor = buildProcessor(imgSvc, prisma, bot);
+    const processor = buildProcessor(imgSvc, prisma);
 
     await processor.process(makeJob(JOB_DATA));
 

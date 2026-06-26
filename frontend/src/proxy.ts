@@ -64,6 +64,8 @@ export async function proxy(request: NextRequest) {
 export const config = {
   // Protected routes + auth pages for redirect-if-logged-in logic.
   matcher: [
+    "/create",
+    "/create/:path*",
     "/my-stickers",
     "/my-stickers/:path*",
     "/settings",
@@ -72,8 +74,6 @@ export const config = {
     "/upload/:path*",
     "/result",
     "/result/:path*",
-    "/success",
-    "/success/:path*",
     "/login",
     "/register",
   ],

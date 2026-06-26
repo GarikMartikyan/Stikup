@@ -1,11 +1,11 @@
 import {
   Download,
+  Gift,
   Heart,
-  MessageCircle,
+  Palette,
   Send,
-  Sparkles,
-  Timer,
   Upload,
+  UploadCloud,
 } from "lucide-react";
 import type { ComponentType } from "react";
 
@@ -29,30 +29,36 @@ type IconType = ComponentType<{ className?: string; strokeWidth?: number }>;
 
 export const STEPS: { icon: IconType; eyebrow: string; title: string; body: string }[] = [
   {
-    icon: MessageCircle,
+    icon: Palette,
     eyebrow: "01",
-    title: "DM the bot",
-    body: "Open @stikup_bot and tap /start. We send you a one-tap link straight into the app — no passwords.",
+    title: "Pick a style",
+    body: "Choose from 8 art styles — Chibi, Disney 3D, Anime, Ghibli, and more. We build the ChatGPT prompt for you.",
+  },
+  {
+    icon: UploadCloud,
+    eyebrow: "02",
+    title: "Generate in ChatGPT",
+    body: "Paste the prompt and your photo into ChatGPT. It returns one image — a 4×3 grid of 12 stickers on a green background.",
   },
   {
     icon: Upload,
-    eyebrow: "02",
-    title: "Drop one selfie",
-    body: "Front-facing photo, good light, one face. We check it instantly and tell you if anything looks off.",
+    eyebrow: "03",
+    title: "Upload the grid",
+    body: "Come back and upload the grid image. Our splitter cuts and cleans all 12 stickers automatically.",
   },
   {
-    icon: Sparkles,
-    eyebrow: "03",
-    title: "Get 3 free, unlock 12",
-    body: "Your full pack of 12 generates upfront. Take the 3 free — refer a friend who signs up to unlock all 12 free, or pay $5 to unlock and get 10 more generations.",
+    icon: Gift,
+    eyebrow: "04",
+    title: "Get your pack",
+    body: "3 stickers are free. Refer one friend who signs up and all 12 unlock — the bot installs your full pack to Telegram.",
   },
 ];
 
 export const FEATURES: { icon: IconType; title: string; body: string }[] = [
   {
-    icon: Timer,
-    title: "Ready in ~3 minutes",
-    body: "Synchronous flow. Watch your pack come to life while you wait.",
+    icon: Palette,
+    title: "8 art styles",
+    body: "Chibi, Disney 3D, Anime, Ghibli, Comic, Pixel, Clay, Pop Art. Pick the one that fits your vibe.",
   },
   {
     icon: Heart,
@@ -74,22 +80,22 @@ export const FEATURES: { icon: IconType; title: string; body: string }[] = [
 export const FAQS: { q: string; a: string }[] = [
   {
     q: "How does it actually work?",
-    a: "You message our Telegram bot. It opens a webpage where you upload one selfie. About 1–3 minutes later, you see all 12 stickers — 3 are free to take, and the other 9 are visibly locked. Refer a friend who signs up to unlock the whole pack free, or pay $5 — the bot installs it to your Telegram.",
+    a: "You choose an art style, copy a ready-made prompt, open ChatGPT and paste the prompt with your photo. ChatGPT returns one image — a 4×3 grid of 12 stickers. You upload that grid here; we split, clean, and deliver the stickers to your Telegram.",
   },
   {
-    q: "What’s included when I pay?",
-    a: "All 12 stickers unlock instantly — no second wait. The bot creates a real Telegram sticker set you own and DMs you the install link. You also get 10 more generations to make new packs or re-roll.",
+    q: "Do I need a paid ChatGPT subscription?",
+    a: "ChatGPT's free tier can generate images. If you hit a generation limit you may need ChatGPT Plus, but that's a separate service — Stikup itself is always free.",
   },
   {
-    q: "Can I make more than one pack?",
-    a: "Yes — each pack is a separate purchase. A $5 unlock includes 10 more generations, so you can run new packs without paying again. Referrals also unlock free. No subscription, no surprise charges.",
+    q: "How do I unlock all 12 stickers?",
+    a: "Refer one friend who signs up to Stikup. Once they register, all 12 of your stickers unlock automatically — no payment, no subscription.",
   },
   {
     q: "What about my photo?",
-    a: "Stored only while your account exists. Delete your account from settings — the photo, the pack, the generated files all cascade out. GDPR-ready from day one.",
+    a: "Your uploaded grid image is stored only while your account exists. Delete your account from Settings and everything is removed. GDPR-ready from day one.",
   },
   {
     q: "Why are 9 stickers locked instead of just hidden?",
-    a: "So you can see exactly what you’d be unlocking. The locked previews are the real generated stickers — visible, with a small lock badge on top. Paying flips the badge off and installs all 12 to your Telegram, no second AI call.",
+    a: "So you can see exactly what you'd be unlocking. The locked previews are the real split stickers — visible, with a small lock badge on top. A referral flips the badge off and installs all 12 to your Telegram.",
   },
 ];

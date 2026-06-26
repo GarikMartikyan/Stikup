@@ -1,11 +1,10 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { STICKER_STYLES } from "@/lib/sticker-styles";
+import { useRouter } from "next/navigation";
 import { DropZone } from "@/components/upload/drop-zone";
 import { ErrorBanner } from "@/components/upload/error-banner";
-import { PrivacyNote, TipsPanel } from "@/components/upload/tips-panel";
+import { TipsPanel } from "@/components/upload/tips-panel";
 import { UploadActions } from "@/components/upload/upload-actions";
 import { UploadIntro } from "@/components/upload/upload-intro";
 import {
@@ -14,19 +13,18 @@ import {
   type FileState,
 } from "@/components/upload/types";
 import { useT } from "@/components/language-provider";
+import { isTelegramEnv } from "@/lib/telegram/webapp";
+import { showInterstitial } from "@/lib/ads/adsgram";
+import { OpenInTelegram } from "@/components/upload/open-in-telegram";
 
 export default function UploadPage() {
   const galleryRef = useRef<HTMLInputElement | null>(null);
   const [state, setState] = useState<FileState>({ kind: "idle" });
   const [dragOver, setDragOver] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [gated, setGated] = useState(false);
   const t = useT();
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const styleId = searchParams.get("style");
-  const styleName = styleId
-    ? (STICKER_STYLES.find((s) => s.id === styleId)?.name ?? null)
-    : null;
 
   const acceptFile = useCallback((file: File) => {
     if (!ACCEPTED.includes(file.type) && !/\.heic$|\.heif$/i.test(file.name)) {
@@ -68,55 +66,64 @@ export default function UploadPage() {
   const reset = useCallback(() => {
     if (state.kind === "ready") URL.revokeObjectURL(state.url);
     setState({ kind: "idle" });
+    setGated(false);
     if (galleryRef.current) galleryRef.current.value = "";
   }, [state]);
 
   const submit = useCallback(async () => {
     if (state.kind !== "ready") return;
+    const file = state.file;
+
+    // Web (outside Telegram): don't generate — funnel the user into Telegram,
+    // where the interstitial ad runs.
+    if (!isTelegramEnv()) {
+      setGated(true);
+      return;
+    }
+
     setSubmitting(true);
 
-    try {
-      const form = new FormData();
-      form.append("image", state.file);
-
-      const res = await fetch("/api/packs", {
-        method: "POST",
-        body: form,
-        credentials: "include",
-      });
-
-      if (res.status === 401) {
-        router.push("/login");
-        return;
-      }
-
-      if (res.status === 403) {
-        setState({
-          kind: "error",
-          message: t("upload.error.no_generations"),
+    const createPack = async (): Promise<string | null> => {
+      try {
+        const form = new FormData();
+        form.append("image", file);
+        const res = await fetch("/api/packs", {
+          method: "POST",
+          body: form,
+          credentials: "include",
         });
-        setSubmitting(false);
-        return;
+        if (res.status === 401) {
+          router.push("/login");
+          return null;
+        }
+        if (res.status === 403) {
+          setState({ kind: "error", message: t("upload.error.no_generations") });
+          return null;
+        }
+        if (!res.ok) {
+          setState({
+            kind: "error",
+            message: t("upload.error.generation_failed"),
+          });
+          return null;
+        }
+        const { packId } = (await res.json()) as { packId: string };
+        return packId;
+      } catch {
+        setState({ kind: "error", message: t("upload.error.generation_failed") });
+        return null;
       }
+    };
 
-      if (!res.ok) {
-        setState({
-          kind: "error",
-          message: t("upload.error.generation_failed"),
-        });
-        setSubmitting(false);
-        return;
-      }
+    // Ad and generation run together; navigate only after both settle.
+    // showInterstitial never rejects, so its result is best-effort and ignored.
+    const [, packId] = await Promise.all([showInterstitial(), createPack()]);
 
-      const { packId } = (await res.json()) as { packId: string };
+    if (packId) {
       router.push(`/result/${packId}`);
-    } catch {
-      setState({
-        kind: "error",
-        message: t("upload.error.generation_failed"),
-      });
-      setSubmitting(false);
+      return;
     }
+    setSubmitting(false);
   }, [state, router, t]);
 
   const fileReady = state.kind === "ready";
@@ -124,11 +131,6 @@ export default function UploadPage() {
   return (
     <div className="relative flex flex-1 flex-col">
       <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center px-5 py-6 md:py-10">
-        {styleName && (
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[var(--color-brand)]/30 bg-[var(--color-brand)]/10 px-3 py-1 text-xs font-semibold text-[var(--color-brand)]">
-            {t("create.style_reminder", { name: styleName })}
-          </div>
-        )}
         <UploadIntro />
 
         <div className="mt-6 grid gap-5 md:mt-8 md:grid-cols-[1.4fr_1fr]">
@@ -169,7 +171,8 @@ export default function UploadPage() {
               onSubmit={submit}
             />
 
-            <PrivacyNote className="mt-5 hidden md:block" />
+            {gated && <OpenInTelegram />}
+
           </div>
 
           <TipsPanel />

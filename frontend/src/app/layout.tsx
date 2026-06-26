@@ -36,8 +36,7 @@ export const metadata: Metadata = {
 const noFlashThemeScript = `
 (function(){try{
   var t=localStorage.getItem("stikup:theme");
-  var pd=window.matchMedia("(prefers-color-scheme: dark)").matches;
-  if(t==="dark"||(!t&&pd))document.documentElement.classList.add("dark");
+  if(t!=="light")document.documentElement.classList.add("dark");
 }catch(e){}})();
 `;
 
@@ -60,6 +59,10 @@ export default async function RootLayout({
         </Script>
         <Script
           src="https://telegram.org/js/telegram-web-app.js"
+          strategy="afterInteractive"
+        />
+        <Script
+          src="https://sad.adsgram.ai/js/sad.min.js"
           strategy="afterInteractive"
         />
       </head>

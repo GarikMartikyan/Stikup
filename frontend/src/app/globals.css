@@ -59,7 +59,6 @@ html, body { background: var(--color-bg); color: var(--color-fg); }
 body { transition: background-color 200ms ease, color 200ms ease; }
 html {
   scroll-behavior: smooth;
-  scroll-snap-type: y proximity;
 }
 body {
   font-family: var(--font-sans);
@@ -76,12 +75,6 @@ input, textarea, [contenteditable="true"], [contenteditable="true"] * {
   user-select: text !important;
   -webkit-user-select: text !important;
   -ms-user-select: text !important;
-}
-
-/* Section snap targets */
-.snap-section {
-  scroll-snap-align: start;
-  scroll-snap-stop: normal;
 }
 
 ::selection { background: var(--color-brand); color: white; }

@@ -486,5 +486,8 @@
       "step4_title": "Upload the grid here",
       "step4_body": "Come back and tap \"I have my grid\" to upload. We create all 12 stickers."
     }
+  },
+  "how_to": {
+    "got_it": "Got it, show my stickers"
   }
 }

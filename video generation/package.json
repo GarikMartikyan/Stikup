@@ -1,0 +1,21 @@
+{
+  "name": "stikup-video",
+  "version": "1.0.0",
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "render": "remotion render HowToVideo out/how-to.mp4 --overwrite",
+    "gif": "ffmpeg -i out/how-to.mp4 -vf 'fps=15,scale=540:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse' -loop 0 out/how-to.gif"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.484",
+    "@remotion/renderer": "4.0.484",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "remotion": "4.0.484"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.1",
+    "@types/react-dom": "^18.3.1",
+    "typescript": "^5.5.0"
+  }
+}

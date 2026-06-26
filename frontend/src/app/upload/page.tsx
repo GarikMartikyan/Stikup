@@ -172,7 +172,6 @@ export default function UploadPage() {
             />
 
             {gated && <OpenInTelegram />}
-
           </div>
 
           <TipsPanel />

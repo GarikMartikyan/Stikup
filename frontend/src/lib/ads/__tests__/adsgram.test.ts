@@ -13,6 +13,7 @@ afterEach(() => {
   delete (window as any).Adsgram;
   vi.unstubAllEnvs();
   vi.restoreAllMocks();
+  vi.useRealTimers();
 });
 
 describe('showInterstitial', () => {
@@ -56,6 +57,18 @@ describe('showInterstitial', () => {
       init: () => ({ show: () => Promise.reject(new Error('no fill')) }),
     };
     expect(await showInterstitial()).toBe('error');
+  });
+
+  it("returns 'error' if the ad never settles within the timeout", async () => {
+    setTelegram(true);
+    vi.stubEnv("NEXT_PUBLIC_ADSGRAM_BLOCK_ID", "int-36357");
+    vi.useFakeTimers();
+    // show() returns a promise that never resolves or rejects.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window as any).Adsgram = { init: () => ({ show: () => new Promise(() => {}) }) };
+    const pending = showInterstitial();
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(await pending).toBe("error");
   });
 
   it('passes the configured block id to init', async () => {

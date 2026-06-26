@@ -257,6 +257,10 @@
       "too_large": "File is over 8 MB. Try a smaller export.",
       "generation_failed": "Upload failed. Make sure you upload the clean 4×3 grid ChatGPT made (green background). Please try again.",
       "no_generations": "You've used all your generations."
+    },
+    "telegram_gate": {
+      "title": "Sticker creation runs inside Telegram. Open Stikup in Telegram to generate your pack.",
+      "button": "Open in Telegram"
     }
   },
   "result": {
@@ -474,6 +478,8 @@
     "copied": "Copied!",
     "open_chatgpt": "Open ChatGPT",
     "continue": "I have my grid → Continue",
+    "hint_prefix": "Not sure what to do?",
+    "hint_link": "See the step-by-step guide",
     "style_reminder": "Style: {name}",
     "how_to": {
       "title": "How to generate your sticker grid",
@@ -493,11 +499,15 @@
     "page_subtitle": "Six simple steps — from choosing a style to sending your pack in Telegram.",
     "step1_title": "Pick your art style",
     "step1_body": "Go to the Create page and choose one of four styles: Chibi, Disney 3D, Anime, or Pixel. We'll build the ChatGPT prompt for you automatically.",
-    "step2_title": "Copy the prompt",
-    "step2_body": "Hit \"Copy prompt\" — it's a custom AI instruction tailored to your chosen style. Nothing to write yourself.",
-    "step3_title": "Open ChatGPT & attach your selfie",
-    "step3_body": "Go to chatgpt.com (the free tier works fine). Paste the prompt, attach a clear front-facing photo of yourself, and send.",
-    "step3_note": "A plain, well-lit selfie gives the best results. ChatGPT image generation is free.",
+    "step2_title": "Get the prompt & open ChatGPT",
+    "step2_body": "Two ways to do it — pick whichever feels easier:",
+    "step2_option_a_label": "Quickest",
+    "step2_option_a": "Click Open ChatGPT — your prompt is already copied. In ChatGPT, paste it, attach your photo, and send.",
+    "step2_option_b_label": "Manual",
+    "step2_option_b": "Hit Copy prompt, open chatgpt.com yourself, paste the prompt, and attach your photo.",
+    "step3_title": "Send & wait for the grid",
+    "step3_body": "Hit send and wait a few seconds. ChatGPT will reply with one image — a 4 × 3 grid of 12 stickers on a solid green background.",
+    "step3_note": "A plain, well-lit front-facing selfie works best. ChatGPT image generation is free on the free tier.",
     "step4_title": "Save the sticker grid",
     "step4_body": "ChatGPT generates one image — a 4 × 3 grid of 12 stickers on a solid green background. Download or screenshot it.",
     "step4_note": "Make sure all 12 faces are visible and none are cropped before saving.",

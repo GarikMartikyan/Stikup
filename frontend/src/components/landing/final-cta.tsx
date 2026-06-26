@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Download, Heart, Send, Sparkles, Zap } from "lucide-react";
+import { ArrowRight, Download, Send, Sparkles, Zap } from "lucide-react";
 import { uploadCtaHref } from "@/lib/auth/cta-href";
 import { useT } from "@/components/language-provider";
 
@@ -46,9 +46,6 @@ export function FinalCta({ loggedIn }: { loggedIn: boolean }) {
         <div className="mt-10 flex flex-wrap items-center justify-center gap-x-7 gap-y-3 text-sm text-white/80">
           <span className="inline-flex items-center gap-1.5">
             <Zap className="h-4 w-4" /> {t("landing.final_cta.ready")}
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <Heart className="h-4 w-4" /> {t("landing.final_cta.age_gdpr")}
           </span>
           <span className="inline-flex items-center gap-1.5">
             <Download className="h-4 w-4" /> {t("landing.final_cta.download")}

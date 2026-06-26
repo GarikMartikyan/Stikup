@@ -20,8 +20,6 @@
     "account_menu_label": "Account menu",
     "nav_how": "How it works",
     "nav_pack": "The pack",
-    "nav_pricing": "Pricing",
-    "nav_faq": "FAQ",
     "brand_home_label": "Stikup home",
     "switch_to_light": "Switch to light theme",
     "switch_to_dark": "Switch to dark theme",
@@ -98,7 +96,7 @@
       "cta_authenticated": "Make my stickers",
       "cta_anonymous": "Sign in to start",
       "see_how": "See how it works",
-      "description": "Pick a style. Generate in ChatGPT. Upload the grid. We split and deliver 12 stickers straight to your Telegram.",
+      "description": "Pick a style. Generate in ChatGPT. Upload the grid. We create and deliver 12 stickers straight to your Telegram.",
       "loved_by": "Loved by early testers",
       "selfie_label": "Your selfie",
       "ready": "ready",
@@ -108,7 +106,7 @@
       "eyebrow": "How it works",
       "title": "Four steps.",
       "title_suffix": "No AI subscription needed.",
-      "description": "You generate the art in ChatGPT (free tier works). We handle the splitting, cleaning, and Telegram delivery.",
+      "description": "You generate the art in ChatGPT (free tier works). We create your stickers and deliver them to Telegram.",
       "step_label": "STEP",
       "steps": {
         "step_01_title": "Pick a style",
@@ -116,7 +114,7 @@
         "step_02_title": "Generate in ChatGPT",
         "step_02_body": "Copy the prompt, open ChatGPT, paste it and attach your photo. ChatGPT returns one image: a 4×3 grid of 12 stickers.",
         "step_03_title": "Upload the grid",
-        "step_03_body": "Come back here and upload that single grid image. Our splitter cuts and cleans the 12 stickers automatically.",
+        "step_03_body": "Come back here and upload that single grid image. We create all 12 stickers automatically.",
         "step_04_title": "Get your pack",
         "step_04_body": "3 stickers are free to grab. Refer one friend who signs up and all 12 unlock — the bot installs the full pack to your Telegram."
       }
@@ -124,7 +122,7 @@
     "pack_showcase": {
       "eyebrow": "The pack",
       "title": "Here's what you actually get.",
-      "description": "Every pack is 12 stickers split from one ChatGPT-generated grid. You see all 12 right away — 3 are free to take, 9 stay locked until you refer a friend.",
+      "description": "Every pack is 12 stickers created from one ChatGPT-generated grid. You see all 12 right away — 3 are free to take, 9 stay locked until you invite a friend.",
       "cta_authenticated": "Try the free preview",
       "cta_anonymous": "Sign in to try free",
       "unlock_authenticated": "Unlock all 12",
@@ -135,8 +133,8 @@
         "b1": "12 expressive emotions, hand-curated",
         "b2": "Real Telegram sticker set you own",
         "b3": "Free 3 stickers — no payment required",
-        "b4": "Unlock all 12 for free — just refer one friend",
-        "b5": "Download WebP or PNG anytime"
+        "b4": "Unlock all 12 for free — just invite one friend",
+        "b5": "Download as images anytime"
       }
     },
     "features": {
@@ -151,37 +149,7 @@
         "telegram_title": "Real Telegram pack",
         "telegram_body": "Created under your Telegram account. Yours forever. Install with one tap.",
         "download_title": "Yours to download",
-        "download_body": "Grab the WebPs or PNGs and use them anywhere — TikTok, IG, Discord, you name it."
-      }
-    },
-    "pricing": {
-      "eyebrow": "Pricing",
-      "title": "It's free.",
-      "title_suffix": "Unlock with a referral.",
-      "description": "Generate your sticker grid in ChatGPT, upload it here, and get 3 stickers free. Refer one friend who signs up and all 12 unlock — no payment ever.",
-      "how_label": "How it works",
-      "step_chatgpt": "Generate your 4×3 sticker grid in ChatGPT using the prompt we build",
-      "step_upload": "Upload the grid — we split and clean all 12 stickers",
-      "step_free": "Take 3 stickers for free, instantly",
-      "step_refer": "Refer a friend who signs up → all 12 unlock free",
-      "cta_authenticated": "Start creating",
-      "cta_anonymous": "Sign in to start",
-      "referral_note": "No credit card. No subscription. Ever."
-    },
-    "faq": {
-      "eyebrow": "FAQ",
-      "title": "Questions, answered.",
-      "items": {
-        "q1": "How does it actually work?",
-        "a1": "You choose an art style, copy a ready-made prompt, open ChatGPT and paste the prompt with your photo. ChatGPT returns one image — a 4×3 grid of 12 stickers. You upload that grid here; we split, clean, and deliver the stickers to your Telegram.",
-        "q2": "Do I need a paid ChatGPT subscription?",
-        "a2": "ChatGPT's free tier can generate images. If you hit a generation limit you may need ChatGPT Plus, but that's a separate service — Stikup itself is always free.",
-        "q3": "How do I unlock all 12 stickers?",
-        "a3": "Refer one friend who signs up to Stikup. Once they register, all 12 of your stickers unlock automatically — no payment, no subscription.",
-        "q4": "What about my photo?",
-        "a4": "Your uploaded grid image is stored only while your account exists. Delete your account from Settings and everything is removed. GDPR-ready from day one.",
-        "q5": "Why are 9 stickers locked instead of just hidden?",
-        "a5": "So you can see exactly what you'd be unlocking. The locked previews are the real split stickers — visible, with a small lock badge on top. A referral flips the badge off and installs all 12 to your Telegram."
+        "download_body": "Grab the images and use them anywhere — TikTok, IG, Discord, you name it."
       }
     },
     "final_cta": {
@@ -193,8 +161,7 @@
       "cta_anonymous": "Sign in to start",
       "open_bot": "Open Telegram bot",
       "ready": "Free to use",
-      "age_gdpr": "13+ only · GDPR ready",
-      "download": "Download PNG / WebP"
+      "download": "Download as images"
     },
     "footer": {
       "privacy": "Privacy",
@@ -218,7 +185,7 @@
       "regens_hint": "remaining",
       "subscription_label": "Subscription",
       "subscription_value": "None",
-      "subscription_hint": "free — referral unlock"
+      "subscription_hint": "free — invite to unlock"
     },
     "pack_list": {
       "your_packs": "Your packs",
@@ -253,7 +220,7 @@
     "intro": {
       "step": "Step 02 of 03",
       "title": "Upload your ChatGPT grid.",
-      "description": "Paste the 4×3 grid image ChatGPT generated — we'll split and clean all 12 stickers automatically."
+      "description": "Paste the 4×3 grid image ChatGPT generated — we'll create all 12 stickers automatically."
     },
     "drop_zone": {
       "upload_aria": "Upload the sticker grid",
@@ -270,7 +237,7 @@
       "pick_from_device": "Pick from device",
       "use_camera": "Use camera",
       "generate": "Upload grid",
-      "sending": "Splitting stickers…",
+      "sending": "Creating stickers…",
       "choose_another": "Choose another",
       "back": "Back"
     },
@@ -280,8 +247,8 @@
       "tip_light": "Solid green background (#00B140)",
       "tip_camera": "All 12 stickers visible, none cropped",
       "free_preview_label": "What you get",
-      "free_preview_title": "3 stickers free. Unlock 9 more with a referral.",
-      "free_preview_body": "Upload the grid and we split all 12. Take 3 free — share your referral link with one friend who signs up and the full pack unlocks for free.",
+      "free_preview_title": "3 stickers free. Unlock 9 more by inviting a friend.",
+      "free_preview_body": "Upload the grid and we create all 12. Take 3 free — invite one friend who signs up and the full pack unlocks for free.",
       "privacy_note": "We never share or sell your image. It's stored only while your account exists and removed instantly when you delete it."
     },
     "error": {
@@ -294,19 +261,19 @@
   },
   "result": {
     "generating": {
-      "title": "Splitting & cleaning your stickers…",
-      "description": "We're cutting the grid into 12 stickers and removing the green background. Hang tight!",
+      "title": "Creating your stickers…",
+      "description": "We're creating your 12 stickers. Hang tight!",
       "label": "Processing sticker grid"
     },
     "failed": {
-      "title": "Couldn't split that grid",
+      "title": "Couldn't create your stickers",
       "description": "Make sure you upload the clean 4×3 grid ChatGPT made (green background, all 12 faces visible, nothing cropped).",
       "retry": "Try another grid"
     },
     "header": {
       "eyebrow": "Pack ready",
       "title": "Your sticker pack is alive.",
-      "description": "All 12 split. 3 free, 9 unlock with a referral.",
+      "description": "All 12 created. 3 free, 9 unlock when you invite a friend.",
       "selfie_alt": "Your sticker pack"
     },
     "sticker_grid": {
@@ -344,7 +311,7 @@
       "open_pack": "Open your pack in Telegram",
       "download": "Download",
       "downloading": "Downloading…",
-      "download_desc": "Save each sticker as a .webp file to your device.",
+      "download_desc": "Save each sticker as an image to your device.",
       "connect_telegram_prompt": "Connect your Telegram account in Settings to receive stickers via bot.",
       "go_to_settings": "Go to Settings",
       "close": "Close"
@@ -445,8 +412,8 @@
       "content_body": "You keep ownership of the photos you upload and the stickers we generate for you. You confirm you have the right to upload each photo. You grant us a limited licence to process your photos solely to create and deliver your sticker packs.",
       "acceptable_title": "Acceptable use",
       "acceptable_body": "Do not upload content that is illegal, infringes others' rights, or depicts someone without their consent, and do not misuse, overload, or attempt to reverse-engineer the service. We may suspend or remove accounts that break these rules.",
-      "payments_title": "Generations, unlocks and referrals",
-      "payments_body": "Stikup offers a limited number of free generations and ways to unlock more, such as referrals. Once you claim a pack by downloading it or sending it to Telegram, the remaining generations for that allowance are used up. Promotional terms may change.",
+      "payments_title": "Generations, unlocks and invites",
+      "payments_body": "Stikup offers a limited number of free generations and ways to unlock more, such as invites. Once you claim a pack by downloading it or sending it to Telegram, the remaining generations for that allowance are used up. Promotional terms may change.",
       "disclaimer_title": "Disclaimer",
       "disclaimer_body": "Stikup is provided \"as is\" without warranties of any kind. We do not guarantee that generated stickers will meet your expectations or that the service will be uninterrupted or error-free.",
       "liability_title": "Limitation of liability",
@@ -469,7 +436,7 @@
       "stickers_title": "Stickers & packs",
       "stickers_body": "issues generating a pack, downloading stickers, or receiving them in Telegram.",
       "billing_title": "Generations & unlocks",
-      "billing_body": "questions about your generation balance, referrals, or unlocking the full pack.",
+      "billing_body": "questions about your generation balance, invites, or unlocking the full pack.",
       "include_title": "Help us help you faster",
       "include_body": "When you write in, include the email on your account and, if relevant, the pack link or a short description of what happened. Screenshots are always welcome.",
       "back_home": "Back to home"
@@ -517,7 +484,7 @@
       "step3_title": "Get the grid image",
       "step3_body": "ChatGPT returns one image — a 4×3 grid of 12 stickers on a green background. Save it.",
       "step4_title": "Upload the grid here",
-      "step4_body": "Come back and tap \"I have my grid\" to upload. We split and clean all 12 stickers."
+      "step4_body": "Come back and tap \"I have my grid\" to upload. We create all 12 stickers."
     }
   }
 }

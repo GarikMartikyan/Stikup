@@ -488,6 +488,23 @@
     }
   },
   "how_to": {
-    "got_it": "Got it, show my stickers"
+    "got_it": "Got it, show my stickers",
+    "page_title": "How to make your stickers",
+    "page_subtitle": "Six simple steps — from choosing a style to sending your pack in Telegram.",
+    "step1_title": "Pick your art style",
+    "step1_body": "Go to the Create page and choose one of four styles: Chibi, Disney 3D, Anime, or Pixel. We'll build the ChatGPT prompt for you automatically.",
+    "step2_title": "Copy the prompt",
+    "step2_body": "Hit \"Copy prompt\" — it's a custom AI instruction tailored to your chosen style. Nothing to write yourself.",
+    "step3_title": "Open ChatGPT & attach your selfie",
+    "step3_body": "Go to chatgpt.com (the free tier works fine). Paste the prompt, attach a clear front-facing photo of yourself, and send.",
+    "step3_note": "A plain, well-lit selfie gives the best results. ChatGPT image generation is free.",
+    "step4_title": "Save the sticker grid",
+    "step4_body": "ChatGPT generates one image — a 4 × 3 grid of 12 stickers on a solid green background. Download or screenshot it.",
+    "step4_note": "Make sure all 12 faces are visible and none are cropped before saving.",
+    "step5_title": "Upload the grid",
+    "step5_body": "Come back here and tap \"I have my grid → Continue\". Drop or pick the image you just saved. We automatically split it into 12 individual stickers.",
+    "step6_title": "Unlock your full pack",
+    "step6_body": "You get 3 stickers free right away. Invite one friend who signs up and all 12 unlock — no payment required.",
+    "cta": "Start now — pick your style"
   }
 }

@@ -21,6 +21,9 @@ ARG BACKEND_URL=http://backend:3131
 ENV BACKEND_URL=$BACKEND_URL
 ARG NEXT_PUBLIC_TELEGRAM_BOT_URL=https://t.me/stikup_bot
 ENV NEXT_PUBLIC_TELEGRAM_BOT_URL=$NEXT_PUBLIC_TELEGRAM_BOT_URL
+# Adsgram interstitial block id; empty disables ads (app behaves as before).
+ARG NEXT_PUBLIC_ADSGRAM_BLOCK_ID=
+ENV NEXT_PUBLIC_ADSGRAM_BLOCK_ID=$NEXT_PUBLIC_ADSGRAM_BLOCK_ID
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY backend/package.json ./backend/package.json

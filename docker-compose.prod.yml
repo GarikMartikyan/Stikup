@@ -98,9 +98,10 @@ services:
       context: .
       dockerfile: frontend/Dockerfile
       args:
-        # Baked at build time: server-side origin + client-visible bot URL.
+        # Baked at build time: server-side origin + client-visible bot URL + ad block id.
         BACKEND_URL: http://backend:3131
         NEXT_PUBLIC_TELEGRAM_BOT_URL: ${NEXT_PUBLIC_TELEGRAM_BOT_URL}
+        NEXT_PUBLIC_ADSGRAM_BLOCK_ID: ${NEXT_PUBLIC_ADSGRAM_BLOCK_ID:-}
     restart: unless-stopped
     depends_on:
       backend:

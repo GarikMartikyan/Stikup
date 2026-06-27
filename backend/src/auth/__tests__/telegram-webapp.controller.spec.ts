@@ -49,6 +49,8 @@ const VALID_USER_JSON = JSON.stringify({
   username: 'testuser',
 });
 
+const PACK_UUID = '550e8400-e29b-41d4-a716-446655440000';
+
 function buildResMock(): jest.Mocked<Response> {
   const res: Partial<jest.Mocked<Response>> = {
     cookie: jest.fn().mockReturnThis(),
@@ -189,7 +191,7 @@ describe('AuthController — POST /auth/telegram/webapp', () => {
     expect(res.json).toHaveBeenCalledWith(profile);
   });
 
-  it('attributes referral and clears REF_COOKIE when user is newly created', async () => {
+  it('attributes referral from start_param when user is newly created', async () => {
     const controller = await buildController();
     const identity = (
       controller as unknown as { identity: jest.Mocked<IdentityService> }
@@ -217,24 +219,58 @@ describe('AuthController — POST /auth/telegram/webapp', () => {
       channels: [],
     });
 
-    const initData = buildInitData({ user: VALID_USER_JSON });
-    const req = {
-      cookies: { stikup_ref: 'ref123' },
-    } as unknown as import('express').Request;
+    const initData = buildInitData({
+      user: VALID_USER_JSON,
+      start_param: `MYCODE_${PACK_UUID}`,
+    });
+    const req = { cookies: {} } as unknown as import('express').Request;
     const res = buildResMock();
 
     await controller.telegramWebApp({ initData }, req, res);
 
     expect(referrals.attribute).toHaveBeenCalledWith(
       'u-new',
-      'ref123',
+      'MYCODE',
       'telegram',
-      undefined,
+      PACK_UUID,
     );
-    expect(res.clearCookie).toHaveBeenCalledWith('stikup_ref', { path: '/' });
-    expect(res.clearCookie).toHaveBeenCalledWith('stikup_ref_pack', {
-      path: '/',
+  });
+
+  it('does not attribute when newly created but start_param is absent', async () => {
+    const controller = await buildController();
+    const identity = (
+      controller as unknown as { identity: jest.Mocked<IdentityService> }
+    ).identity;
+    const sessions = (
+      controller as unknown as { sessions: jest.Mocked<SessionService> }
+    ).sessions;
+    const referrals = (
+      controller as unknown as { referrals: jest.Mocked<ReferralService> }
+    ).referrals;
+
+    (identity.resolveOrCreate as jest.Mock).mockResolvedValueOnce({
+      userId: 'u-new-noref',
+      created: true,
     });
+    (sessions.issue as jest.Mock).mockResolvedValueOnce({
+      sid: 'sess-new-noref',
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+    (sessions.findUser as jest.Mock).mockResolvedValueOnce({
+      userId: 'u-new-noref',
+      email: null,
+      displayName: null,
+      avatarUrl: null,
+      channels: [],
+    });
+
+    const initData = buildInitData({ user: VALID_USER_JSON });
+    const req = { cookies: {} } as unknown as import('express').Request;
+    const res = buildResMock();
+
+    await controller.telegramWebApp({ initData }, req, res);
+
+    expect(referrals.attribute).not.toHaveBeenCalled();
   });
 
   it('does not attribute referral when user already existed', async () => {
@@ -265,16 +301,16 @@ describe('AuthController — POST /auth/telegram/webapp', () => {
       channels: [],
     });
 
-    const initData = buildInitData({ user: VALID_USER_JSON });
-    const req = {
-      cookies: { stikup_ref: 'ref456' },
-    } as unknown as import('express').Request;
+    const initData = buildInitData({
+      user: VALID_USER_JSON,
+      start_param: `MYCODE_${PACK_UUID}`,
+    });
+    const req = { cookies: {} } as unknown as import('express').Request;
     const res = buildResMock();
 
     await controller.telegramWebApp({ initData }, req, res);
 
     expect(referrals.attribute).not.toHaveBeenCalled();
-    expect(res.clearCookie).not.toHaveBeenCalled();
   });
 
   it('returns 401 when initData has an invalid hash', async () => {

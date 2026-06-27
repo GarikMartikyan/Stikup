@@ -30,6 +30,7 @@ import type { CookieOptions, Request, Response } from 'express';
 import { frontendConfig } from '../config/frontend.config';
 import { sessionConfig } from '../config/session.config';
 import { telegramConfig } from '../config/telegram.config';
+import { parseReferralStartParam } from '../referral/parse-referral-start-param';
 import { ReferralService } from '../referral/referral.service';
 import { TelegramMessageService } from '../telegram/telegram-message.service';
 import { BOT_SENDER, type BotSender } from './channel/bot-sender';
@@ -474,7 +475,7 @@ export class AuthController {
       return;
     }
 
-    const { user } = result;
+    const { user, startParam } = result;
     const { userId, created } = await this.identity.resolveOrCreate({
       channel: 'telegram',
       channelUserId: user.channelUserId,
@@ -486,13 +487,14 @@ export class AuthController {
     });
 
     if (created) {
-      const cookies = (req.cookies ?? {}) as Record<string, string | undefined>;
-      const ref = cookies[REF_COOKIE];
-      const refPack = cookies[REF_PACK_COOKIE];
-      await this.referrals.attribute(userId, ref, 'telegram', refPack);
-      if (ref) {
-        res.clearCookie(REF_COOKIE, { path: '/' });
-        res.clearCookie(REF_PACK_COOKIE, { path: '/' });
+      const parsed = parseReferralStartParam(startParam);
+      if (parsed) {
+        await this.referrals.attribute(
+          userId,
+          parsed.ref,
+          'telegram',
+          parsed.pack,
+        );
       }
     }
 

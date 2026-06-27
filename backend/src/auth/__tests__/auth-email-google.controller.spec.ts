@@ -173,6 +173,40 @@ describe('AuthController — email/google endpoints', () => {
         ),
       ).rejects.toBeInstanceOf(ConflictException);
     });
+
+    it('does not attribute a referral on email registration', async () => {
+      const controller = await buildController();
+      const emailAdapter = (
+        controller as unknown as { emailAdapter: jest.Mocked<EmailAdapter> }
+      ).emailAdapter;
+      const sessions = (
+        controller as unknown as { sessions: jest.Mocked<SessionService> }
+      ).sessions;
+      const referrals = (
+        controller as unknown as { referrals: jest.Mocked<ReferralService> }
+      ).referrals;
+
+      (emailAdapter.register as jest.Mock).mockResolvedValueOnce({
+        userId: 'u-email',
+      });
+      (sessions.issue as jest.Mock).mockResolvedValueOnce({
+        sid: 'sess-email',
+        expiresAt: new Date(Date.now() + 60_000),
+      });
+
+      const req = {
+        cookies: { stikup_ref: 'shouldBeIgnored' },
+      } as unknown as import('express').Request;
+      const res = buildResMock();
+
+      await controller.register(
+        { email: 'a@b.com', password: 'password123' },
+        req,
+        res,
+      );
+
+      expect(referrals.attribute).not.toHaveBeenCalled();
+    });
   });
 
   describe('POST /auth/login', () => {

@@ -45,8 +45,6 @@ import { TokenService } from './token.service';
 
 const OAUTH_STATE_COOKIE = 'oauth_state';
 const OAUTH_LINK_COOKIE = 'oauth_link';
-const REF_COOKIE = 'stikup_ref';
-const REF_PACK_COOKIE = 'stikup_ref_pack';
 const OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
 const OAUTH_STATE_BYTES = 16;
 
@@ -278,14 +276,6 @@ export class AuthController {
       dto.email,
       dto.password,
     );
-    const cookies = (req.cookies ?? {}) as Record<string, string | undefined>;
-    const ref = cookies[REF_COOKIE];
-    const refPack = cookies[REF_PACK_COOKIE];
-    await this.referrals.attribute(userId, ref, 'email', refPack);
-    if (ref) {
-      res.clearCookie(REF_COOKIE, { path: '/' });
-      res.clearCookie(REF_PACK_COOKIE, { path: '/' });
-    }
     const { sid, expiresAt } = await this.sessions.issue(userId, 'email');
     res.cookie(this.session.cookieName, sid, this.cookieOptions(expiresAt));
     res.status(204).send();
@@ -369,16 +359,7 @@ export class AuthController {
         await this.identity.linkChannel(session.userId, event);
         res.redirect(302, settingsUrl('connected'));
       } else {
-        const { userId, created } = await this.identity.resolveOrCreate(event);
-        if (created) {
-          const ref = cookies[REF_COOKIE];
-          const refPack = cookies[REF_PACK_COOKIE];
-          await this.referrals.attribute(userId, ref, 'google', refPack);
-          if (ref) {
-            res.clearCookie(REF_COOKIE, { path: '/' });
-            res.clearCookie(REF_PACK_COOKIE, { path: '/' });
-          }
-        }
+        const { userId } = await this.identity.resolveOrCreate(event);
         const { sid, expiresAt } = await this.sessions.issue(userId, 'google');
         res.cookie(this.session.cookieName, sid, this.cookieOptions(expiresAt));
         res.redirect(

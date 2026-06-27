@@ -93,6 +93,7 @@ jobs:
           build-args: |
             BACKEND_URL=http://backend:3131
             NEXT_PUBLIC_TELEGRAM_BOT_URL=https://t.me/stikup_bot
+            NEXT_PUBLIC_ADSGRAM_BLOCK_ID=int-36357
           tags: |
             ${{ env.FRONTEND_IMAGE }}:latest
             ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}

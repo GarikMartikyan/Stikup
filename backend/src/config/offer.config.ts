@@ -5,7 +5,6 @@ import {
   IsInt,
   IsPositive,
   IsString,
-  Min,
   validateSync,
 } from 'class-validator';
 
@@ -18,27 +17,11 @@ export class OfferConfigSchema {
   @IsPositive()
   freeStickerCount!: number;
 
-  /** Generations granted to every new user. */
-  @IsInt()
-  @IsPositive()
-  baseGenerations!: number;
-
-  /** Additional generations earned per referred user who signs up. 0 disables the bonus. */
-  @IsInt()
-  @Min(0)
-  referralBonusGenerations!: number;
-
   @IsBoolean()
   referralUnlockEnabled!: boolean;
 
   @IsString()
   stickerDefaultEmoji!: string;
-
-  // Local/testing escape hatch: when true, bypass the per-user generation
-  // quota so a pack can be (re)generated without limit.
-  // Defaults to false — production and normal dev keep the real limits.
-  @IsBoolean()
-  unlimitedGenerations!: boolean;
 }
 
 function toInt(raw: string | undefined, fallback: number): number {
@@ -58,17 +41,8 @@ export const offerConfig = registerAs('offer', (): OfferConfigSchema => {
   const raw = {
     packSize: toInt(process.env.OFFER_PACK_SIZE, 12),
     freeStickerCount: toInt(process.env.OFFER_FREE_STICKER_COUNT, 3),
-    baseGenerations: toInt(process.env.OFFER_BASE_GENERATIONS, 2),
-    referralBonusGenerations: toInt(
-      process.env.OFFER_REFERRAL_BONUS_GENERATIONS,
-      2,
-    ),
     referralUnlockEnabled: toBool(process.env.OFFER_REFERRAL_UNLOCK, true),
     stickerDefaultEmoji: process.env.STICKER_DEFAULT_EMOJI?.trim() || '😀',
-    unlimitedGenerations: toBool(
-      process.env.OFFER_UNLIMITED_GENERATIONS,
-      false,
-    ),
   };
 
   const instance = plainToInstance(OfferConfigSchema, raw);

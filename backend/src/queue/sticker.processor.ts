@@ -29,7 +29,7 @@ export class StickerProcessor extends WorkerHost {
   }
 
   private async processWebPack(job: Job<WebPackJobData>): Promise<void> {
-    const { packId, userId, sourceImagePath } = job.data;
+    const { packId, sourceImagePath } = job.data;
     let cleanup: (() => Promise<void>) | null = null;
 
     try {
@@ -47,15 +47,11 @@ export class StickerProcessor extends WorkerHost {
         // (that would log as a generic system error); this is an expected user
         // error and is surfaced to the frontend via pack.status = 'failed'.
         this.logger.warn(
-          `web-pack job ${job.id}: grid split yielded ${stickerPaths.length} sticker(s) for pack ${packId}; expected 12 — marking failed, refunding generation`,
+          `web-pack job ${job.id}: grid split yielded ${stickerPaths.length} sticker(s) for pack ${packId}; expected 12 — marking failed`,
         );
         await this.prisma.pack.update({
           where: { id: packId },
           data: { status: 'failed' },
-        });
-        await this.prisma.user.updateMany({
-          where: { id: userId, generationsUsed: { gt: 0 } },
-          data: { generationsUsed: { decrement: 1 } },
         });
         await rm(join(this.storage.stickerDir, packId), {
           recursive: true,
@@ -108,12 +104,6 @@ export class StickerProcessor extends WorkerHost {
       await this.prisma.pack.update({
         where: { id: packId },
         data: { status: 'failed' },
-      });
-
-      // Refund the generation — floor at 0 via the conditional decrement.
-      await this.prisma.user.updateMany({
-        where: { id: userId, generationsUsed: { gt: 0 } },
-        data: { generationsUsed: { decrement: 1 } },
       });
 
       // Remove any sticker files copied before the failure — no Sticker rows

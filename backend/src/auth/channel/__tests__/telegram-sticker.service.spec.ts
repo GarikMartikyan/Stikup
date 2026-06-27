@@ -8,10 +8,7 @@ const OFFER_STUB = {
   packSize: 12,
   freeStickerCount: 3,
   referralUnlockEnabled: true,
-  baseGenerations: 2,
-  referralBonusGenerations: 2,
   stickerDefaultEmoji: '😀',
-  unlimitedGenerations: false,
 };
 
 function buildBotMock() {

@@ -29,10 +29,8 @@ vi.mock('@/lib/telegram/webapp', () => ({
   isTelegramEnv: () => isTelegramEnvMock(),
 }));
 
-const showInterstitialMock = vi.fn();
 const showRewardedMock = vi.fn();
 vi.mock('@/lib/ads/adsgram', () => ({
-  showInterstitial: () => showInterstitialMock(),
   showRewarded: () => showRewardedMock(),
 }));
 
@@ -50,7 +48,6 @@ beforeEach(() => {
   URL.revokeObjectURL = vi.fn();
   pushMock.mockReset();
   isTelegramEnvMock.mockReset();
-  showInterstitialMock.mockReset().mockResolvedValue('shown');
   showRewardedMock.mockReset().mockResolvedValue('shown');
 });
 
@@ -76,10 +73,10 @@ describe('UploadPage submit', () => {
       await screen.findByRole('link', { name: /telegram_gate\.button/ }),
     ).toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
-    expect(showInterstitialMock).not.toHaveBeenCalled();
+    expect(showRewardedMock).not.toHaveBeenCalled();
   });
 
-  it('Telegram: creates the pack, plays the ad, then navigates to the result', async () => {
+  it('Telegram: plays the rewarded ad then POSTs /packs and navigates on success', async () => {
     isTelegramEnvMock.mockReturnValue(true);
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
@@ -96,20 +93,38 @@ describe('UploadPage submit', () => {
     await waitFor(() =>
       expect(pushMock).toHaveBeenCalledWith('/result/pack-123'),
     );
-    expect(showInterstitialMock).toHaveBeenCalledOnce();
+    expect(showRewardedMock).toHaveBeenCalledOnce();
     expect(global.fetch).toHaveBeenCalledWith(
       '/api/packs',
       expect.objectContaining({ method: 'POST' }),
     );
   });
 
-  it('Telegram: still navigates when the ad errors (best-effort)', async () => {
+  it('Telegram: does not POST and shows ad-required error when ad is not shown', async () => {
     isTelegramEnvMock.mockReturnValue(true);
-    showInterstitialMock.mockResolvedValue('error');
+    showRewardedMock.mockResolvedValue('skipped');
+    const fetchMock = vi.fn();
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    render(<UploadPage />);
+    selectGrid();
+    fireEvent.click(
+      await screen.findByRole('button', { name: /upload\.actions\.generate/ }),
+    );
+
+    expect(
+      await screen.findByText('upload.error.ad_required'),
+    ).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(pushMock).not.toHaveBeenCalled();
+  });
+
+  it('Telegram: 401 redirects to login', async () => {
+    isTelegramEnvMock.mockReturnValue(true);
     global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 201,
-      json: async () => ({ packId: 'pack-789' }),
+      ok: false,
+      status: 401,
+      json: async () => ({}),
     }) as unknown as typeof fetch;
 
     render(<UploadPage />);
@@ -119,95 +134,8 @@ describe('UploadPage submit', () => {
     );
 
     await waitFor(() =>
-      expect(pushMock).toHaveBeenCalledWith('/result/pack-789'),
+      expect(pushMock).toHaveBeenCalledWith('/login'),
     );
-  });
-
-  it('Telegram: 403 shows the watch-ad banner, no navigation, no interstitial', async () => {
-    isTelegramEnvMock.mockReturnValue(true);
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: false,
-      status: 403,
-      json: async () => ({}),
-    }) as unknown as typeof fetch;
-
-    render(<UploadPage />);
-    selectGrid();
-    fireEvent.click(
-      await screen.findByRole('button', { name: /upload\.actions\.generate/ }),
-    );
-
-    expect(
-      await screen.findByRole('button', { name: /upload\.actions\.watch_ad/ }),
-    ).toBeInTheDocument();
-    expect(pushMock).not.toHaveBeenCalled();
-    expect(showInterstitialMock).not.toHaveBeenCalled();
-  });
-
-  it('Telegram: watching the ad grants a generation and auto-retries the upload', async () => {
-    isTelegramEnvMock.mockReturnValue(true);
-    let packsCalls = 0;
-    global.fetch = vi.fn((url: string) => {
-      if (url === '/api/ads/reward') {
-        return Promise.resolve({
-          ok: true,
-          status: 200,
-          json: async () => ({ regensLeft: 1 }),
-        });
-      }
-      // /api/packs: first call 403 (out of quota), second call succeeds.
-      packsCalls += 1;
-      if (packsCalls === 1) {
-        return Promise.resolve({ ok: false, status: 403, json: async () => ({}) });
-      }
-      return Promise.resolve({
-        ok: true,
-        status: 201,
-        json: async () => ({ packId: 'pack-ad' }),
-      });
-    }) as unknown as typeof fetch;
-
-    render(<UploadPage />);
-    selectGrid();
-    fireEvent.click(
-      await screen.findByRole('button', { name: /upload\.actions\.generate/ }),
-    );
-
-    fireEvent.click(
-      await screen.findByRole('button', { name: /upload\.actions\.watch_ad/ }),
-    );
-
-    await waitFor(() => expect(pushMock).toHaveBeenCalledWith('/result/pack-ad'));
     expect(showRewardedMock).toHaveBeenCalledOnce();
-    expect(global.fetch).toHaveBeenCalledWith(
-      '/api/ads/reward',
-      expect.objectContaining({ method: 'POST' }),
-    );
-    // The rewarded unlock must NOT also play the during-generation interstitial.
-    expect(showInterstitialMock).not.toHaveBeenCalled();
-  });
-
-  it('Telegram: shows ad_unavailable when the rewarded ad does not complete', async () => {
-    isTelegramEnvMock.mockReturnValue(true);
-    showRewardedMock.mockResolvedValue('error');
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: false,
-      status: 403,
-      json: async () => ({}),
-    }) as unknown as typeof fetch;
-
-    render(<UploadPage />);
-    selectGrid();
-    fireEvent.click(
-      await screen.findByRole('button', { name: /upload\.actions\.generate/ }),
-    );
-    fireEvent.click(
-      await screen.findByRole('button', { name: /upload\.actions\.watch_ad/ }),
-    );
-
-    expect(
-      await screen.findByText('upload.error.ad_unavailable'),
-    ).toBeInTheDocument();
-    expect(pushMock).not.toHaveBeenCalled();
   });
 });

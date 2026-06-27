@@ -3,7 +3,7 @@ import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { ForbiddenException, Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { ConfigType } from '@nestjs/config';
 import { Prisma } from '@prisma/client';
 import sharp from 'sharp';
@@ -12,7 +12,6 @@ import { BOT_SENDER, type BotSender } from '../auth/channel/bot-sender';
 import { TelegramStickerService } from '../auth/channel/telegram-sticker.service';
 import { offerConfig } from '../config/offer.config';
 import { storageConfig } from '../config/storage.config';
-import { computeCap } from '../common/quota';
 import { PrismaService } from '../prisma/prisma.service';
 import { StickerQueueService } from '../queue/sticker.queue';
 import { getPackStickerFiles } from './sticker-assets';
@@ -45,7 +44,7 @@ export interface PackDetail {
   id: string;
   status: string;
   unlocked: boolean;
-  /** locked = quota exhausted (generationsUsed >= cap). */
+  /** locked = referral unlock not yet earned. Always false — quota is unlimited. */
   locked: boolean;
   freeCount: number;
   packSize: number;
@@ -59,7 +58,7 @@ export interface PackSummary {
   createdAt: string;
   status: string;
   unlocked: boolean;
-  /** locked = quota exhausted (generationsUsed >= cap). */
+  /** locked = referral unlock not yet earned. Always false — quota is unlimited. */
   locked: boolean;
   freeCount: number;
   packSize: number;
@@ -88,46 +87,22 @@ export class PackService {
     userId: string,
     sourceImage: Buffer,
   ): Promise<{ packId: string }> {
-    const pack = await this.prisma.$transaction(async (tx) => {
-      // Lock the user row so concurrent POST /packs requests serialize and
-      // cannot both pass the quota check at the same time.
-      const rows = await tx.$queryRaw<Array<{ generations_used: number }>>`
-        SELECT generations_used
-        FROM users WHERE id = ${userId}::uuid FOR UPDATE
-      `;
+    // Verify the user exists. The pack FK would eventually error, but an
+    // explicit check gives a clear message for the caller.
+    const userExists = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true },
+    });
+    if (!userExists) {
+      throw new Error(`user ${userId} not found`);
+    }
 
-      if (rows.length === 0) {
-        throw new Error(`user ${userId} not found`);
-      }
-
-      // Local/testing escape hatch: skip the quota gate and the increment so
-      // packs can be (re)generated without limit. Default false in prod/dev.
-      if (!this.offer.unlimitedGenerations) {
-        const referralCount = await tx.referral.count({
-          where: { referrerId: userId },
-        });
-        const adRewardCount = await tx.adReward.count({
-          where: { userId },
-        });
-        const cap = computeCap(this.offer, referralCount, adRewardCount);
-
-        if (rows[0].generations_used >= cap) {
-          throw new ForbiddenException('generation_limit_reached');
-        }
-
-        await tx.user.update({
-          where: { id: userId },
-          data: { generationsUsed: { increment: 1 } },
-        });
-      }
-
-      return tx.pack.create({
-        data: {
-          userId,
-          status: 'generating',
-        },
-        select: { id: true },
-      });
+    const pack = await this.prisma.pack.create({
+      data: {
+        userId,
+        status: 'generating',
+      },
+      select: { id: true },
     });
 
     // Persist a thumbnail of the uploaded selfie up front so the result page can
@@ -157,9 +132,9 @@ export class PackService {
         sourceImagePath,
       });
     } catch (err) {
-      // Enqueue failed — roll back the quota increment and mark the pack failed
-      // so the UI can surface an error rather than polling forever.
-      await this.markPackFailed(pack.id, userId);
+      // Enqueue failed — mark the pack failed so the UI can surface an error
+      // rather than polling forever.
+      await this.markPackFailed(pack.id);
       const message = err instanceof Error ? err.message : String(err);
       this.logger.error(
         `failed to enqueue web-pack for pack ${pack.id}: ${message}`,
@@ -206,15 +181,11 @@ export class PackService {
     }
   }
 
-  /** Set pack status to failed and refund one generationsUsed credit. */
-  private async markPackFailed(packId: string, userId: string): Promise<void> {
+  /** Set pack status to failed and clean up any partially-written files. */
+  private async markPackFailed(packId: string): Promise<void> {
     await this.prisma.pack.update({
       where: { id: packId },
       data: { status: 'failed' },
-    });
-    await this.prisma.user.updateMany({
-      where: { id: userId, generationsUsed: { gt: 0 } },
-      data: { generationsUsed: { decrement: 1 } },
     });
     // Remove any partially-written pack dir (e.g. the source thumbnail written
     // before enqueue) so a failed pack doesn't leak the user's image on disk.
@@ -225,7 +196,7 @@ export class PackService {
   }
 
   async listPacks(userId: string): Promise<PackSummary[]> {
-    const [packs, user, referralCount, adRewardCount] = await Promise.all([
+    const [packs, user] = await Promise.all([
       this.prisma.pack.findMany({
         where: { userId },
         orderBy: { createdAt: 'desc' },
@@ -243,29 +214,21 @@ export class PackService {
         where: { id: userId },
         select: {
           fullPackUnlockedAt: true,
-          generationsUsed: true,
         },
       }),
-      this.prisma.referral.count({ where: { referrerId: userId } }),
-      this.prisma.adReward.count({ where: { userId } }),
     ]);
 
-    const unlimited = this.offer.unlimitedGenerations;
     const unlocked = user?.fullPackUnlockedAt != null;
-    const cap = computeCap(this.offer, referralCount, adRewardCount);
-    const generationsUsed = user?.generationsUsed ?? 0;
-    const locked = !unlimited && generationsUsed >= cap;
-    const regensLeft = unlimited ? cap : Math.max(0, cap - generationsUsed);
 
     return packs.map((pack) => ({
       id: pack.id,
       createdAt: pack.createdAt.toISOString(),
       status: pack.status,
       unlocked,
-      locked,
+      locked: false,
       freeCount: this.offer.freeStickerCount,
       packSize: this.offer.packSize,
-      regensLeft,
+      regensLeft: 1,
       stickers: pack.stickers,
     }));
   }
@@ -287,31 +250,21 @@ export class PackService {
 
     if (!pack || pack.userId !== userId) return null;
 
-    const [user, referralCount, adRewardCount] = await Promise.all([
-      this.prisma.user.findUnique({
-        where: { id: userId },
-        select: {
-          fullPackUnlockedAt: true,
-          generationsUsed: true,
-        },
-      }),
-      this.prisma.referral.count({ where: { referrerId: userId } }),
-      this.prisma.adReward.count({ where: { userId } }),
-    ]);
-
-    const unlimited = this.offer.unlimitedGenerations;
-    const cap = computeCap(this.offer, referralCount, adRewardCount);
-    const generationsUsed = user?.generationsUsed ?? 0;
-    const locked = !unlimited && generationsUsed >= cap;
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        fullPackUnlockedAt: true,
+      },
+    });
 
     return {
       id: pack.id,
       status: pack.status,
       unlocked: user?.fullPackUnlockedAt != null,
-      locked,
+      locked: false,
       freeCount: this.offer.freeStickerCount,
       packSize: this.offer.packSize,
-      regensLeft: unlimited ? cap : Math.max(0, cap - generationsUsed),
+      regensLeft: 1,
       stickers: pack.stickers,
       selfieUrl: pack.sourceImageUrl ?? null,
     };

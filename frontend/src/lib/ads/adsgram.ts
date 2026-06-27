@@ -3,20 +3,20 @@
  *
  * The SDK is loaded via a <Script> tag in layout.tsx and attaches itself to
  * `window.Adsgram`. This file only reads that global. The exported
- * `showInterstitial` / `showRewarded` are best-effort: they always resolve to a
- * tagged result and never reject, and are bounded by a timeout so a hung ad can
- * never block the caller.
+ * `showRewarded` is best-effort: it always resolves to a tagged result and
+ * never rejects, and is bounded by a timeout so a hung ad can never block
+ * the caller.
  */
 import { isTelegramEnv } from "@/lib/telegram/webapp";
-import { adsgramBlockId, adsgramRewardBlockId } from "@/lib/config";
+import { adsgramRewardBlockId } from "@/lib/config";
 
-/** Outcome of an interstitial attempt. */
+/** Outcome of an ad attempt. */
 export type AdResult = "shown" | "skipped" | "error";
 
 /**
- * Hard ceiling on how long we wait for the ad to finish. Interstitials run
+ * Hard ceiling on how long we wait for the ad to finish. Rewarded ads run
  * ~15-30s; if `show()` never settles (backgrounded app, network drop, SDK bug)
- * we resolve to "error" so generation delivery is never blocked.
+ * we resolve to "error" so the caller is never blocked.
  */
 const AD_TIMEOUT_MS = 60_000;
 
@@ -64,14 +64,10 @@ async function runAd(blockId: string): Promise<AdResult> {
   }
 }
 
-/** Show an interstitial ad (best-effort) during normal generation. */
-export function showInterstitial(): Promise<AdResult> {
-  return runAd(adsgramBlockId());
-}
-
 /**
- * Show a rewarded ad. "shown" means the user watched it and the caller may
- * grant the reward (the upload page calls POST /api/ads/reward on "shown").
+ * Show a rewarded ad. "shown" means the user watched it in full and the caller
+ * may proceed (e.g. create a pack). Falls back to the interstitial block id
+ * when the dedicated reward block id is not configured.
  */
 export function showRewarded(): Promise<AdResult> {
   return runAd(adsgramRewardBlockId());

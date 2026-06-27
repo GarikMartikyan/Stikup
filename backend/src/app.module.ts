@@ -18,7 +18,6 @@ import { JobsModule } from './jobs/jobs.module';
 import { PackModule } from './pack/pack.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { QueueModule } from './queue/queue.module';
-import { AdRewardModule } from './ad-reward/ad-reward.module';
 import { ReferralModule } from './referral/referral.module';
 import { TelegramModule } from './telegram/telegram.module';
 
@@ -55,7 +54,6 @@ import { TelegramModule } from './telegram/telegram.module';
     TelegramModule,
     PackModule,
     ReferralModule,
-    AdRewardModule,
     JobsModule,
     HealthModule,
   ],

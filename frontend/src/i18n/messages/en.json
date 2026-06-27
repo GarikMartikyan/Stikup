@@ -182,8 +182,6 @@
       "packs_hint": "lifetime",
       "stickers_label": "Stickers owned",
       "stickers_hint": "across all packs",
-      "regens_label": "Generations",
-      "regens_hint": "remaining",
       "subscription_label": "Subscription",
       "subscription_value": "None",
       "subscription_hint": "free — invite to unlock"
@@ -240,8 +238,7 @@
       "generate": "Upload grid",
       "sending": "Creating stickers…",
       "choose_another": "Choose another",
-      "back": "Back",
-      "watch_ad": "Watch ad for 1 more generation"
+      "back": "Back"
     },
     "tips": {
       "section_label": "Grid requirements",
@@ -258,8 +255,7 @@
       "invalid_format": "Use a JPEG or PNG image.",
       "too_large": "File is over 8 MB. Try a smaller export.",
       "generation_failed": "Upload failed. Make sure you upload the clean 4×3 grid ChatGPT made (green background). Please try again.",
-      "no_generations": "You've used all your generations.",
-      "ad_unavailable": "Ad couldn't load. Please try again."
+      "ad_required": "Watch the ad to create your stickers, then try again."
     },
     "telegram_gate": {
       "title": "Sticker creation runs inside Telegram. Open Stikup in Telegram to generate your pack.",

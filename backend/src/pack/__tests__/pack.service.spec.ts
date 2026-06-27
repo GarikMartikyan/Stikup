@@ -31,14 +31,6 @@ function buildPrismaMock() {
       update: jest.fn().mockResolvedValue({}),
       updateMany: jest.fn().mockResolvedValue({ count: 1 }),
     },
-    referral: {
-      count: jest.fn().mockResolvedValue(0),
-    },
-    adReward: {
-      count: jest.fn().mockResolvedValue(0),
-      create: jest.fn().mockResolvedValue({}),
-    },
-    $queryRaw: jest.fn(),
     $transaction: jest.fn(),
   };
   // Run the callback against the same mock (interactive transaction).
@@ -82,16 +74,11 @@ function buildQueueMock(): jest.Mocked<StickerQueueService> {
   } as unknown as jest.Mocked<StickerQueueService>;
 }
 
-// cap = baseGenerations + referralBonusGenerations * referralCount
-// With 0 referrals: cap = 2 + 2*0 = 2
 const OFFER_STUB = {
   packSize: 12,
   freeStickerCount: 3,
   referralUnlockEnabled: true,
-  baseGenerations: 2,
-  referralBonusGenerations: 2,
   stickerDefaultEmoji: '😀',
-  unlimitedGenerations: false,
 };
 
 const FAKE_IMAGE = Buffer.from('fake-image-data');
@@ -150,19 +137,16 @@ describe('PackService', () => {
       const queue = buildQueueMock();
       const service = buildService(prisma, bot, undefined, queue);
 
-      (prisma.$queryRaw as jest.Mock).mockResolvedValueOnce([
-        { generations_used: 0 },
-      ]);
+      (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
+        id: 'user-abc',
+      });
       (prisma.pack.create as jest.Mock).mockResolvedValueOnce({ id: 'pack-1' });
 
       const result = await service.generatePack('user-abc', FAKE_IMAGE);
 
       expect(result).toEqual({ packId: 'pack-1' });
-      expect(prisma.$transaction).toHaveBeenCalledTimes(1);
-      expect(prisma.user.update).toHaveBeenCalledWith({
-        where: { id: 'user-abc' },
-        data: { generationsUsed: { increment: 1 } },
-      });
+      // No quota transaction — pack is created directly.
+      expect(prisma.$transaction).not.toHaveBeenCalled();
       // Pack created with status 'generating' and NO sticker rows
       expect(prisma.pack.create).toHaveBeenCalledWith({
         data: {
@@ -183,9 +167,9 @@ describe('PackService', () => {
       const queue = buildQueueMock();
       const service = buildService(prisma, bot, undefined, queue);
 
-      (prisma.$queryRaw as jest.Mock).mockResolvedValueOnce([
-        { generations_used: 0 },
-      ]);
+      (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
+        id: 'user-abc',
+      });
       (prisma.pack.create as jest.Mock).mockResolvedValueOnce({ id: 'pack-1' });
 
       await service.generatePack('user-abc', FAKE_IMAGE);
@@ -204,9 +188,9 @@ describe('PackService', () => {
       const queue = buildQueueMock();
       const service = buildService(prisma, bot, undefined, queue);
 
-      (prisma.$queryRaw as jest.Mock).mockResolvedValueOnce([
-        { generations_used: 0 },
-      ]);
+      (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
+        id: 'user-abc',
+      });
       (prisma.pack.create as jest.Mock).mockResolvedValueOnce({ id: 'pack-1' });
       // Simulate an undecodable upload (e.g. HEIC the bundled sharp can't read).
       mockSharpInstance.toBuffer.mockRejectedValueOnce(
@@ -225,56 +209,29 @@ describe('PackService', () => {
       expect(prisma.pack.update).not.toHaveBeenCalled();
     });
 
-    it('throws ForbiddenException when generationsUsed >= cap (0 referrals → cap=2)', async () => {
+    it('throws when user does not exist', async () => {
       const prisma = buildPrismaMock();
       const bot = buildBotSenderMock();
       const service = buildService(prisma, bot);
 
-      // cap = baseGenerations(2) + referralBonusGenerations(2) * 0 = 2
-      (prisma.$queryRaw as jest.Mock).mockResolvedValueOnce([
-        { generations_used: 2 },
-      ]);
-      // referral.count returns 0 (default)
+      (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce(null);
 
       await expect(
-        service.generatePack('user-abc', FAKE_IMAGE),
-      ).rejects.toMatchObject({ message: 'generation_limit_reached' });
+        service.generatePack('nonexistent-user', FAKE_IMAGE),
+      ).rejects.toThrow('nonexistent-user not found');
 
-      expect(prisma.user.update).not.toHaveBeenCalled();
       expect(prisma.pack.create).not.toHaveBeenCalled();
     });
 
-    it('allows generation when referrals raise the cap above current usage', async () => {
+    it('marks pack failed when enqueue throws', async () => {
       const prisma = buildPrismaMock();
       const bot = buildBotSenderMock();
       const queue = buildQueueMock();
       const service = buildService(prisma, bot, undefined, queue);
 
-      // cap = 2 + 2*2 = 6; used=2 → still under cap
-      (prisma.$queryRaw as jest.Mock).mockResolvedValueOnce([
-        { generations_used: 2 },
-      ]);
-      (prisma.referral.count as jest.Mock).mockResolvedValueOnce(2);
-      (prisma.pack.create as jest.Mock).mockResolvedValueOnce({ id: 'pack-1' });
-
-      const result = await service.generatePack('user-abc', FAKE_IMAGE);
-
-      expect(result).toEqual({ packId: 'pack-1' });
-      expect(prisma.user.update).toHaveBeenCalledWith({
-        where: { id: 'user-abc' },
-        data: { generationsUsed: { increment: 1 } },
+      (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
+        id: 'user-abc',
       });
-    });
-
-    it('marks pack failed and refunds generationsUsed when enqueue throws', async () => {
-      const prisma = buildPrismaMock();
-      const bot = buildBotSenderMock();
-      const queue = buildQueueMock();
-      const service = buildService(prisma, bot, undefined, queue);
-
-      (prisma.$queryRaw as jest.Mock).mockResolvedValueOnce([
-        { generations_used: 0 },
-      ]);
       (prisma.pack.create as jest.Mock).mockResolvedValueOnce({ id: 'pack-1' });
       (queue.enqueueWebPack as jest.Mock).mockRejectedValueOnce(
         new Error('Redis connection refused'),
@@ -289,11 +246,8 @@ describe('PackService', () => {
         where: { id: 'pack-1' },
         data: { status: 'failed' },
       });
-      // generationsUsed must be refunded
-      expect(prisma.user.updateMany).toHaveBeenCalledWith({
-        where: { id: 'user-abc', generationsUsed: { gt: 0 } },
-        data: { generationsUsed: { decrement: 1 } },
-      });
+      // No generationsUsed refund — quota is not tracked.
+      expect(prisma.user.updateMany).not.toHaveBeenCalled();
     });
   });
 
@@ -340,9 +294,7 @@ describe('PackService', () => {
       });
       (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
         fullPackUnlockedAt: null,
-        generationsUsed: 1,
       });
-      // referral.count returns 0 (default)
 
       const result = await service.getPack('pack-1', 'user-abc');
       expect(result).not.toBeNull();
@@ -365,14 +317,13 @@ describe('PackService', () => {
       });
       (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
         fullPackUnlockedAt: new Date(),
-        generationsUsed: 1,
       });
 
       const result = await service.getPack('pack-1', 'user-abc');
       expect(result!.unlocked).toBe(true);
     });
 
-    it('returns regensLeft=1 when generationsUsed=1 and cap=2 (0 referrals)', async () => {
+    it('always returns locked=false and regensLeft=1', async () => {
       const prisma = buildPrismaMock();
       const bot = buildBotSenderMock();
       const service = buildService(prisma, bot);
@@ -386,104 +337,11 @@ describe('PackService', () => {
       });
       (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
         fullPackUnlockedAt: null,
-        generationsUsed: 1,
       });
-      // referral.count returns 0 (default) → cap = 2+2*0 = 2; used=1 → left=1
-
-      const result = await service.getPack('pack-1', 'user-abc');
-      expect(result!.regensLeft).toBe(1);
-    });
-
-    it('returns regensLeft=0 when generationsUsed=2 (at cap=2)', async () => {
-      const prisma = buildPrismaMock();
-      const bot = buildBotSenderMock();
-      const service = buildService(prisma, bot);
-
-      (prisma.pack.findUnique as jest.Mock).mockResolvedValueOnce({
-        id: 'pack-1',
-        status: 'ready',
-        userId: 'user-abc',
-        sourceImageUrl: null,
-        stickers: [],
-      });
-      (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
-        fullPackUnlockedAt: null,
-        generationsUsed: 2,
-      });
-      // cap=2; used=2 → left=0 (clamped, never negative)
-
-      const result = await service.getPack('pack-1', 'user-abc');
-      expect(result!.regensLeft).toBe(0);
-    });
-
-    it('reports locked=true and regensLeft=0 when generationsUsed reaches cap', async () => {
-      const prisma = buildPrismaMock();
-      const bot = buildBotSenderMock();
-      const service = buildService(prisma, bot);
-
-      (prisma.pack.findUnique as jest.Mock).mockResolvedValueOnce({
-        id: 'pack-1',
-        status: 'ready',
-        userId: 'user-abc',
-        sourceImageUrl: null,
-        stickers: [],
-      });
-      // generationsUsed=2 equals cap=2 (0 referrals) → locked=true, regensLeft=0
-      (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
-        fullPackUnlockedAt: null,
-        generationsUsed: 2,
-      });
-
-      const result = await service.getPack('pack-1', 'user-abc');
-      expect(result!.locked).toBe(true);
-      expect(result!.regensLeft).toBe(0);
-    });
-
-    it('reports locked=false with regens remaining for a fresh pack', async () => {
-      const prisma = buildPrismaMock();
-      const bot = buildBotSenderMock();
-      const service = buildService(prisma, bot);
-
-      (prisma.pack.findUnique as jest.Mock).mockResolvedValueOnce({
-        id: 'pack-1',
-        status: 'ready',
-        userId: 'user-abc',
-        sourceImageUrl: null,
-        stickers: [],
-      });
-      (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
-        fullPackUnlockedAt: null,
-        generationsUsed: 1,
-      });
-      // cap=2; used=1 → locked=false, regensLeft=1
 
       const result = await service.getPack('pack-1', 'user-abc');
       expect(result!.locked).toBe(false);
       expect(result!.regensLeft).toBe(1);
-    });
-
-    it('raises cap when user has referrals', async () => {
-      const prisma = buildPrismaMock();
-      const bot = buildBotSenderMock();
-      const service = buildService(prisma, bot);
-
-      (prisma.pack.findUnique as jest.Mock).mockResolvedValueOnce({
-        id: 'pack-1',
-        status: 'ready',
-        userId: 'user-abc',
-        sourceImageUrl: null,
-        stickers: [],
-      });
-      (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
-        fullPackUnlockedAt: null,
-        generationsUsed: 2,
-      });
-      // 2 referrals → cap = 2+2*2 = 6; used=2 → locked=false, regensLeft=4
-      (prisma.referral.count as jest.Mock).mockResolvedValueOnce(2);
-
-      const result = await service.getPack('pack-1', 'user-abc');
-      expect(result!.locked).toBe(false);
-      expect(result!.regensLeft).toBe(4);
     });
 
     it('returns selfieUrl when sourceImageUrl is set on the pack', async () => {
@@ -500,7 +358,6 @@ describe('PackService', () => {
       });
       (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
         fullPackUnlockedAt: null,
-        generationsUsed: 1,
       });
 
       const result = await service.getPack('pack-1', 'user-abc');
@@ -521,7 +378,6 @@ describe('PackService', () => {
       });
       (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
         fullPackUnlockedAt: null,
-        generationsUsed: 1,
       });
 
       const result = await service.getPack('pack-1', 'user-abc');
@@ -545,9 +401,7 @@ describe('PackService', () => {
       ]);
       (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
         fullPackUnlockedAt: null,
-        generationsUsed: 1,
       });
-      // referral.count returns 0 (default) → cap=2; used=1 → locked=false, regensLeft=1
 
       const result = await service.listPacks('user-abc');
 
@@ -580,7 +434,6 @@ describe('PackService', () => {
       (prisma.pack.findMany as jest.Mock).mockResolvedValueOnce([]);
       (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
         fullPackUnlockedAt: null,
-        generationsUsed: 0,
       });
 
       const result = await service.listPacks('user-abc');
@@ -885,34 +738,6 @@ describe('PackService', () => {
       expect(result.alreadyClaimed).toBe(true);
       // Claiming free stickers no longer locks the generation counter.
       expect(prisma.user.updateMany).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('quota cap with ad rewards', () => {
-    it('extends regensLeft by the ad-reward count', async () => {
-      const prisma = buildPrismaMock();
-      const service = buildService(prisma, buildBotSenderMock());
-
-      // base=2, referralBonus=2, referrals=0 → base cap 2; used 2 → normally locked.
-      (prisma.pack.findUnique as jest.Mock).mockResolvedValue({
-        id: 'pack-1',
-        status: 'ready',
-        userId: 'user-1',
-        sourceImageUrl: null,
-        stickers: [],
-      });
-      (prisma.user.findUnique as jest.Mock).mockResolvedValue({
-        fullPackUnlockedAt: null,
-        generationsUsed: 2,
-      });
-      (prisma.referral.count as jest.Mock).mockResolvedValue(0);
-      (prisma.adReward.count as jest.Mock).mockResolvedValue(2); // +2 from ads
-
-      const pack = await service.getPack('pack-1', 'user-1');
-
-      // cap = 2 + 2*0 + 2 = 4; used 2 → regensLeft 2, not locked.
-      expect(pack?.regensLeft).toBe(2);
-      expect(pack?.locked).toBe(false);
     });
   });
 

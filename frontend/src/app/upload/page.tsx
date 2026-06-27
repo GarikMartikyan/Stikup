@@ -7,7 +7,6 @@ import { ErrorBanner } from "@/components/upload/error-banner";
 import { TipsPanel } from "@/components/upload/tips-panel";
 import { UploadActions } from "@/components/upload/upload-actions";
 import { UploadIntro } from "@/components/upload/upload-intro";
-import { NoGenerationsBanner } from "@/components/upload/no-generations-banner";
 import {
   ACCEPTED,
   MAX_BYTES,
@@ -15,7 +14,7 @@ import {
 } from "@/components/upload/types";
 import { useT } from "@/components/language-provider";
 import { isTelegramEnv } from "@/lib/telegram/webapp";
-import { showInterstitial, showRewarded } from "@/lib/ads/adsgram";
+import { showRewarded } from "@/lib/ads/adsgram";
 import { OpenInTelegram } from "@/components/upload/open-in-telegram";
 
 export default function UploadPage() {
@@ -24,8 +23,6 @@ export default function UploadPage() {
   const [dragOver, setDragOver] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [gated, setGated] = useState(false);
-  const [quotaBlocked, setQuotaBlocked] = useState(false);
-  const [watchingAd, setWatchingAd] = useState(false);
   const [adError, setAdError] = useState<string | null>(null);
   const t = useT();
   const router = useRouter();
@@ -71,107 +68,61 @@ export default function UploadPage() {
     if (state.kind === "ready") URL.revokeObjectURL(state.url);
     setState({ kind: "idle" });
     setGated(false);
-    setQuotaBlocked(false);
     setAdError(null);
     if (galleryRef.current) galleryRef.current.value = "";
   }, [state]);
 
-  const submit = useCallback(
-    async ({ skipInterstitial = false }: { skipInterstitial?: boolean } = {}) => {
-      if (state.kind !== "ready") return;
-      const file = state.file;
+  const submit = useCallback(async () => {
+    if (state.kind !== "ready") return;
+    const file = state.file;
 
-      // Web (outside Telegram): don't generate — funnel the user into Telegram,
-      // where the interstitial ad runs.
-      if (!isTelegramEnv()) {
-        setGated(true);
-        return;
-      }
-
-      setSubmitting(true);
-
-      const createPack = async (): Promise<string | null> => {
-        try {
-          const form = new FormData();
-          form.append("image", file);
-          const res = await fetch("/api/packs", {
-            method: "POST",
-            body: form,
-            credentials: "include",
-          });
-          if (res.status === 401) {
-            router.push("/login");
-            return null;
-          }
-          if (res.status === 403) {
-            // Out of quota — offer the watch-ad path. Keep `state` as "ready"
-            // so the file and preview persist for the post-ad auto-retry.
-            setQuotaBlocked(true);
-            return null;
-          }
-          if (!res.ok) {
-            setState({
-              kind: "error",
-              message: t("upload.error.generation_failed"),
-            });
-            return null;
-          }
-          const { packId } = (await res.json()) as { packId: string };
-          return packId;
-        } catch {
-          setState({
-            kind: "error",
-            message: t("upload.error.generation_failed"),
-          });
-          return null;
-        }
-      };
-
-      const packId = await createPack();
-      if (!packId) {
-        setSubmitting(false);
-        return;
-      }
-
-      // Play the interstitial only on a real generation, and skip it entirely
-      // when this submit is the auto-retry right after a rewarded unlock.
-      if (!skipInterstitial) await showInterstitial();
-      router.push(`/result/${packId}`);
-    },
-    [state, router, t],
-  );
-
-  const onWatchAd = useCallback(async () => {
-    setWatchingAd(true);
-    setAdError(null);
-    try {
-      const result = await showRewarded();
-      if (result !== "shown") {
-        setAdError(t("upload.error.ad_unavailable"));
-        return;
-      }
-      let regensLeft = 0;
-      try {
-        const res = await fetch("/api/ads/reward", {
-          method: "POST",
-          credentials: "include",
-        });
-        if (!res.ok) throw new Error("reward request failed");
-        ({ regensLeft } = (await res.json()) as { regensLeft: number });
-      } catch {
-        setAdError(t("upload.error.ad_unavailable"));
-        return;
-      }
-      if (regensLeft >= 1) {
-        setQuotaBlocked(false);
-        await submit({ skipInterstitial: true });
-      } else {
-        setAdError(t("upload.error.ad_unavailable"));
-      }
-    } finally {
-      setWatchingAd(false);
+    // Web (outside Telegram): don't generate — funnel the user into Telegram.
+    if (!isTelegramEnv()) {
+      setGated(true);
+      return;
     }
-  }, [t, submit]);
+
+    setSubmitting(true);
+    setAdError(null);
+
+    // Play a rewarded ad first; only proceed to pack creation if fully watched.
+    const ad = await showRewarded();
+    if (ad !== "shown") {
+      setAdError(t("upload.error.ad_required"));
+      setSubmitting(false);
+      return;
+    }
+
+    try {
+      const form = new FormData();
+      form.append("image", file);
+      const res = await fetch("/api/packs", {
+        method: "POST",
+        body: form,
+        credentials: "include",
+      });
+      if (res.status === 401) {
+        router.push("/login");
+        return;
+      }
+      if (!res.ok) {
+        setState({
+          kind: "error",
+          message: t("upload.error.generation_failed"),
+        });
+        return;
+      }
+      const { packId } = (await res.json()) as { packId: string };
+      router.push(`/result/${packId}`);
+    } catch {
+      setState({
+        kind: "error",
+        message: t("upload.error.generation_failed"),
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  }, [state, router, t]);
 
   const fileReady = state.kind === "ready";
 
@@ -211,20 +162,16 @@ export default function UploadPage() {
 
             {state.kind === "error" && <ErrorBanner message={state.message} />}
 
-            {quotaBlocked ? (
-              <NoGenerationsBanner
-                watchingAd={watchingAd}
-                adError={adError}
-                onWatchAd={() => void onWatchAd()}
-              />
-            ) : (
-              <UploadActions
-                fileReady={fileReady}
-                submitting={submitting}
-                onPickGallery={() => galleryRef.current?.click()}
-                onSubmit={() => void submit()}
-              />
+            {adError && (
+              <p className="mt-3 text-sm text-[var(--color-danger)]">{adError}</p>
             )}
+
+            <UploadActions
+              fileReady={fileReady}
+              submitting={submitting}
+              onPickGallery={() => galleryRef.current?.click()}
+              onSubmit={() => void submit()}
+            />
 
             {gated && <OpenInTelegram />}
           </div>

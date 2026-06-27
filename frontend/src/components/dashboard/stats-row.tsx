@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
-import { Layers, Sparkles, RefreshCw } from "lucide-react";
+import { Layers, Sparkles } from "lucide-react";
 import { useT } from "@/components/language-provider";
 
 type Accent = {
@@ -78,14 +78,12 @@ function Stat({
 
 export function StatsRow({
   packCount,
-  regensLeft,
 }: {
   packCount: number;
-  regensLeft: number;
 }) {
   const t = useT();
   return (
-    <div className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4">
+    <div className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-2 md:gap-4">
       <Stat
         label={t("dashboard.stats.packs_label")}
         value={String(packCount)}
@@ -101,14 +99,6 @@ export function StatsRow({
         icon={Sparkles}
         accent={{ color: "var(--color-brand-2)", soft: "color-mix(in oklab, var(--color-brand-2) 16%, transparent)" }}
         delay={160}
-      />
-      <Stat
-        label={t("dashboard.stats.regens_label")}
-        value={String(regensLeft)}
-        hint={t("dashboard.stats.regens_hint")}
-        icon={RefreshCw}
-        accent={{ color: "#6366f1", soft: "color-mix(in oklab, #6366f1 14%, transparent)" }}
-        delay={240}
       />
     </div>
   );

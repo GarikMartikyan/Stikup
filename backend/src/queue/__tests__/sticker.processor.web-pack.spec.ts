@@ -150,7 +150,7 @@ describe('StickerProcessor — web-pack branch', () => {
     expect(mockRm).toHaveBeenCalledWith(FAKE_SOURCE_PATH, { force: true });
   });
 
-  it('failure (fewer than 12 stickers): sets status failed, refunds generationsUsed, calls cleanup', async () => {
+  it('failure (fewer than 12 stickers): sets status failed, calls cleanup', async () => {
     const prisma = buildPrismaMock();
     const imgSvc = buildImageProcessingMock(5); // only 5 stickers
     const processor = buildProcessor(imgSvc, prisma);
@@ -163,11 +163,8 @@ describe('StickerProcessor — web-pack branch', () => {
       data: { status: 'failed' },
     });
 
-    // generationsUsed refunded (floor at 0)
-    expect(prisma.user.updateMany).toHaveBeenCalledWith({
-      where: { id: FAKE_USER_ID, generationsUsed: { gt: 0 } },
-      data: { generationsUsed: { decrement: 1 } },
-    });
+    // No generationsUsed refund — quota is not tracked.
+    expect(prisma.user.updateMany).not.toHaveBeenCalled();
 
     // Cleanup still called
     expect((imgSvc as any)._cleanup).toHaveBeenCalledTimes(1);
@@ -176,7 +173,7 @@ describe('StickerProcessor — web-pack branch', () => {
     expect(mockRm).toHaveBeenCalledWith(FAKE_SOURCE_PATH, { force: true });
   });
 
-  it('failure (generateStickers throws): sets status failed, refunds, staging file removed', async () => {
+  it('failure (generateStickers throws): sets status failed, staging file removed', async () => {
     const prisma = buildPrismaMock();
     const neverCalledCleanup = jest.fn().mockResolvedValue(undefined);
     const imgSvc = {
@@ -192,10 +189,8 @@ describe('StickerProcessor — web-pack branch', () => {
       where: { id: FAKE_PACK_ID },
       data: { status: 'failed' },
     });
-    expect(prisma.user.updateMany).toHaveBeenCalledWith({
-      where: { id: FAKE_USER_ID, generationsUsed: { gt: 0 } },
-      data: { generationsUsed: { decrement: 1 } },
-    });
+    // No generationsUsed refund — quota is not tracked.
+    expect(prisma.user.updateMany).not.toHaveBeenCalled();
     expect(mockRm).toHaveBeenCalledWith(FAKE_SOURCE_PATH, { force: true });
     // cleanup was never obtained because generateStickers threw
     expect(neverCalledCleanup).not.toHaveBeenCalled();

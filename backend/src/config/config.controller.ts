@@ -12,12 +12,6 @@ export class OfferDto {
   freeStickerCount!: number;
 
   @ApiProperty()
-  baseGenerations!: number;
-
-  @ApiProperty()
-  referralBonusGenerations!: number;
-
-  @ApiProperty()
   referralUnlockEnabled!: boolean;
 }
 
@@ -35,8 +29,6 @@ export class ConfigController {
     return {
       packSize: this.offer.packSize,
       freeStickerCount: this.offer.freeStickerCount,
-      baseGenerations: this.offer.baseGenerations,
-      referralBonusGenerations: this.offer.referralBonusGenerations,
       referralUnlockEnabled: this.offer.referralUnlockEnabled,
     };
   }

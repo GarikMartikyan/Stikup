@@ -7,9 +7,9 @@ type SignInButtonProps = {
   next?: string;
 };
 
-export function SignInButton({ next = '/upload' }: SignInButtonProps) {
+export function SignInButton({ next }: SignInButtonProps) {
   const t = useT();
-  const href = `/login?next=${encodeURIComponent(next)}`;
+  const href = next ? `/login?next=${encodeURIComponent(next)}` : '/login';
   return (
     <Link
       href={href}

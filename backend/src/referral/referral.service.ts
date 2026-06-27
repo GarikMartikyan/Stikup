@@ -13,6 +13,7 @@ import { getPackStickerFiles } from '../pack/sticker-assets';
 import { PrismaService } from '../prisma/prisma.service';
 
 const REFERRAL_CODE_BYTES = 6; // 6 bytes → 8 base62 chars
+const PENDING_REFERRAL_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 const REFERRAL_UNLOCK_MESSAGE =
   '🎉 A friend joined through your link — your sticker pack is now fully unlocked (all 12)!';
 
@@ -199,6 +200,69 @@ export class ReferralService {
       this.logger.error(
         `referral attribution failed for referredUserId=${referredUserId} code=${code}: ${err instanceof Error ? err.message : String(err)}`,
       );
+    }
+  }
+
+  /**
+   * Record a pending referral for a Telegram user who arrived via the bot's
+   * `/start ref_<CODE>_<PACKID>` deep link before registering.
+   * Best-effort: never throws, so it cannot break the bot's /start handler.
+   */
+  async recordPending(
+    channel: Channel,
+    channelUserId: string,
+    code: string,
+    packId: string | null | undefined,
+  ): Promise<void> {
+    try {
+      const expiresAt = new Date(Date.now() + PENDING_REFERRAL_TTL_MS);
+      await this.prisma.pendingReferral.upsert({
+        where: { channel_channelUserId: { channel, channelUserId } },
+        create: {
+          channel,
+          channelUserId,
+          code,
+          packId: packId ?? null,
+          expiresAt,
+        },
+        update: { code, packId: packId ?? null, expiresAt },
+      });
+    } catch (err) {
+      this.logger.warn(
+        `recordPending failed for channel=${channel} channelUserId=${channelUserId}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+  }
+
+  /**
+   * Atomically delete and return the pending referral for the given identity.
+   * Returns null when absent (P2025) or when the row has already expired.
+   * Best-effort: never throws.
+   */
+  async consumePending(
+    channel: Channel,
+    channelUserId: string,
+  ): Promise<{ code: string; packId: string | null } | null> {
+    try {
+      const row = await this.prisma.pendingReferral.delete({
+        where: { channel_channelUserId: { channel, channelUserId } },
+      });
+      // Treat expired rows as absent — they were cleaned up, but stale.
+      if (row.expiresAt < new Date()) {
+        return null;
+      }
+      return { code: row.code, packId: row.packId };
+    } catch (err) {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2025'
+      ) {
+        return null;
+      }
+      this.logger.warn(
+        `consumePending failed for channel=${channel} channelUserId=${channelUserId}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      return null;
     }
   }
 

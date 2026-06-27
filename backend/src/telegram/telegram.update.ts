@@ -18,6 +18,8 @@ import { TokenService } from '../auth/token.service';
 import { frontendConfig } from '../config/frontend.config';
 import { telegramConfig } from '../config/telegram.config';
 import { PackService } from '../pack/pack.service';
+import { parseReferralStartParam } from '../referral/parse-referral-start-param';
+import { ReferralService } from '../referral/referral.service';
 import { resolveLang } from './telegram-i18n';
 
 const MINI_APP_PATH = '/app';
@@ -41,6 +43,7 @@ export class TelegramUpdate implements OnModuleInit {
     private readonly identity: IdentityService,
     private readonly tokens: TokenService,
     private readonly packs: PackService,
+    private readonly referrals: ReferralService,
     private readonly i18n: I18nService,
   ) {}
 
@@ -101,6 +104,19 @@ export class TelegramUpdate implements OnModuleInit {
     if (payload.startsWith('link_')) {
       await this.handleLinkPayload(ctx, payload.slice('link_'.length));
       return;
+    }
+
+    if (payload.startsWith('ref_')) {
+      const parsed = parseReferralStartParam(payload.slice('ref_'.length));
+      const fromId = ctx.from?.id;
+      if (parsed && fromId != null) {
+        await this.referrals.recordPending(
+          'telegram',
+          String(fromId),
+          parsed.ref,
+          parsed.pack,
+        );
+      }
     }
 
     await this.sendOpenApp(ctx);

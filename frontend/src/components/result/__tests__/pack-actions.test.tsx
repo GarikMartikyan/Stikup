@@ -27,7 +27,7 @@ vi.mock("../get-stickers-modal", () => ({
 
 const PACK_ID = "550e8400-e29b-41d4-a716-446655440000";
 const REFERRAL_CODE = "MYCODE";
-const EXPECTED_PACK_LINK = `https://t.me/stikup_bot?startapp=${REFERRAL_CODE}_${PACK_ID}`;
+const EXPECTED_PACK_LINK = `https://t.me/stikup_bot?start=ref_${REFERRAL_CODE}_${PACK_ID}`;
 
 const MOCK_REFERRAL_RESPONSE = {
   code: REFERRAL_CODE,
@@ -90,7 +90,7 @@ afterEach(() => {
 // ─── tests ───────────────────────────────────────────────────────────────────
 
 describe("PackActions — unlock shares a pack-specific link via navigator.share", () => {
-  it("shares a t.me startapp deep link encoding code and pack id", async () => {
+  it("shares a t.me ?start=ref_ bot deep link encoding code and pack id", async () => {
     const shareSpy = vi.fn().mockResolvedValue(undefined);
     vi.stubGlobal("navigator", { ...global.navigator, share: shareSpy });
 
@@ -102,7 +102,7 @@ describe("PackActions — unlock shares a pack-specific link via navigator.share
 
     const sharedUrl: string = shareSpy.mock.calls[0][0].url;
     expect(sharedUrl).toBe(EXPECTED_PACK_LINK);
-    expect(sharedUrl).toContain(`startapp=${REFERRAL_CODE}_${PACK_ID}`);
+    expect(sharedUrl).toContain(`start=ref_${REFERRAL_CODE}_${PACK_ID}`);
   });
 
   it("calls GET /api/referral/me with credentials", async () => {

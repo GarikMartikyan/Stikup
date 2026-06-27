@@ -468,13 +468,31 @@ export class AuthController {
     });
 
     if (created) {
-      const parsed = parseReferralStartParam(startParam);
-      if (parsed) {
+      // Two redundant sources for the referral payload:
+      //  1. start_param inside the signed initData (only present when a Main Mini
+      //     App is configured so ?startapp= delivers it).
+      //  2. a PendingReferral row recorded by the bot's `/start ref_…` deep link
+      //     (config-independent — the load-bearing path).
+      const fromStartParam = parseReferralStartParam(startParam);
+      // Always consume the pending row when a new account is created, both to
+      // use it as a fallback and to clean it up even when start_param wins.
+      const pending = await this.referrals.consumePending(
+        'telegram',
+        user.channelUserId,
+      );
+      // Prefer the signed start_param source wholly; otherwise use the pending
+      // row wholly — never mix a ref from one source with a pack from the other.
+      const source =
+        fromStartParam ??
+        (pending
+          ? { ref: pending.code, pack: pending.packId ?? undefined }
+          : null);
+      if (source) {
         await this.referrals.attribute(
           userId,
-          parsed.ref,
+          source.ref,
           'telegram',
-          parsed.pack,
+          source.pack,
         );
       }
     }

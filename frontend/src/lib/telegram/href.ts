@@ -11,10 +11,19 @@ export function telegramAppHref(): string {
 }
 
 /**
- * Deep link that opens the Mini App and carries a referral payload.
- * `start_param` arrives inside the signed `initData`, so the backend trusts it.
- * Format: `<referralCode>_<packId>` (split on the first `_` server-side).
+ * Deep link that carries a referral payload to the bot.
+ *
+ * Uses the classic `?start=` bot deep link (NOT `?startapp=`): tapping it opens
+ * the bot chat and — once the friend presses START — sends `/start ref_<code>_<packId>`
+ * to the bot server-side. The bot records a pending referral keyed by the
+ * friend's Telegram id, then opens the Mini App; the referral is credited when
+ * the friend registers. This works regardless of whether a Main Mini App is
+ * configured in BotFather (a bare `?startapp=` link silently drops its param
+ * unless a Main Mini App exists, which is why the referral was never credited).
+ *
+ * Payload after `ref_` is `<referralCode>_<packId>` (split on the first `_`
+ * server-side — neither a base62 code nor a UUID contains `_`).
  */
 export function telegramReferralHref(code: string, packId: string): string {
-  return `${TELEGRAM_BOT_URL}?startapp=${code}_${packId}`;
+  return `${TELEGRAM_BOT_URL}?start=ref_${code}_${packId}`;
 }

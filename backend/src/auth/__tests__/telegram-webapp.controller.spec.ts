@@ -127,7 +127,10 @@ async function buildController(): Promise<AuthController> {
       },
       {
         provide: ReferralService,
-        useValue: { attribute: jest.fn().mockResolvedValue(undefined) },
+        useValue: {
+          attribute: jest.fn().mockResolvedValue(undefined),
+          consumePending: jest.fn().mockResolvedValue(null),
+        },
       },
       { provide: frontendConfig.KEY, useValue: FRONTEND_STUB },
       { provide: sessionConfig.KEY, useValue: SESSION_STUB },
@@ -373,5 +376,147 @@ describe('AuthController — POST /auth/telegram/webapp', () => {
     ).rejects.toThrow('Unauthorized');
 
     expect(res.clearCookie).toHaveBeenCalled();
+  });
+
+  it('attributes referral from pending row when start_param is absent but pending exists', async () => {
+    const controller = await buildController();
+    const identity = (
+      controller as unknown as { identity: jest.Mocked<IdentityService> }
+    ).identity;
+    const sessions = (
+      controller as unknown as { sessions: jest.Mocked<SessionService> }
+    ).sessions;
+    const referrals = (
+      controller as unknown as { referrals: jest.Mocked<ReferralService> }
+    ).referrals;
+
+    (identity.resolveOrCreate as jest.Mock).mockResolvedValueOnce({
+      userId: 'u-new',
+      created: true,
+    });
+    (sessions.issue as jest.Mock).mockResolvedValueOnce({
+      sid: 'sess-new',
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+    (sessions.findUser as jest.Mock).mockResolvedValueOnce({
+      userId: 'u-new',
+      email: null,
+      displayName: null,
+      avatarUrl: null,
+      channels: [],
+    });
+    (referrals.consumePending as jest.Mock).mockResolvedValueOnce({
+      code: 'MYCODE',
+      packId: PACK_UUID,
+    });
+
+    // No start_param in the initData
+    const initData = buildInitData({ user: VALID_USER_JSON });
+    const req = { cookies: {} } as unknown as import('express').Request;
+    const res = buildResMock();
+
+    await controller.telegramWebApp({ initData }, req, res);
+
+    expect(referrals.consumePending).toHaveBeenCalledWith('telegram', '42');
+    expect(referrals.attribute).toHaveBeenCalledWith(
+      'u-new',
+      'MYCODE',
+      'telegram',
+      PACK_UUID,
+    );
+  });
+
+  it('prefers start_param over pending row when both are present, still consumes pending for cleanup', async () => {
+    const controller = await buildController();
+    const identity = (
+      controller as unknown as { identity: jest.Mocked<IdentityService> }
+    ).identity;
+    const sessions = (
+      controller as unknown as { sessions: jest.Mocked<SessionService> }
+    ).sessions;
+    const referrals = (
+      controller as unknown as { referrals: jest.Mocked<ReferralService> }
+    ).referrals;
+
+    (identity.resolveOrCreate as jest.Mock).mockResolvedValueOnce({
+      userId: 'u-new',
+      created: true,
+    });
+    (sessions.issue as jest.Mock).mockResolvedValueOnce({
+      sid: 'sess-new',
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+    (sessions.findUser as jest.Mock).mockResolvedValueOnce({
+      userId: 'u-new',
+      email: null,
+      displayName: null,
+      avatarUrl: null,
+      channels: [],
+    });
+    // Pending row exists but start_param should win
+    (referrals.consumePending as jest.Mock).mockResolvedValueOnce({
+      code: 'PENDINGCODE',
+      packId: null,
+    });
+
+    const initData = buildInitData({
+      user: VALID_USER_JSON,
+      start_param: `STARTPARAMCODE_${PACK_UUID}`,
+    });
+    const req = { cookies: {} } as unknown as import('express').Request;
+    const res = buildResMock();
+
+    await controller.telegramWebApp({ initData }, req, res);
+
+    // consumePending always called for cleanup when created=true
+    expect(referrals.consumePending).toHaveBeenCalledWith('telegram', '42');
+    // attribute uses start_param values, not the pending row
+    expect(referrals.attribute).toHaveBeenCalledWith(
+      'u-new',
+      'STARTPARAMCODE',
+      'telegram',
+      PACK_UUID,
+    );
+  });
+
+  it('does not call consumePending when user already existed (created=false)', async () => {
+    const controller = await buildController();
+    const identity = (
+      controller as unknown as { identity: jest.Mocked<IdentityService> }
+    ).identity;
+    const sessions = (
+      controller as unknown as { sessions: jest.Mocked<SessionService> }
+    ).sessions;
+    const referrals = (
+      controller as unknown as { referrals: jest.Mocked<ReferralService> }
+    ).referrals;
+
+    (identity.resolveOrCreate as jest.Mock).mockResolvedValueOnce({
+      userId: 'u-existing',
+      created: false,
+    });
+    (sessions.issue as jest.Mock).mockResolvedValueOnce({
+      sid: 'sess-existing',
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+    (sessions.findUser as jest.Mock).mockResolvedValueOnce({
+      userId: 'u-existing',
+      email: null,
+      displayName: null,
+      avatarUrl: null,
+      channels: [],
+    });
+
+    const initData = buildInitData({
+      user: VALID_USER_JSON,
+      start_param: `MYCODE_${PACK_UUID}`,
+    });
+    const req = { cookies: {} } as unknown as import('express').Request;
+    const res = buildResMock();
+
+    await controller.telegramWebApp({ initData }, req, res);
+
+    expect(referrals.consumePending).not.toHaveBeenCalled();
+    expect(referrals.attribute).not.toHaveBeenCalled();
   });
 });

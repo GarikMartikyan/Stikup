@@ -57,7 +57,7 @@ export function useTelegram(): TelegramContextValue {
 const BRAND_BG = "#0f0f0f";
 
 /** Home routes where the Telegram BackButton should be hidden. */
-const HOME_ROUTES = new Set(["/app", "/upload", "/my-stickers"]);
+const HOME_ROUTES = new Set(["/", "/app", "/upload", "/my-stickers"]);
 
 /** Timeout (ms) for each auth fetch before treating it as an error. */
 const FETCH_TIMEOUT_MS = 10_000;

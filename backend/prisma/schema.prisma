@@ -154,3 +154,16 @@ model Referral {
   @@map("referrals")
 }
 
+model PendingReferral {
+  channel       Channel
+  channelUserId String   @map("channel_user_id")
+  code          String
+  packId        String?  @map("pack_id") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt     DateTime @map("expires_at") @db.Timestamptz(6)
+
+  @@id([channel, channelUserId])
+  @@index([expiresAt])
+  @@map("pending_referrals")
+}
+

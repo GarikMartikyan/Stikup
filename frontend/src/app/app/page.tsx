@@ -43,9 +43,11 @@ export default function TelegramAppPage() {
         if (res.ok) {
           const packs = (await res.json()) as unknown[];
           if (Array.isArray(packs) && packs.length > 0) {
+            // Returning user with packs → their sticker dashboard.
             router.replace("/my-stickers");
           } else {
-            router.replace("/how-to");
+            // Brand-new user (no packs yet) → the home page.
+            router.replace("/");
           }
         } else {
           // Fix 4: On fetch failure we can't determine if the user has packs.

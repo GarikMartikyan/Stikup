@@ -34,6 +34,10 @@ function buildPrismaMock() {
       findMany: jest.fn().mockResolvedValue([]),
       update: jest.fn().mockResolvedValue({}),
     },
+    pendingReferral: {
+      upsert: jest.fn().mockResolvedValue({}),
+      delete: jest.fn(),
+    },
   } as unknown as jest.Mocked<PrismaService>;
 }
 
@@ -500,6 +504,152 @@ describe('ReferralService', () => {
         '12345',
         expect.stringContaining('unlocked'),
       );
+    });
+  });
+
+  describe('recordPending', () => {
+    it('upserts with the composite key and a future expiresAt', async () => {
+      const prisma = buildPrismaMock();
+      const bot = buildBotSenderMock();
+      const service = buildService(prisma, bot);
+
+      const before = Date.now();
+      await service.recordPending('telegram', '42', 'REFCODE', 'pack-uuid');
+      const after = Date.now();
+
+      expect(prisma.pendingReferral.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            channel_channelUserId: { channel: 'telegram', channelUserId: '42' },
+          },
+          create: expect.objectContaining({
+            channel: 'telegram',
+            channelUserId: '42',
+            code: 'REFCODE',
+            packId: 'pack-uuid',
+            expiresAt: expect.any(Date),
+          }),
+          update: expect.objectContaining({
+            code: 'REFCODE',
+            packId: 'pack-uuid',
+            expiresAt: expect.any(Date),
+          }),
+        }),
+      );
+
+      const call = (prisma.pendingReferral.upsert as jest.Mock).mock
+        .calls[0][0];
+      const expiresAtMs = (call.create.expiresAt as Date).getTime();
+      // expiresAt should be ~30 days in the future
+      expect(expiresAtMs).toBeGreaterThan(before + 29 * 24 * 60 * 60 * 1000);
+      expect(expiresAtMs).toBeLessThanOrEqual(
+        after + 30 * 24 * 60 * 60 * 1000 + 1000,
+      );
+    });
+
+    it('maps undefined packId to null in the upsert payload', async () => {
+      const prisma = buildPrismaMock();
+      const bot = buildBotSenderMock();
+      const service = buildService(prisma, bot);
+
+      await service.recordPending('telegram', '42', 'REFCODE', undefined);
+
+      const call = (prisma.pendingReferral.upsert as jest.Mock).mock
+        .calls[0][0];
+      expect(call.create.packId).toBeNull();
+      expect(call.update.packId).toBeNull();
+    });
+
+    it('does not throw when upsert fails (best-effort)', async () => {
+      const prisma = buildPrismaMock();
+      const bot = buildBotSenderMock();
+      const service = buildService(prisma, bot);
+
+      (prisma.pendingReferral.upsert as jest.Mock).mockRejectedValueOnce(
+        new Error('DB error'),
+      );
+
+      await expect(
+        service.recordPending('telegram', '42', 'REFCODE', null),
+      ).resolves.toBeUndefined();
+    });
+  });
+
+  describe('consumePending', () => {
+    it('returns code and packId when a valid row exists and deletes it', async () => {
+      const prisma = buildPrismaMock();
+      const bot = buildBotSenderMock();
+      const service = buildService(prisma, bot);
+
+      (prisma.pendingReferral.delete as jest.Mock).mockResolvedValueOnce({
+        channel: 'telegram',
+        channelUserId: '42',
+        code: 'MYCODE',
+        packId: '550e8400-e29b-41d4-a716-446655440000',
+        createdAt: new Date(),
+        expiresAt: new Date(Date.now() + 1_000_000),
+      });
+
+      const result = await service.consumePending('telegram', '42');
+
+      expect(prisma.pendingReferral.delete).toHaveBeenCalledWith({
+        where: {
+          channel_channelUserId: { channel: 'telegram', channelUserId: '42' },
+        },
+      });
+      expect(result).toEqual({
+        code: 'MYCODE',
+        packId: '550e8400-e29b-41d4-a716-446655440000',
+      });
+    });
+
+    it('returns null when no pending row exists (P2025)', async () => {
+      const prisma = buildPrismaMock();
+      const bot = buildBotSenderMock();
+      const service = buildService(prisma, bot);
+
+      const p2025 = new Prisma.PrismaClientKnownRequestError(
+        'Record not found',
+        { code: 'P2025', clientVersion: '6.0.0', meta: {} },
+      );
+      (prisma.pendingReferral.delete as jest.Mock).mockRejectedValueOnce(p2025);
+
+      const result = await service.consumePending('telegram', '42');
+      expect(result).toBeNull();
+    });
+
+    it('returns null for an expired row (deletes it but treats as absent)', async () => {
+      const prisma = buildPrismaMock();
+      const bot = buildBotSenderMock();
+      const service = buildService(prisma, bot);
+
+      (prisma.pendingReferral.delete as jest.Mock).mockResolvedValueOnce({
+        channel: 'telegram',
+        channelUserId: '42',
+        code: 'OLDCODE',
+        packId: null,
+        createdAt: new Date(Date.now() - 60_000),
+        expiresAt: new Date(Date.now() - 1_000), // expired 1 second ago
+      });
+
+      const result = await service.consumePending('telegram', '42');
+
+      // Row was deleted for cleanup but is stale — return null
+      expect(prisma.pendingReferral.delete).toHaveBeenCalled();
+      expect(result).toBeNull();
+    });
+
+    it('returns null and does not throw on unexpected errors', async () => {
+      const prisma = buildPrismaMock();
+      const bot = buildBotSenderMock();
+      const service = buildService(prisma, bot);
+
+      (prisma.pendingReferral.delete as jest.Mock).mockRejectedValueOnce(
+        new Error('DB timeout'),
+      );
+
+      const result = await service.consumePending('telegram', '42');
+      expect(result).toBeNull();
     });
   });
 });

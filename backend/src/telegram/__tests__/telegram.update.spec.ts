@@ -8,6 +8,7 @@ import type { frontendConfig } from '../../config/frontend.config';
 import type { telegramConfig } from '../../config/telegram.config';
 import type { IdentityService } from '../../auth/identity.service';
 import type { PackService } from '../../pack/pack.service';
+import type { ReferralService } from '../../referral/referral.service';
 import type { TokenService } from '../../auth/token.service';
 import { TelegramUpdate } from '../telegram.update';
 
@@ -25,6 +26,7 @@ function buildUpdate(overrides?: {
   };
   identity: { resolveOrCreate: jest.Mock; linkChannel: jest.Mock };
   packs: { listPacks: jest.Mock; deliverTelegram: jest.Mock };
+  referrals: { recordPending: jest.Mock };
 } {
   const bot = {
     telegram: {
@@ -72,6 +74,10 @@ function buildUpdate(overrides?: {
       jest.fn(() => Promise.resolve({ delivered: true })),
   };
 
+  const referrals = {
+    recordPending: jest.fn(() => Promise.resolve(undefined)),
+  };
+
   // Stand-in for nestjs-i18n: echo the key so we can assert it was translated.
   const i18n = { t: jest.fn((key: string) => `translated:${key}`) };
 
@@ -83,6 +89,7 @@ function buildUpdate(overrides?: {
     identity as unknown as IdentityService,
     tokens as unknown as TokenService,
     packs as unknown as PackService,
+    referrals as unknown as ReferralService,
     i18n as unknown as I18nService,
   );
 
@@ -93,6 +100,7 @@ function buildUpdate(overrides?: {
     tokens,
     identity,
     packs,
+    referrals,
   };
 }
 
@@ -307,6 +315,63 @@ describe('TelegramUpdate', () => {
       expect(ctx.reply).toHaveBeenCalledWith(
         'translated:telegram.receive.failed',
       );
+    });
+  });
+
+  describe('/start with ref_ payload', () => {
+    it('records pending referral with code+pack and still sends open-app reply', async () => {
+      const { update, referrals } = buildUpdate();
+      const ctx = buildCtx(
+        'en',
+        '/start ref_MYCODE_550e8400-e29b-41d4-a716-446655440000',
+      );
+
+      await update.onStart(ctx);
+
+      expect(referrals.recordPending).toHaveBeenCalledWith(
+        'telegram',
+        '42',
+        'MYCODE',
+        '550e8400-e29b-41d4-a716-446655440000',
+      );
+      // Must still open the app for the friend
+      expect(ctx.replyWithPhoto).toHaveBeenCalled();
+    });
+
+    it('records pending referral with undefined pack when only code is present', async () => {
+      const { update, referrals } = buildUpdate();
+      const ctx = buildCtx('en', '/start ref_MYCODE');
+
+      await update.onStart(ctx);
+
+      expect(referrals.recordPending).toHaveBeenCalledWith(
+        'telegram',
+        '42',
+        'MYCODE',
+        undefined,
+      );
+      expect(ctx.replyWithPhoto).toHaveBeenCalled();
+    });
+
+    it('does not call recordPending on a plain /start', async () => {
+      const { update, referrals } = buildUpdate();
+      const ctx = buildCtx('en', '/start');
+
+      await update.onStart(ctx);
+
+      expect(referrals.recordPending).not.toHaveBeenCalled();
+    });
+
+    it('link_ payload path is unchanged — recordPending is not called', async () => {
+      const { update, referrals, tokens } = buildUpdate();
+      tokens.consumeLink.mockResolvedValueOnce(null);
+      const ctx = buildCtx('en', '/start link_some-token');
+
+      await update.onStart(ctx);
+
+      expect(referrals.recordPending).not.toHaveBeenCalled();
+      // link_ handler returns early — no open-app photo sent
+      expect(ctx.replyWithPhoto).not.toHaveBeenCalled();
     });
   });
 

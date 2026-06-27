@@ -45,6 +45,7 @@ import { TokenService } from './token.service';
 const OAUTH_STATE_COOKIE = 'oauth_state';
 const OAUTH_LINK_COOKIE = 'oauth_link';
 const REF_COOKIE = 'stikup_ref';
+const REF_PACK_COOKIE = 'stikup_ref_pack';
 const OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
 const OAUTH_STATE_BYTES = 16;
 
@@ -278,9 +279,11 @@ export class AuthController {
     );
     const cookies = (req.cookies ?? {}) as Record<string, string | undefined>;
     const ref = cookies[REF_COOKIE];
-    await this.referrals.attribute(userId, ref, 'email');
+    const refPack = cookies[REF_PACK_COOKIE];
+    await this.referrals.attribute(userId, ref, 'email', refPack);
     if (ref) {
       res.clearCookie(REF_COOKIE, { path: '/' });
+      res.clearCookie(REF_PACK_COOKIE, { path: '/' });
     }
     const { sid, expiresAt } = await this.sessions.issue(userId, 'email');
     res.cookie(this.session.cookieName, sid, this.cookieOptions(expiresAt));
@@ -368,9 +371,11 @@ export class AuthController {
         const { userId, created } = await this.identity.resolveOrCreate(event);
         if (created) {
           const ref = cookies[REF_COOKIE];
-          await this.referrals.attribute(userId, ref, 'google');
+          const refPack = cookies[REF_PACK_COOKIE];
+          await this.referrals.attribute(userId, ref, 'google', refPack);
           if (ref) {
             res.clearCookie(REF_COOKIE, { path: '/' });
+            res.clearCookie(REF_PACK_COOKIE, { path: '/' });
           }
         }
         const { sid, expiresAt } = await this.sessions.issue(userId, 'google');
@@ -483,9 +488,11 @@ export class AuthController {
     if (created) {
       const cookies = (req.cookies ?? {}) as Record<string, string | undefined>;
       const ref = cookies[REF_COOKIE];
-      await this.referrals.attribute(userId, ref, 'telegram');
+      const refPack = cookies[REF_PACK_COOKIE];
+      await this.referrals.attribute(userId, ref, 'telegram', refPack);
       if (ref) {
         res.clearCookie(REF_COOKIE, { path: '/' });
+        res.clearCookie(REF_PACK_COOKIE, { path: '/' });
       }
     }
 

@@ -38,19 +38,22 @@ export function PackActions({ packId, packSize, unlocked, locked: lockedInitial,
     try {
       const res = await fetch("/api/referral/me", { credentials: "include" });
       if (!res.ok) throw new Error(`referral/me ${res.status}`);
-      const data = (await res.json()) as { code: string; link: string; unlocked: boolean };
+      const data = (await res.json()) as { code: string; link: string; referredCount: number };
+
+      // Build the pack-specific invite link: <generic link>&pack=<packId>
+      const url = `${data.link}${data.link.includes("?") ? "&" : "?"}pack=${encodeURIComponent(packId)}`;
 
       // Try Web Share API first (mobile browsers), fall back to clipboard.
       const shared =
         typeof navigator.share === "function"
           ? await navigator
-              .share({ url: data.link })
+              .share({ url })
               .then(() => true)
               .catch(() => false)
           : false;
 
       if (!shared) {
-        await navigator.clipboard.writeText(data.link);
+        await navigator.clipboard.writeText(url);
       }
 
       setLinkCopied(true);
@@ -60,7 +63,7 @@ export function PackActions({ packId, packSize, unlocked, locked: lockedInitial,
     } finally {
       setUnlockBusy(false);
     }
-  }, [unlocked, unlockBusy]);
+  }, [unlocked, unlockBusy, packId]);
 
   const handleRegenerate = useCallback(async () => {
     if (regenBusy) return;

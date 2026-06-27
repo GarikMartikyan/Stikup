@@ -229,8 +229,12 @@ describe('AuthController — POST /auth/telegram/webapp', () => {
       'u-new',
       'ref123',
       'telegram',
+      undefined,
     );
     expect(res.clearCookie).toHaveBeenCalledWith('stikup_ref', { path: '/' });
+    expect(res.clearCookie).toHaveBeenCalledWith('stikup_ref_pack', {
+      path: '/',
+    });
   });
 
   it('does not attribute referral when user already existed', async () => {

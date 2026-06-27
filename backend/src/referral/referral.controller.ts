@@ -33,17 +33,15 @@ export class ReferralController {
       properties: {
         code: { type: 'string' },
         link: { type: 'string', format: 'uri' },
-        unlocked: { type: 'boolean' },
         referredCount: { type: 'integer' },
       },
-      required: ['code', 'link', 'unlocked', 'referredCount'],
+      required: ['code', 'link', 'referredCount'],
     },
   })
   @ApiUnauthorizedResponse()
   async me(@Req() req: Request): Promise<{
     code: string;
     link: string;
-    unlocked: boolean;
     referredCount: number;
   }> {
     const cookies = (req.cookies ?? {}) as Record<string, string | undefined>;

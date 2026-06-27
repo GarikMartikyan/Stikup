@@ -30,6 +30,7 @@ function buildPrismaMock() {
       findFirst: jest.fn(),
     },
     pack: {
+      findUnique: jest.fn().mockResolvedValue(null),
       findMany: jest.fn().mockResolvedValue([]),
       update: jest.fn().mockResolvedValue({}),
     },
@@ -125,7 +126,6 @@ describe('ReferralService', () => {
 
       (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
         id: 'self-user',
-        fullPackUnlockedAt: null,
       });
 
       await service.attribute('self-user', 'SELFCODE', 'email');
@@ -133,21 +133,15 @@ describe('ReferralService', () => {
       expect(prisma.referral.create).not.toHaveBeenCalled();
     });
 
-    it('creates referral and unlocks referrer pack when unlockEnabled and not yet unlocked', async () => {
+    it('creates referral but unlocks nothing when packId is missing', async () => {
       const prisma = buildPrismaMock();
       const bot = buildBotSenderMock();
       const service = buildService(prisma, bot);
 
       (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
         id: 'referrer-id',
-        fullPackUnlockedAt: null,
       });
       (prisma.referral.create as jest.Mock).mockResolvedValueOnce({});
-      (prisma.user.update as jest.Mock).mockResolvedValueOnce({});
-      (prisma.channelIdentity.findFirst as jest.Mock).mockResolvedValueOnce({
-        channelUserId: '12345',
-        username: 'alice',
-      });
 
       await service.attribute('new-user-id', 'REFCODE', 'email');
 
@@ -158,9 +152,89 @@ describe('ReferralService', () => {
           channel: 'email',
         },
       });
-      expect(prisma.user.update).toHaveBeenCalledWith({
-        where: { id: 'referrer-id' },
-        data: { fullPackUnlockedAt: expect.any(Date) },
+      expect(prisma.pack.findUnique).not.toHaveBeenCalled();
+      expect(prisma.pack.update).not.toHaveBeenCalled();
+    });
+
+    it('creates referral but unlocks nothing when packId is provided but pack not found', async () => {
+      const prisma = buildPrismaMock();
+      const bot = buildBotSenderMock();
+      const service = buildService(prisma, bot);
+
+      (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
+        id: 'referrer-id',
+      });
+      (prisma.referral.create as jest.Mock).mockResolvedValueOnce({});
+      (prisma.pack.findUnique as jest.Mock).mockResolvedValueOnce(null);
+
+      await service.attribute(
+        'new-user-id',
+        'REFCODE',
+        'email',
+        'missing-pack',
+      );
+
+      expect(prisma.referral.create).toHaveBeenCalled();
+      expect(prisma.pack.update).not.toHaveBeenCalled();
+    });
+
+    it('creates referral but unlocks nothing when pack belongs to a different user', async () => {
+      const prisma = buildPrismaMock();
+      const bot = buildBotSenderMock();
+      const service = buildService(prisma, bot);
+
+      (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
+        id: 'referrer-id',
+      });
+      (prisma.referral.create as jest.Mock).mockResolvedValueOnce({});
+      (prisma.pack.findUnique as jest.Mock).mockResolvedValueOnce({
+        id: 'pack-1',
+        userId: 'other-user',
+        unlockedAt: null,
+        telegramStickerSetName: null,
+        telegramStickerCount: 0,
+      });
+
+      await service.attribute('new-user-id', 'REFCODE', 'email', 'pack-1');
+
+      expect(prisma.referral.create).toHaveBeenCalled();
+      // Pack belongs to other-user, not referrer — must not unlock
+      expect(prisma.pack.update).not.toHaveBeenCalled();
+    });
+
+    it('creates referral and unlocks the specific pack when valid packId provided', async () => {
+      const prisma = buildPrismaMock();
+      const bot = buildBotSenderMock();
+      const service = buildService(prisma, bot);
+
+      (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
+        id: 'referrer-id',
+      });
+      (prisma.referral.create as jest.Mock).mockResolvedValueOnce({});
+      (prisma.pack.findUnique as jest.Mock).mockResolvedValueOnce({
+        id: 'pack-1',
+        userId: 'referrer-id',
+        unlockedAt: null,
+        telegramStickerSetName: null,
+        telegramStickerCount: 0,
+      });
+      (prisma.channelIdentity.findFirst as jest.Mock).mockResolvedValueOnce({
+        channelUserId: '12345',
+        username: 'alice',
+      });
+
+      await service.attribute('new-user-id', 'REFCODE', 'email', 'pack-1');
+
+      expect(prisma.referral.create).toHaveBeenCalledWith({
+        data: {
+          referrerId: 'referrer-id',
+          referredUserId: 'new-user-id',
+          channel: 'email',
+        },
+      });
+      expect(prisma.pack.update).toHaveBeenCalledWith({
+        where: { id: 'pack-1' },
+        data: { unlockedAt: expect.any(Date) },
       });
       // sendMessage is called asynchronously (best-effort), give it a tick
       await new Promise((r) => setTimeout(r, 0));
@@ -170,6 +244,32 @@ describe('ReferralService', () => {
       );
     });
 
+    it('does not unlock pack when it is already unlocked (pack.unlockedAt != null)', async () => {
+      const prisma = buildPrismaMock();
+      const bot = buildBotSenderMock();
+      const service = buildService(prisma, bot);
+
+      (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
+        id: 'referrer-id',
+      });
+      (prisma.referral.create as jest.Mock).mockResolvedValueOnce({});
+      (prisma.pack.findUnique as jest.Mock).mockResolvedValueOnce({
+        id: 'pack-1',
+        userId: 'referrer-id',
+        unlockedAt: new Date(),
+        telegramStickerSetName: null,
+        telegramStickerCount: 12,
+      });
+
+      await service.attribute('new-user-id', 'REFCODE', 'email', 'pack-1');
+
+      // Referral is still recorded
+      expect(prisma.referral.create).toHaveBeenCalled();
+      // Pack already unlocked — must not re-unlock
+      expect(prisma.pack.update).not.toHaveBeenCalled();
+      expect(bot.sendMessage).not.toHaveBeenCalled();
+    });
+
     it('does not send notification when referrer has no telegram identity', async () => {
       const prisma = buildPrismaMock();
       const bot = buildBotSenderMock();
@@ -177,34 +277,23 @@ describe('ReferralService', () => {
 
       (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
         id: 'referrer-id',
-        fullPackUnlockedAt: null,
       });
       (prisma.referral.create as jest.Mock).mockResolvedValueOnce({});
-      (prisma.user.update as jest.Mock).mockResolvedValueOnce({});
+      (prisma.pack.findUnique as jest.Mock).mockResolvedValueOnce({
+        id: 'pack-1',
+        userId: 'referrer-id',
+        unlockedAt: null,
+        telegramStickerSetName: null,
+        telegramStickerCount: 0,
+      });
       (prisma.channelIdentity.findFirst as jest.Mock).mockResolvedValueOnce(
         null,
       );
 
-      await service.attribute('new-user-id', 'REFCODE', 'email');
+      await service.attribute('new-user-id', 'REFCODE', 'email', 'pack-1');
 
       await new Promise((r) => setTimeout(r, 0));
       expect(bot.sendMessage).not.toHaveBeenCalled();
-    });
-
-    it('does not update fullPackUnlockedAt if already unlocked', async () => {
-      const prisma = buildPrismaMock();
-      const bot = buildBotSenderMock();
-      const service = buildService(prisma, bot);
-
-      (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
-        id: 'referrer-id',
-        fullPackUnlockedAt: new Date(),
-      });
-      (prisma.referral.create as jest.Mock).mockResolvedValueOnce({});
-
-      await service.attribute('new-user-id', 'REFCODE', 'email');
-
-      expect(prisma.user.update).not.toHaveBeenCalled();
     });
 
     it('silently ignores duplicate attribution (P2002)', async () => {
@@ -214,7 +303,6 @@ describe('ReferralService', () => {
 
       (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
         id: 'referrer-id',
-        fullPackUnlockedAt: null,
       });
 
       const p2002 = new Prisma.PrismaClientKnownRequestError(
@@ -225,10 +313,10 @@ describe('ReferralService', () => {
 
       // Should not throw
       await expect(
-        service.attribute('new-user-id', 'REFCODE', 'email'),
+        service.attribute('new-user-id', 'REFCODE', 'email', 'pack-1'),
       ).resolves.toBeUndefined();
 
-      expect(prisma.user.update).not.toHaveBeenCalled();
+      expect(prisma.pack.update).not.toHaveBeenCalled();
     });
 
     it('does not throw on unexpected errors (best-effort)', async () => {
@@ -241,11 +329,11 @@ describe('ReferralService', () => {
       );
 
       await expect(
-        service.attribute('new-user-id', 'REFCODE', 'email'),
+        service.attribute('new-user-id', 'REFCODE', 'email', 'pack-1'),
       ).resolves.toBeUndefined();
     });
 
-    it('tops up all eligible packs when referral unlocks the referrer', async () => {
+    it('tops up the specific pack via Telegram when it has a partial set', async () => {
       const prisma = buildPrismaMock();
       const bot = buildBotSenderMock();
       const stickerSvc = buildStickerServiceMock();
@@ -253,40 +341,32 @@ describe('ReferralService', () => {
 
       (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
         id: 'referrer-id',
-        fullPackUnlockedAt: null,
       });
       (prisma.referral.create as jest.Mock).mockResolvedValueOnce({});
-      (prisma.user.update as jest.Mock).mockResolvedValueOnce({});
+      // Pack has a partial Telegram set (3 of 12 stickers)
+      (prisma.pack.findUnique as jest.Mock).mockResolvedValueOnce({
+        id: 'pack-a',
+        userId: 'referrer-id',
+        unlockedAt: null,
+        telegramStickerSetName: 'pack_a_by_testbot',
+        telegramStickerCount: 3,
+      });
       (prisma.channelIdentity.findFirst as jest.Mock).mockResolvedValueOnce({
         channelUserId: '12345',
         username: 'alice',
       });
-      // Two eligible packs
-      (prisma.pack.findMany as jest.Mock).mockResolvedValueOnce([
-        { id: 'pack-a', telegramStickerCount: 3 },
-        { id: 'pack-b', telegramStickerCount: 6 },
-      ]);
 
-      await service.attribute('new-user-id', 'REFCODE', 'email');
+      await service.attribute('new-user-id', 'REFCODE', 'email', 'pack-a');
       // Give best-effort fire-and-forget a tick to settle
       await new Promise((r) => setTimeout(r, 0));
 
-      expect(stickerSvc.ensureSet).toHaveBeenCalledTimes(2);
-      expect(prisma.pack.update).toHaveBeenCalledTimes(2);
-      // Assert the persisted count is the result.count (12), not the stale value.
-      expect(prisma.pack.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { id: 'pack-a' },
-          data: { telegramStickerCount: 12 },
-        }),
-      );
-      expect(prisma.pack.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { id: 'pack-b' },
-          data: { telegramStickerCount: 12 },
-        }),
-      );
-      // Assert ensureSet received the correct packIds and non-empty files.
+      // First pack.update: unlock
+      expect(prisma.pack.update).toHaveBeenCalledWith({
+        where: { id: 'pack-a' },
+        data: { unlockedAt: expect.any(Date) },
+      });
+      // Second pack.update: sticker count after top-up
+      expect(stickerSvc.ensureSet).toHaveBeenCalledTimes(1);
       expect(stickerSvc.ensureSet).toHaveBeenCalledWith(
         expect.objectContaining({
           packId: 'pack-a',
@@ -294,17 +374,20 @@ describe('ReferralService', () => {
           files: expect.arrayContaining([expect.any(String)]),
         }),
       );
-      expect(stickerSvc.ensureSet).toHaveBeenCalledWith(
-        expect.objectContaining({ packId: 'pack-b' }),
+      expect(prisma.pack.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'pack-a' },
+          data: { telegramStickerCount: 12 },
+        }),
       );
-      // Message should contain pack links
+      // Message should contain pack link
       expect(bot.sendMessage).toHaveBeenCalledWith(
         '12345',
         expect.stringContaining('t.me/addstickers'),
       );
     });
 
-    it('skips top-up when referrer has no eligible packs (no set)', async () => {
+    it('skips top-up when pack has no Telegram sticker set yet', async () => {
       const prisma = buildPrismaMock();
       const bot = buildBotSenderMock();
       const stickerSvc = buildStickerServiceMock();
@@ -312,22 +395,30 @@ describe('ReferralService', () => {
 
       (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
         id: 'referrer-id',
-        fullPackUnlockedAt: null,
       });
       (prisma.referral.create as jest.Mock).mockResolvedValueOnce({});
-      (prisma.user.update as jest.Mock).mockResolvedValueOnce({});
+      // Pack has no Telegram set yet
+      (prisma.pack.findUnique as jest.Mock).mockResolvedValueOnce({
+        id: 'pack-a',
+        userId: 'referrer-id',
+        unlockedAt: null,
+        telegramStickerSetName: null,
+        telegramStickerCount: 0,
+      });
       (prisma.channelIdentity.findFirst as jest.Mock).mockResolvedValueOnce({
         channelUserId: '12345',
         username: 'alice',
       });
-      // No eligible packs
-      (prisma.pack.findMany as jest.Mock).mockResolvedValueOnce([]);
 
-      await service.attribute('new-user-id', 'REFCODE', 'email');
+      await service.attribute('new-user-id', 'REFCODE', 'email', 'pack-a');
       await new Promise((r) => setTimeout(r, 0));
 
       expect(stickerSvc.ensureSet).not.toHaveBeenCalled();
-      // Still sends the unlock notification (without links)
+      // Still unlocks the pack and sends the notification (without links)
+      expect(prisma.pack.update).toHaveBeenCalledWith({
+        where: { id: 'pack-a' },
+        data: { unlockedAt: expect.any(Date) },
+      });
       expect(bot.sendMessage).toHaveBeenCalledTimes(1);
       expect(bot.sendMessage).toHaveBeenCalledWith(
         '12345',
@@ -335,7 +426,7 @@ describe('ReferralService', () => {
       );
     });
 
-    it('does not break attribution when ensureSet throws for one pack', async () => {
+    it('does not break attribution when ensureSet throws during top-up', async () => {
       const prisma = buildPrismaMock();
       const bot = buildBotSenderMock();
       const stickerSvc = buildStickerServiceMock();
@@ -343,27 +434,29 @@ describe('ReferralService', () => {
 
       (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
         id: 'referrer-id',
-        fullPackUnlockedAt: null,
       });
       (prisma.referral.create as jest.Mock).mockResolvedValueOnce({});
-      (prisma.user.update as jest.Mock).mockResolvedValueOnce({});
+      (prisma.pack.findUnique as jest.Mock).mockResolvedValueOnce({
+        id: 'pack-fail',
+        userId: 'referrer-id',
+        unlockedAt: null,
+        telegramStickerSetName: 'pack_fail_by_testbot',
+        telegramStickerCount: 3,
+      });
       (prisma.channelIdentity.findFirst as jest.Mock).mockResolvedValueOnce({
         channelUserId: '12345',
         username: 'alice',
       });
-      (prisma.pack.findMany as jest.Mock).mockResolvedValueOnce([
-        { id: 'pack-fail', telegramStickerCount: 3 },
-      ]);
       (stickerSvc.ensureSet as jest.Mock).mockRejectedValueOnce(
         new Error('Telegram error'),
       );
 
       // Should not throw
       await expect(
-        service.attribute('new-user-id', 'REFCODE', 'email'),
+        service.attribute('new-user-id', 'REFCODE', 'email', 'pack-fail'),
       ).resolves.toBeUndefined();
       await new Promise((r) => setTimeout(r, 0));
-      // Still sends the notification
+      // Still sends the notification (even without a link)
       expect(bot.sendMessage).toHaveBeenCalled();
     });
 
@@ -375,27 +468,37 @@ describe('ReferralService', () => {
 
       (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
         id: 'referrer-id',
-        fullPackUnlockedAt: null,
       });
       (prisma.referral.create as jest.Mock).mockResolvedValueOnce({});
-      (prisma.user.update as jest.Mock).mockResolvedValueOnce({});
+      (prisma.pack.findUnique as jest.Mock).mockResolvedValueOnce({
+        id: 'pack-missing',
+        userId: 'referrer-id',
+        unlockedAt: null,
+        telegramStickerSetName: 'pack_missing_by_testbot',
+        telegramStickerCount: 3,
+      });
       (prisma.channelIdentity.findFirst as jest.Mock).mockResolvedValueOnce({
         channelUserId: '12345',
         username: 'alice',
       });
-      (prisma.pack.findMany as jest.Mock).mockResolvedValueOnce([
-        { id: 'pack-missing', telegramStickerCount: 3 },
-      ]);
       // This pack's generated stickers are missing on disk → it must be skipped.
       jest.mocked(getPackStickerFiles).mockReturnValueOnce([]);
 
-      await service.attribute('new-user-id', 'REFCODE', 'email');
+      await service.attribute(
+        'new-user-id',
+        'REFCODE',
+        'email',
+        'pack-missing',
+      );
       await new Promise((r) => setTimeout(r, 0));
 
-      // The unavailable pack is skipped — no sticker set is built or updated.
+      // The unavailable pack skips the sticker set top-up
       expect(stickerSvc.ensureSet).not.toHaveBeenCalled();
-      expect(prisma.pack.update).not.toHaveBeenCalled();
-      // The unlock notification is still sent (without pack links).
+      // But the pack is still unlocked and notification sent
+      expect(prisma.pack.update).toHaveBeenCalledWith({
+        where: { id: 'pack-missing' },
+        data: { unlockedAt: expect.any(Date) },
+      });
       expect(bot.sendMessage).toHaveBeenCalledWith(
         '12345',
         expect.stringContaining('unlocked'),

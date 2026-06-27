@@ -290,10 +290,8 @@ describe('PackService', () => {
         status: 'ready',
         userId: 'user-abc',
         sourceImageUrl: null,
+        unlockedAt: null,
         stickers: [{ index: 0, url: '/assets/sticker_1.webp' }],
-      });
-      (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
-        fullPackUnlockedAt: null,
       });
 
       const result = await service.getPack('pack-1', 'user-abc');
@@ -303,7 +301,7 @@ describe('PackService', () => {
       expect(result!.packSize).toBe(12);
     });
 
-    it('returns pack detail with unlocked=true for unlocked user', async () => {
+    it('returns pack detail with unlocked=true for an unlocked pack', async () => {
       const prisma = buildPrismaMock();
       const bot = buildBotSenderMock();
       const service = buildService(prisma, bot);
@@ -313,10 +311,8 @@ describe('PackService', () => {
         status: 'ready',
         userId: 'user-abc',
         sourceImageUrl: null,
+        unlockedAt: new Date(),
         stickers: [],
-      });
-      (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
-        fullPackUnlockedAt: new Date(),
       });
 
       const result = await service.getPack('pack-1', 'user-abc');
@@ -333,10 +329,8 @@ describe('PackService', () => {
         status: 'ready',
         userId: 'user-abc',
         sourceImageUrl: null,
+        unlockedAt: null,
         stickers: [],
-      });
-      (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
-        fullPackUnlockedAt: null,
       });
 
       const result = await service.getPack('pack-1', 'user-abc');
@@ -354,10 +348,8 @@ describe('PackService', () => {
         status: 'ready',
         userId: 'user-abc',
         sourceImageUrl: '/api/static/packs/pack-1/source.webp',
+        unlockedAt: null,
         stickers: [],
-      });
-      (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
-        fullPackUnlockedAt: null,
       });
 
       const result = await service.getPack('pack-1', 'user-abc');
@@ -374,10 +366,8 @@ describe('PackService', () => {
         status: 'generating',
         userId: 'user-abc',
         sourceImageUrl: null,
+        unlockedAt: null,
         stickers: [],
-      });
-      (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
-        fullPackUnlockedAt: null,
       });
 
       const result = await service.getPack('pack-1', 'user-abc');
@@ -396,12 +386,10 @@ describe('PackService', () => {
           id: 'pack-2',
           status: 'ready',
           createdAt: new Date('2026-05-30T00:00:00.000Z'),
+          unlockedAt: null,
           stickers: [{ index: 0, url: '/assets/sticker_1.webp' }],
         },
       ]);
-      (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
-        fullPackUnlockedAt: null,
-      });
 
       const result = await service.listPacks('user-abc');
 
@@ -432,9 +420,6 @@ describe('PackService', () => {
       const service = buildService(prisma, bot);
 
       (prisma.pack.findMany as jest.Mock).mockResolvedValueOnce([]);
-      (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
-        fullPackUnlockedAt: null,
-      });
 
       const result = await service.listPacks('user-abc');
       expect(result).toEqual([]);
@@ -501,13 +486,11 @@ describe('PackService', () => {
       const { unlocked = false, username = 'alice' } = opts;
       (prisma.pack.findUnique as jest.Mock).mockResolvedValueOnce({
         userId: 'user-abc',
+        unlockedAt: unlocked ? new Date() : null,
       });
       (prisma.channelIdentity.findFirst as jest.Mock).mockResolvedValueOnce({
         channelUserId: '99999',
         username,
-      });
-      (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
-        fullPackUnlockedAt: unlocked ? new Date() : null,
       });
     }
 
@@ -627,13 +610,11 @@ describe('PackService', () => {
 
       (prisma.pack.findUnique as jest.Mock).mockResolvedValueOnce({
         userId: 'user-abc',
+        unlockedAt: null,
       });
       (prisma.channelIdentity.findFirst as jest.Mock).mockResolvedValueOnce({
         channelUserId: '99999',
         username: 'alice',
-      });
-      (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
-        fullPackUnlockedAt: null,
       });
 
       // Simulate the claim already existing (P2002) then ensureSet succeeds.

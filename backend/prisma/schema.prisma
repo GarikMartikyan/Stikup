@@ -31,7 +31,6 @@ model User {
   email              String?   @unique
   passwordHash       String?   @map("password_hash")
   referralCode       String?   @unique @map("referral_code")
-  fullPackUnlockedAt DateTime? @map("full_pack_unlocked_at") @db.Timestamptz(6)
   generationsUsed    Int       @default(0) @map("generations_used")
   // Set the first time the user "accepts" a pack — gets it on Telegram,
   // downloads it, or unlocks it. Once set, generation/regeneration is locked.
@@ -117,6 +116,7 @@ model Pack {
   telegramStickerSetName String?    @map("telegram_sticker_set_name")
   telegramStickerCount   Int        @default(0) @map("telegram_sticker_count")
   sourceImageUrl         String?    @map("source_image_url")
+  unlockedAt             DateTime?  @map("unlocked_at") @db.Timestamptz(6)
 
   user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   stickers Sticker[]

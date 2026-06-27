@@ -15,7 +15,7 @@ import { PrismaService } from '../prisma/prisma.service';
 
 const REFERRAL_CODE_BYTES = 6; // 6 bytes → 8 base62 chars
 const REFERRAL_UNLOCK_MESSAGE =
-  '🎉 Someone joined through your link — all 12 stickers in your pack are now unlocked!';
+  '🎉 A friend joined through your link — your sticker pack is now fully unlocked (all 12)!';
 
 function toBase62(buf: Buffer): string {
   const alphabet =
@@ -49,12 +49,11 @@ export class ReferralService {
   async getOrCreateReferralInfo(userId: string): Promise<{
     code: string;
     link: string;
-    unlocked: boolean;
     referredCount: number;
   }> {
     let user = await this.prisma.user.findUniqueOrThrow({
       where: { id: userId },
-      select: { referralCode: true, fullPackUnlockedAt: true },
+      select: { referralCode: true },
     });
 
     if (!user.referralCode) {
@@ -62,7 +61,7 @@ export class ReferralService {
       user = await this.prisma.user.update({
         where: { id: userId },
         data: { referralCode: code },
-        select: { referralCode: true, fullPackUnlockedAt: true },
+        select: { referralCode: true },
       });
     }
 
@@ -74,26 +73,28 @@ export class ReferralService {
     return {
       code,
       link: `${this.frontend.publicAppUrl}/?ref=${code}`,
-      unlocked: user.fullPackUnlockedAt != null,
       referredCount,
     };
   }
 
   /**
    * Attribute a new registration to a referrer identified by `code`.
+   * If `packId` is provided and referralUnlockEnabled, unlocks that specific
+   * pack for the referrer (per-pack model).
    * This method is best-effort: it never throws so it cannot break registration.
    */
   async attribute(
     referredUserId: string,
     code: string | null | undefined,
     channel: Channel,
+    packId?: string | null,
   ): Promise<void> {
     if (!code) return;
 
     try {
       const referrer = await this.prisma.user.findUnique({
         where: { referralCode: code },
-        select: { id: true, fullPackUnlockedAt: true },
+        select: { id: true },
       });
 
       if (!referrer || referrer.id === referredUserId) return;
@@ -106,88 +107,90 @@ export class ReferralService {
         },
       });
 
-      if (
-        this.offer.referralUnlockEnabled &&
-        referrer.fullPackUnlockedAt == null
-      ) {
-        await this.prisma.user.update({
-          where: { id: referrer.id },
-          data: { fullPackUnlockedAt: new Date() },
+      if (this.offer.referralUnlockEnabled && packId) {
+        const pack = await this.prisma.pack.findUnique({
+          where: { id: packId },
+          select: {
+            id: true,
+            userId: true,
+            unlockedAt: true,
+            telegramStickerSetName: true,
+            telegramStickerCount: true,
+          },
         });
 
-        // Best-effort: notify the referrer via Telegram if they have an identity,
-        // and top up any sticker sets that are below full size.
-        const tgIdentity = await this.prisma.channelIdentity.findFirst({
-          where: { userId: referrer.id, channel: 'telegram' },
-          select: { channelUserId: true, username: true },
-        });
-
-        if (tgIdentity) {
-          // Top-up packs that already have a sticker set but are below full size.
-          const packSize = this.offer.packSize;
-          const eligiblePacks = await this.prisma.pack.findMany({
-            where: {
-              userId: referrer.id,
-              telegramStickerSetName: { not: null },
-              telegramStickerCount: { lt: packSize },
-            },
-            select: { id: true, telegramStickerCount: true },
+        if (pack && pack.userId === referrer.id && pack.unlockedAt == null) {
+          await this.prisma.pack.update({
+            where: { id: packId },
+            data: { unlockedAt: new Date() },
           });
 
-          const setLinks: string[] = [];
+          // Best-effort: notify the referrer via Telegram if they have an
+          // identity, and top up this pack's sticker set if it is below full size.
+          const tgIdentity = await this.prisma.channelIdentity.findFirst({
+            where: { userId: referrer.id, channel: 'telegram' },
+            select: { channelUserId: true, username: true },
+          });
 
-          if (eligiblePacks.length > 0) {
-            const usernameOrFallback =
-              tgIdentity.username ?? `user${tgIdentity.channelUserId}`;
+          if (tgIdentity) {
+            const packSize = this.offer.packSize;
+            const setLinks: string[] = [];
 
-            for (const pack of eligiblePacks) {
-              // Each pack is topped up with ITS OWN real generated stickers.
+            // Top-up only the specific unlocked pack if it has a partial set.
+            if (
+              pack.telegramStickerSetName != null &&
+              pack.telegramStickerCount < packSize
+            ) {
+              const usernameOrFallback =
+                tgIdentity.username ?? `user${tgIdentity.channelUserId}`;
+
               const files = getPackStickerFiles(
                 this.storage.stickerDir,
                 pack.id,
                 packSize,
               );
+
               if (files.length === 0) {
                 this.logger.warn(
                   `referral top-up: real stickers unavailable for pack ${pack.id}; skipping`,
                 );
-                continue;
-              }
-              try {
-                const result = await this.telegramStickerService.ensureSet({
-                  channelUserId: tgIdentity.channelUserId,
-                  packId: pack.id,
-                  usernameOrFallback,
-                  files,
-                });
-                await this.prisma.pack.update({
-                  where: { id: pack.id },
-                  data: { telegramStickerCount: result.count },
-                });
-                setLinks.push(result.shareUrl);
-              } catch (topUpErr: unknown) {
-                this.logger.warn(
-                  `referral top-up: ensureSet failed for pack ${pack.id}: ${topUpErr instanceof Error ? topUpErr.message : String(topUpErr)}`,
-                );
+              } else {
+                try {
+                  const result = await this.telegramStickerService.ensureSet({
+                    channelUserId: tgIdentity.channelUserId,
+                    packId: pack.id,
+                    usernameOrFallback,
+                    files,
+                  });
+                  await this.prisma.pack.update({
+                    where: { id: pack.id },
+                    data: { telegramStickerCount: result.count },
+                  });
+                  setLinks.push(result.shareUrl);
+                } catch (topUpErr: unknown) {
+                  this.logger.warn(
+                    `referral top-up: ensureSet failed for pack ${pack.id}: ${topUpErr instanceof Error ? topUpErr.message : String(topUpErr)}`,
+                  );
+                }
               }
             }
+
+            const linkText =
+              setLinks.length > 0
+                ? '\n\nYour updated pack:\n' + setLinks.join('\n')
+                : '';
+
+            this.botSender
+              .sendMessage(
+                tgIdentity.channelUserId,
+                REFERRAL_UNLOCK_MESSAGE + linkText,
+              )
+              .catch((err: unknown) => {
+                this.logger.warn(
+                  `referral unlock notification failed for user ${referrer.id}: ${err instanceof Error ? err.message : String(err)}`,
+                );
+              });
           }
-
-          const linkText =
-            setLinks.length > 0
-              ? '\n\nYour updated pack(s):\n' + setLinks.join('\n')
-              : '';
-
-          this.botSender
-            .sendMessage(
-              tgIdentity.channelUserId,
-              REFERRAL_UNLOCK_MESSAGE + linkText,
-            )
-            .catch((err: unknown) => {
-              this.logger.warn(
-                `referral unlock notification failed for user ${referrer.id}: ${err instanceof Error ? err.message : String(err)}`,
-              );
-            });
         }
       }
     } catch (err) {

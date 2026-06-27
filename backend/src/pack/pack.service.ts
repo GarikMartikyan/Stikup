@@ -196,35 +196,26 @@ export class PackService {
   }
 
   async listPacks(userId: string): Promise<PackSummary[]> {
-    const [packs, user] = await Promise.all([
-      this.prisma.pack.findMany({
-        where: { userId },
-        orderBy: { createdAt: 'desc' },
-        select: {
-          id: true,
-          status: true,
-          createdAt: true,
-          stickers: {
-            select: { index: true, url: true },
-            orderBy: { index: 'asc' },
-          },
+    const packs = await this.prisma.pack.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        status: true,
+        createdAt: true,
+        unlockedAt: true,
+        stickers: {
+          select: { index: true, url: true },
+          orderBy: { index: 'asc' },
         },
-      }),
-      this.prisma.user.findUnique({
-        where: { id: userId },
-        select: {
-          fullPackUnlockedAt: true,
-        },
-      }),
-    ]);
-
-    const unlocked = user?.fullPackUnlockedAt != null;
+      },
+    });
 
     return packs.map((pack) => ({
       id: pack.id,
       createdAt: pack.createdAt.toISOString(),
       status: pack.status,
-      unlocked,
+      unlocked: pack.unlockedAt != null,
       locked: false,
       freeCount: this.offer.freeStickerCount,
       packSize: this.offer.packSize,
@@ -241,6 +232,7 @@ export class PackService {
         status: true,
         userId: true,
         sourceImageUrl: true,
+        unlockedAt: true,
         stickers: {
           select: { index: true, url: true },
           orderBy: { index: 'asc' },
@@ -250,17 +242,10 @@ export class PackService {
 
     if (!pack || pack.userId !== userId) return null;
 
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        fullPackUnlockedAt: true,
-      },
-    });
-
     return {
       id: pack.id,
       status: pack.status,
-      unlocked: user?.fullPackUnlockedAt != null,
+      unlocked: pack.unlockedAt != null,
       locked: false,
       freeCount: this.offer.freeStickerCount,
       packSize: this.offer.packSize,
@@ -329,7 +314,7 @@ export class PackService {
 
     const pack = await this.prisma.pack.findUnique({
       where: { id: packId },
-      select: { userId: true },
+      select: { userId: true, unlockedAt: true },
     });
     if (!pack || pack.userId !== userId) return { delivered: false, botUrl };
 
@@ -345,11 +330,7 @@ export class PackService {
       return { delivered: false, botUrl, needsTelegram: true };
     }
 
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { fullPackUnlockedAt: true },
-    });
-    const unlocked = user?.fullPackUnlockedAt != null;
+    const unlocked = pack.unlockedAt != null;
     const count = unlocked ? this.offer.packSize : this.offer.freeStickerCount;
 
     // Try to insert the delivery claim. On P2002 (already claimed) this is a

@@ -12,10 +12,7 @@ import {
   Sparkles,
   Upload,
   Users,
-  Volume2,
-  VolumeX,
   Wand2,
-  X,
   Zap,
 } from 'lucide-react';
 import { useT } from '@/components/language-provider';
@@ -26,10 +23,7 @@ export default function HowToPage() {
   const t = useT();
   const [hasPacks, setHasPacks] = useState<boolean | null>(null);
   const [showVideo, setShowVideo] = useState(false);
-  const [canSkip, setCanSkip] = useState(false);
-  const [muted, setMuted] = useState(true);
-  const [progress, setProgress] = useState(0);
-  const [timeLeft, setTimeLeft] = useState<number | null>(null);
+  const [ended, setEnded] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -40,25 +34,8 @@ export default function HowToPage() {
   }, []);
 
   function openVideo() {
-    // While still loading, don't force-watch (safe default)
-    setCanSkip(hasPacks !== false);
-    setProgress(0);
-    setTimeLeft(null);
-    setMuted(true);
+    setEnded(false);
     setShowVideo(true);
-  }
-
-  function closeVideo() {
-    setShowVideo(false);
-    if (videoRef.current) videoRef.current.pause();
-  }
-
-  function handleTimeUpdate() {
-    const video = videoRef.current;
-    if (!video || !video.duration) return;
-    const pct = video.currentTime / video.duration;
-    setProgress(pct);
-    setTimeLeft(Math.ceil(video.duration - video.currentTime));
   }
 
   type Step = {
@@ -118,67 +95,48 @@ export default function HowToPage() {
 
   return (
     <>
-      {/* Full-screen video overlay */}
+      {/* Tutorial video overlay (locked until it ends) */}
       {showVideo && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-black">
+        <div className="fixed inset-0 z-50 flex flex-col bg-black/95 backdrop-blur-sm">
+          {/* Header */}
+          <div className="shrink-0 px-5 pb-3 pt-7 text-center">
+            <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--color-brand)]">
+              Tutorial
+            </span>
+            <h2 className="mt-1 text-base font-semibold text-white">
+              How to create your sticker pack
+            </h2>
+          </div>
+
           {/* Video */}
-          <div className="relative flex flex-1 items-center justify-center overflow-hidden">
+          <div className="flex flex-1 items-center justify-center overflow-hidden px-4">
             <video
               ref={videoRef}
               src="/how-to-disney.mp4"
               autoPlay
-              muted={muted}
+              muted
               playsInline
-              className="h-full w-full object-contain"
-              onTimeUpdate={handleTimeUpdate}
-              onEnded={() => setCanSkip(true)}
+              className="max-h-full max-w-md rounded-2xl object-contain shadow-2xl ring-1 ring-white/10"
+              onEnded={() => setEnded(true)}
+              onError={() => setEnded(true)}
             />
-
-            {/* Top controls */}
-            <div className="absolute left-4 right-4 top-4 flex items-center justify-between">
-              {/* Mute toggle */}
-              <button
-                onClick={() => setMuted((m) => !m)}
-                className="flex items-center gap-2 rounded-full bg-black/50 px-3 py-2 text-sm text-white backdrop-blur-sm transition hover:bg-black/70"
-                aria-label={muted ? 'Unmute' : 'Mute'}
-              >
-                {muted ? (
-                  <>
-                    <VolumeX className="h-4 w-4" />
-                    <span className="text-xs">Tap to unmute</span>
-                  </>
-                ) : (
-                  <Volume2 className="h-4 w-4" />
-                )}
-              </button>
-
-              {/* Skip / watch-to-end */}
-              {canSkip ? (
-                <button
-                  onClick={closeVideo}
-                  className="flex items-center gap-2 rounded-full bg-white/20 px-4 py-2 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/30"
-                >
-                  <X className="h-4 w-4" />
-                  Skip
-                </button>
-              ) : (
-                <div className="flex items-center gap-2 rounded-full bg-black/50 px-4 py-2 backdrop-blur-sm">
-                  <span className="text-sm font-semibold text-white">
-                    {timeLeft !== null && timeLeft > 0
-                      ? `${timeLeft}s to skip`
-                      : 'Watch to skip'}
-                  </span>
-                </div>
-              )}
-            </div>
           </div>
 
-          {/* Progress bar */}
-          <div className="h-1 w-full bg-white/20">
-            <div
-              className="h-full bg-[var(--color-brand)] transition-all duration-200"
-              style={{ width: `${progress * 100}%` }}
-            />
+          {/* Footer: Next appears only after the video ends */}
+          <div className="flex shrink-0 items-center justify-center px-5 pb-9 pt-4">
+            {ended ? (
+              <Link
+                href="/create"
+                className="shimmer group inline-flex items-center gap-2 overflow-hidden rounded-full bg-gradient-to-r from-[var(--color-brand)] via-[#ff5e72] to-[var(--color-brand-2)] px-8 py-4 text-base font-bold text-white shadow-[0_18px_40px_-12px_rgba(224,52,154,0.55)] transition hover:-translate-y-0.5"
+              >
+                <span>Next</span>
+                <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
+              </Link>
+            ) : (
+              <p className="text-sm font-medium text-white/50">
+                Watch the video to continue
+              </p>
+            )}
           </div>
         </div>
       )}
@@ -283,22 +241,25 @@ export default function HowToPage() {
             className="reveal mt-2 flex flex-wrap items-center gap-3"
             style={{ animationDelay: '180ms' }}
           >
-            <Link
-              href="/create"
-              className="shimmer group inline-flex items-center gap-2 overflow-hidden rounded-full bg-gradient-to-r from-[var(--color-brand)] via-[#ff5e72] to-[var(--color-brand-2)] px-7 py-4 text-base font-bold text-white shadow-[0_18px_40px_-12px_rgba(224,52,154,0.55)] transition hover:-translate-y-0.5"
-            >
-              <Sparkles className="h-5 w-5" />
-              <span>{t('how_to.cta')}</span>
-              <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
-            </Link>
-
+            {/* Watch video — primary action */}
             <button
               onClick={openVideo}
-              className="inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] px-6 py-4 text-base font-semibold text-[var(--color-fg)] transition hover:-translate-y-0.5 hover:bg-[var(--color-bg-subtle)]"
+              className="shimmer group inline-flex items-center gap-2 overflow-hidden rounded-full bg-gradient-to-r from-[var(--color-brand)] via-[#ff5e72] to-[var(--color-brand-2)] px-7 py-4 text-base font-bold text-white shadow-[0_18px_40px_-12px_rgba(224,52,154,0.55)] transition hover:-translate-y-0.5"
             >
-              <Play className="h-4 w-4 fill-[var(--color-brand)] text-[var(--color-brand)]" />
-              Watch video
+              <Play className="h-5 w-5 fill-white" />
+              <span>Watch video</span>
             </button>
+
+            {/* Skip — only once the user already has a sticker pack */}
+            {hasPacks && (
+              <Link
+                href="/create"
+                className="inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] px-6 py-4 text-base font-semibold text-[var(--color-fg)] transition hover:-translate-y-0.5 hover:bg-[var(--color-bg-subtle)]"
+              >
+                <span>Skip</span>
+                <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
+              </Link>
+            )}
           </div>
         </main>
       </div>

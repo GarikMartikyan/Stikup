@@ -114,7 +114,9 @@ export function StickerLightbox({
             width={420}
             height={420}
             priority
-            unoptimized={unoptimized}
+            // Backend (/api/...) images are auth-gated + already optimized; bypass
+            // Next's optimizer (it strips the session cookie → 401). See StickerCard.
+            unoptimized={unoptimized || src.startsWith("/api/")}
             className="h-[min(64vw,22rem)] w-[min(64vw,22rem)] animate-[pop-in_320ms_cubic-bezier(0.34,1.56,0.64,1)] object-contain"
           />
         </div>

@@ -68,7 +68,11 @@ export function StickerCard({
             height={size}
             className="h-full w-full object-contain p-2"
             draggable={false}
-            unoptimized={unoptimized}
+            // Backend-served images (/api/static/packs/...) are auth-gated and
+            // already-optimized webp; they MUST bypass Next's image optimizer,
+            // which fetches them server-side WITHOUT the user's session cookie
+            // (→ 401, broken image). A same-origin <img> sends the cookie.
+            unoptimized={unoptimized || src.startsWith("/api/")}
           />
         )}
       </div>

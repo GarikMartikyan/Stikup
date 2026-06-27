@@ -45,7 +45,7 @@ export default function TelegramAppPage() {
           if (Array.isArray(packs) && packs.length > 0) {
             router.replace("/my-stickers");
           } else {
-            router.replace("/create");
+            router.replace("/how-to");
           }
         } else {
           // Fix 4: On fetch failure we can't determine if the user has packs.

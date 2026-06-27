@@ -34,6 +34,10 @@ function buildPrismaMock() {
     referral: {
       count: jest.fn().mockResolvedValue(0),
     },
+    adReward: {
+      count: jest.fn().mockResolvedValue(0),
+      create: jest.fn().mockResolvedValue({}),
+    },
     $queryRaw: jest.fn(),
     $transaction: jest.fn(),
   };
@@ -881,6 +885,34 @@ describe('PackService', () => {
       expect(result.alreadyClaimed).toBe(true);
       // Claiming free stickers no longer locks the generation counter.
       expect(prisma.user.updateMany).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('quota cap with ad rewards', () => {
+    it('extends regensLeft by the ad-reward count', async () => {
+      const prisma = buildPrismaMock();
+      const service = buildService(prisma, buildBotSenderMock());
+
+      // base=2, referralBonus=2, referrals=0 → base cap 2; used 2 → normally locked.
+      (prisma.pack.findUnique as jest.Mock).mockResolvedValue({
+        id: 'pack-1',
+        status: 'ready',
+        userId: 'user-1',
+        sourceImageUrl: null,
+        stickers: [],
+      });
+      (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+        fullPackUnlockedAt: null,
+        generationsUsed: 2,
+      });
+      (prisma.referral.count as jest.Mock).mockResolvedValue(0);
+      (prisma.adReward.count as jest.Mock).mockResolvedValue(2); // +2 from ads
+
+      const pack = await service.getPack('pack-1', 'user-1');
+
+      // cap = 2 + 2*0 + 2 = 4; used 2 → regensLeft 2, not locked.
+      expect(pack?.regensLeft).toBe(2);
+      expect(pack?.locked).toBe(false);
     });
   });
 

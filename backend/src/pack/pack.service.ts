@@ -12,6 +12,7 @@ import { BOT_SENDER, type BotSender } from '../auth/channel/bot-sender';
 import { TelegramStickerService } from '../auth/channel/telegram-sticker.service';
 import { offerConfig } from '../config/offer.config';
 import { storageConfig } from '../config/storage.config';
+import { computeCap } from '../common/quota';
 import { PrismaService } from '../prisma/prisma.service';
 import { StickerQueueService } from '../queue/sticker.queue';
 import { getPackStickerFiles } from './sticker-assets';
@@ -105,9 +106,10 @@ export class PackService {
         const referralCount = await tx.referral.count({
           where: { referrerId: userId },
         });
-        const cap =
-          this.offer.baseGenerations +
-          this.offer.referralBonusGenerations * referralCount;
+        const adRewardCount = await tx.adReward.count({
+          where: { userId },
+        });
+        const cap = computeCap(this.offer, referralCount, adRewardCount);
 
         if (rows[0].generations_used >= cap) {
           throw new ForbiddenException('generation_limit_reached');
@@ -223,7 +225,7 @@ export class PackService {
   }
 
   async listPacks(userId: string): Promise<PackSummary[]> {
-    const [packs, user, referralCount] = await Promise.all([
+    const [packs, user, referralCount, adRewardCount] = await Promise.all([
       this.prisma.pack.findMany({
         where: { userId },
         orderBy: { createdAt: 'desc' },
@@ -245,13 +247,12 @@ export class PackService {
         },
       }),
       this.prisma.referral.count({ where: { referrerId: userId } }),
+      this.prisma.adReward.count({ where: { userId } }),
     ]);
 
     const unlimited = this.offer.unlimitedGenerations;
     const unlocked = user?.fullPackUnlockedAt != null;
-    const cap =
-      this.offer.baseGenerations +
-      this.offer.referralBonusGenerations * referralCount;
+    const cap = computeCap(this.offer, referralCount, adRewardCount);
     const generationsUsed = user?.generationsUsed ?? 0;
     const locked = !unlimited && generationsUsed >= cap;
     const regensLeft = unlimited ? cap : Math.max(0, cap - generationsUsed);
@@ -286,7 +287,7 @@ export class PackService {
 
     if (!pack || pack.userId !== userId) return null;
 
-    const [user, referralCount] = await Promise.all([
+    const [user, referralCount, adRewardCount] = await Promise.all([
       this.prisma.user.findUnique({
         where: { id: userId },
         select: {
@@ -295,12 +296,11 @@ export class PackService {
         },
       }),
       this.prisma.referral.count({ where: { referrerId: userId } }),
+      this.prisma.adReward.count({ where: { userId } }),
     ]);
 
     const unlimited = this.offer.unlimitedGenerations;
-    const cap =
-      this.offer.baseGenerations +
-      this.offer.referralBonusGenerations * referralCount;
+    const cap = computeCap(this.offer, referralCount, adRewardCount);
     const generationsUsed = user?.generationsUsed ?? 0;
     const locked = !unlimited && generationsUsed >= cap;
 

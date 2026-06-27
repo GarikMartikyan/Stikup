@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { showInterstitial } from '../adsgram';
+import { showInterstitial, showRewarded } from '../adsgram';
 
 function setTelegram(on: boolean) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -79,5 +79,43 @@ describe('showInterstitial', () => {
     (window as any).Adsgram = { init };
     await showInterstitial();
     expect(init).toHaveBeenCalledWith({ blockId: 'int-36357' });
+  });
+});
+
+describe('showRewarded', () => {
+  it("returns 'shown' and inits with the reward block id when set", async () => {
+    setTelegram(true);
+    vi.stubEnv('NEXT_PUBLIC_ADSGRAM_REWARD_BLOCK_ID', 'rew-1');
+    const init = vi.fn(() => ({ show: () => Promise.resolve() }));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window as any).Adsgram = { init };
+    expect(await showRewarded()).toBe('shown');
+    expect(init).toHaveBeenCalledWith({ blockId: 'rew-1' });
+  });
+
+  it('falls back to the interstitial block id when the reward var is unset', async () => {
+    setTelegram(true);
+    vi.stubEnv('NEXT_PUBLIC_ADSGRAM_BLOCK_ID', 'int-36357');
+    const init = vi.fn(() => ({ show: () => Promise.resolve() }));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window as any).Adsgram = { init };
+    await showRewarded();
+    expect(init).toHaveBeenCalledWith({ blockId: 'int-36357' });
+  });
+
+  it("returns 'skipped' when not in Telegram", async () => {
+    setTelegram(false);
+    vi.stubEnv('NEXT_PUBLIC_ADSGRAM_REWARD_BLOCK_ID', 'rew-1');
+    expect(await showRewarded()).toBe('skipped');
+  });
+
+  it("returns 'error' when the ad rejects", async () => {
+    setTelegram(true);
+    vi.stubEnv('NEXT_PUBLIC_ADSGRAM_REWARD_BLOCK_ID', 'rew-1');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window as any).Adsgram = {
+      init: () => ({ show: () => Promise.reject(new Error('no fill')) }),
+    };
+    expect(await showRewarded()).toBe('error');
   });
 });

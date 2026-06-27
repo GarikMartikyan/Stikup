@@ -7,7 +7,7 @@
  * is bounded by a timeout so a hung ad can never block the caller.
  */
 import { isTelegramEnv } from "@/lib/telegram/webapp";
-import { adsgramBlockId } from "@/lib/config";
+import { adsgramBlockId, adsgramRewardBlockId } from "@/lib/config";
 
 /** Outcome of an interstitial attempt. */
 export type AdResult = "shown" | "skipped" | "error";
@@ -34,18 +34,18 @@ declare global {
 }
 
 /**
- * Show an Adsgram interstitial.
+ * Best-effort: always resolves to a tagged result, never rejects, and is
+ * bounded by AD_TIMEOUT_MS so a hung ad can never block the caller.
  *
  * - "skipped": outside Telegram, SDK not loaded, or no block id configured.
- * - "shown": the ad played and closed.
+ * - "shown": the ad played and closed (for rewarded blocks, was watched).
  * - "error": the SDK rejected, or the ad failed to settle within AD_TIMEOUT_MS.
  */
-export async function showInterstitial(): Promise<AdResult> {
+async function runAd(blockId: string): Promise<AdResult> {
   if (!isTelegramEnv()) return "skipped";
   if (typeof window === "undefined") return "skipped";
 
   const sdk = window.Adsgram;
-  const blockId = adsgramBlockId();
   if (!sdk || !blockId) return "skipped";
 
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -61,4 +61,17 @@ export async function showInterstitial(): Promise<AdResult> {
   } finally {
     if (timer) clearTimeout(timer);
   }
+}
+
+/** Show an interstitial ad (best-effort) during normal generation. */
+export function showInterstitial(): Promise<AdResult> {
+  return runAd(adsgramBlockId());
+}
+
+/**
+ * Show a rewarded ad. "shown" means the user watched it and the caller may
+ * grant the reward (the upload page calls POST /api/ads/reward on "shown").
+ */
+export function showRewarded(): Promise<AdResult> {
+  return runAd(adsgramRewardBlockId());
 }

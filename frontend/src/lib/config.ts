@@ -38,3 +38,13 @@ export const TELEGRAM_BOT_URL =
 export function adsgramBlockId(): string {
   return process.env.NEXT_PUBLIC_ADSGRAM_BLOCK_ID ?? '';
 }
+
+/**
+ * Adsgram block id used for the rewarded "watch ad to earn a generation" flow.
+ * Falls back to the interstitial block id so the feature ships without a new
+ * env var / Docker build-arg. Set `NEXT_PUBLIC_ADSGRAM_REWARD_BLOCK_ID` to a
+ * dedicated Adsgram "Reward" block later for stricter full-watch semantics.
+ */
+export function adsgramRewardBlockId(): string {
+  return process.env.NEXT_PUBLIC_ADSGRAM_REWARD_BLOCK_ID ?? adsgramBlockId();
+}

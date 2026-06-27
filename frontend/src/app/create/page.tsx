@@ -19,6 +19,23 @@ export default function CreatePage() {
   const [hasInteracted, setHasInteracted] = useState(false);
   const [copied, setCopied] = useState(false);
   const prompt = buildPrompt(selectedStyle);
+  // chatgpt.com (not the deprecated chat.openai.com) avoids the mobile
+  // redirect chain; ?q= pre-fills + auto-submits the prompt.
+  const chatGptUrl = `https://chatgpt.com/?q=${encodeURIComponent(prompt)}`;
+
+  const openChatGpt = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    setHasInteracted(true);
+    // On mobile, chatgpt.com is a universal/app link: the OS hands the URL
+    // to the ChatGPT app. A target="_blank" tab would be stranded mid-handoff
+    // and render an "invalid URL" error, so navigate in the same tab instead.
+    const isMobile =
+      typeof navigator !== "undefined" &&
+      /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if (isMobile) {
+      e.preventDefault();
+      window.location.href = chatGptUrl;
+    }
+  };
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(prompt);
@@ -65,10 +82,10 @@ export default function CreatePage() {
             {copied ? t("create.copied") : t("create.copy_prompt")}
           </button>
           <a
-            href={`https://chatgpt.com/?q=${encodeURIComponent(prompt)}`}
+            href={chatGptUrl}
             target="_blank"
             rel="noopener noreferrer"
-            onClick={() => setHasInteracted(true)}
+            onClick={openChatGpt}
             className="inline-flex items-center gap-2 rounded-full bg-[#10a37f] px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#0d8f6f]"
           >
             <ExternalLink className="h-4 w-4" strokeWidth={2.2} />

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Check, Download, RefreshCw, Unlock } from "lucide-react";
 import { GetStickersModal } from "./get-stickers-modal";
 import { useT } from "@/components/language-provider";
+import { telegramReferralHref } from "@/lib/telegram/href";
 import type { StickerItem } from "./sticker-grid";
 
 type PackActionsProps = {
@@ -38,10 +39,11 @@ export function PackActions({ packId, packSize, unlocked, locked: lockedInitial,
     try {
       const res = await fetch("/api/referral/me", { credentials: "include" });
       if (!res.ok) throw new Error(`referral/me ${res.status}`);
-      const data = (await res.json()) as { code: string; link: string; referredCount: number };
+      const data = (await res.json()) as { code: string; referredCount: number };
 
-      // Build the pack-specific invite link: <generic link>&pack=<packId>
-      const url = `${data.link}${data.link.includes("?") ? "&" : "?"}pack=${encodeURIComponent(packId)}`;
+      // Telegram deep link: tapping it opens the Mini App, auto-logs-in the
+      // friend, and credits the referral via start_param.
+      const url = telegramReferralHref(data.code, packId);
 
       // Try Web Share API first (mobile browsers), fall back to clipboard.
       const shared =

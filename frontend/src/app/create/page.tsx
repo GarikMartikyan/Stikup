@@ -19,29 +19,22 @@ export default function CreatePage() {
   const [hasInteracted, setHasInteracted] = useState(false);
   const [copied, setCopied] = useState(false);
   const prompt = buildPrompt(selectedStyle);
-  // chatgpt.com (not the deprecated chat.openai.com) avoids the mobile
-  // redirect chain; ?q= pre-fills + auto-submits the prompt.
-  const chatGptUrl = `https://chatgpt.com/?q=${encodeURIComponent(prompt)}`;
-
-  const openChatGpt = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    setHasInteracted(true);
-    // On mobile, chatgpt.com is a universal/app link: the OS hands the URL
-    // to the ChatGPT app. A target="_blank" tab would be stranded mid-handoff
-    // and render an "invalid URL" error, so navigate in the same tab instead.
-    const isMobile =
-      typeof navigator !== "undefined" &&
-      /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-    if (isMobile) {
-      e.preventDefault();
-      window.location.href = chatGptUrl;
-    }
-  };
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(prompt);
     setHasInteracted(true);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  // "Open ChatGPT" also copies the prompt to the clipboard so the user can
+  // paste it into a fresh chat. We open the bare https://chatgpt.com/ (no ?q=):
+  // the user attaches their image first, then pastes the prompt. Keeping the
+  // link short and on the live domain avoids the "invalid URL" the deprecated
+  // chat.openai.com + giant ?q= URL produced mid-redirect on mobile. The anchor
+  // keeps target="_blank" so the create page stays open for the next step.
+  const openChatGpt = () => {
+    void handleCopy();
   };
 
   return (
@@ -82,7 +75,7 @@ export default function CreatePage() {
             {copied ? t("create.copied") : t("create.copy_prompt")}
           </button>
           <a
-            href={chatGptUrl}
+            href="https://chatgpt.com/"
             target="_blank"
             rel="noopener noreferrer"
             onClick={openChatGpt}

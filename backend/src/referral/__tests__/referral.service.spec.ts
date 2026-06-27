@@ -67,8 +67,6 @@ const OFFER_STUB = {
   stickerDefaultEmoji: '😀',
 };
 
-const FRONTEND_STUB = { publicAppUrl: 'https://app.example.com' };
-
 function buildService(
   prisma: jest.Mocked<PrismaService>,
   botSender: jest.Mocked<BotSender>,
@@ -77,7 +75,6 @@ function buildService(
   const service = new ReferralService(
     prisma,
     OFFER_STUB,
-    FRONTEND_STUB as never,
     botSender,
     stickerSvc ?? buildStickerServiceMock(),
     { stickerDir: '/tmp/stikup-test-packs' },

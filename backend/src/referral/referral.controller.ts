@@ -32,16 +32,14 @@ export class ReferralController {
     schema: {
       properties: {
         code: { type: 'string' },
-        link: { type: 'string', format: 'uri' },
         referredCount: { type: 'integer' },
       },
-      required: ['code', 'link', 'referredCount'],
+      required: ['code', 'referredCount'],
     },
   })
   @ApiUnauthorizedResponse()
   async me(@Req() req: Request): Promise<{
     code: string;
-    link: string;
     referredCount: number;
   }> {
     const cookies = (req.cookies ?? {}) as Record<string, string | undefined>;

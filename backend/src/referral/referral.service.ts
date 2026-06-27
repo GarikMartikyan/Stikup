@@ -7,7 +7,6 @@ import { Prisma } from '@prisma/client';
 
 import { BOT_SENDER, type BotSender } from '../auth/channel/bot-sender';
 import { TelegramStickerService } from '../auth/channel/telegram-sticker.service';
-import { frontendConfig } from '../config/frontend.config';
 import { offerConfig } from '../config/offer.config';
 import { storageConfig } from '../config/storage.config';
 import { getPackStickerFiles } from '../pack/sticker-assets';
@@ -38,8 +37,6 @@ export class ReferralService {
     private readonly prisma: PrismaService,
     @Inject(offerConfig.KEY)
     private readonly offer: ConfigType<typeof offerConfig>,
-    @Inject(frontendConfig.KEY)
-    private readonly frontend: ConfigType<typeof frontendConfig>,
     @Inject(BOT_SENDER) private readonly botSender: BotSender,
     private readonly telegramStickerService: TelegramStickerService,
     @Inject(storageConfig.KEY)
@@ -48,7 +45,6 @@ export class ReferralService {
 
   async getOrCreateReferralInfo(userId: string): Promise<{
     code: string;
-    link: string;
     referredCount: number;
   }> {
     let user = await this.prisma.user.findUniqueOrThrow({
@@ -72,7 +68,6 @@ export class ReferralService {
 
     return {
       code,
-      link: `${this.frontend.publicAppUrl}/?ref=${code}`,
       referredCount,
     };
   }

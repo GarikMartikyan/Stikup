@@ -8,7 +8,7 @@ export interface TgUser {
 }
 
 export type ValidateInitDataResult =
-  | { ok: true; user: TgUser; authDate: Date }
+  | { ok: true; user: TgUser; authDate: Date; startParam: string | undefined }
   | { ok: false; reason: string };
 
 /**
@@ -141,5 +141,7 @@ function _validate(
     avatarUrl: tgUser.photo_url,
   };
 
-  return { ok: true, user, authDate: new Date(authDateSec * 1000) };
+  const startParam = params.get('start_param') ?? undefined;
+
+  return { ok: true, user, authDate: new Date(authDateSec * 1000), startParam };
 }

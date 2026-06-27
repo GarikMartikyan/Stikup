@@ -97,6 +97,29 @@ describe('validateInitData', () => {
       const result = validateInitData(initData, FAKE_BOT_TOKEN, MAX_AGE_SEC);
       expect(result.ok).toBe(true);
     });
+
+    it('returns start_param when present', () => {
+      const initData = buildInitData({
+        user: VALID_USER_JSON,
+        start_param: 'MYCODE_550e8400-e29b-41d4-a716-446655440000',
+      });
+      const result = validateInitData(initData, FAKE_BOT_TOKEN, MAX_AGE_SEC);
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.startParam).toBe(
+        'MYCODE_550e8400-e29b-41d4-a716-446655440000',
+      );
+    });
+
+    it('returns startParam undefined when absent', () => {
+      const initData = buildInitData({ user: VALID_USER_JSON });
+      const result = validateInitData(initData, FAKE_BOT_TOKEN, MAX_AGE_SEC);
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.startParam).toBeUndefined();
+    });
   });
 
   describe('hash validation', () => {

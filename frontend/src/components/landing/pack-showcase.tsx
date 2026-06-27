@@ -110,7 +110,7 @@ export function PackShowcase({ loggedIn }: { loggedIn: boolean }) {
                     <span className="text-[var(--color-fg-muted)]">{t("landing.pack_showcase.stickers_locked")}</span>
                   </div>
                   <Link
-                    href="/create"
+                    href={loggedIn ? "/how-to" : "/create"}
                     className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-[var(--color-brand)] to-[var(--color-brand-2)] px-3.5 py-1.5 text-xs font-bold text-white shadow-sm"
                   >
                     {loggedIn ? t("landing.pack_showcase.unlock_authenticated") : t("landing.pack_showcase.unlock_anonymous")}

@@ -240,7 +240,8 @@
       "generate": "Upload grid",
       "sending": "Creating stickers…",
       "choose_another": "Choose another",
-      "back": "Back"
+      "back": "Back",
+      "watch_ad": "Watch ad for 1 more generation"
     },
     "tips": {
       "section_label": "Grid requirements",

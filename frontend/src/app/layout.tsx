@@ -6,7 +6,6 @@ import { LanguageProvider } from "@/components/language-provider";
 import { ThemeProvider } from "@/components/theme-provider";
 import { StoreProvider } from "@/lib/store/providers";
 import { TelegramProvider } from "@/components/telegram/telegram-provider";
-import { ReferralCapture } from "@/components/referral-capture";
 import { ScrollToTop } from "@/components/scroll-to-top";
 import { BrowserGuard } from "@/components/browser-guard";
 import "./globals.css";
@@ -71,7 +70,6 @@ export default async function RootLayout({
               <TelegramProvider>
                 <BrowserGuard />
                 <ScrollToTop />
-                <ReferralCapture />
                 <AppHeader />
                 {children}
               </TelegramProvider>

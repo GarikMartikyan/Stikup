@@ -23,7 +23,7 @@ export function EmptyPackState() {
         </p>
       </div>
       <Link
-        href="/upload"
+        href="/how-to"
         className="shimmer inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[var(--color-brand)] via-[#ff5e72] to-[var(--color-brand-2)] px-7 py-3.5 text-base font-bold text-white shadow-[0_18px_40px_-12px_rgba(224,52,154,0.55)] transition hover:-translate-y-0.5"
       >
         {t("dashboard.empty_state.cta")}

@@ -35,7 +35,7 @@ export function PackList({ packs }: { packs: DashboardPack[] }) {
 
         {/* CTA placeholder card */}
         <Link
-          href="/upload"
+          href="/how-to"
           className="group relative grid place-items-center overflow-hidden rounded-3xl border-2 border-dashed border-[var(--color-border-strong)] p-10 text-center transition hover:border-[var(--color-brand)]"
         >
           <div>

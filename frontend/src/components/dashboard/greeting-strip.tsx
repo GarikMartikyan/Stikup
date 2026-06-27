@@ -26,7 +26,7 @@ export function GreetingStrip({
         </h1>
       </div>
       <Link
-        href="/upload"
+        href="/how-to"
         className="shimmer group inline-flex items-center gap-2 overflow-hidden rounded-full bg-gradient-to-r from-[var(--color-brand)] via-[#ff5e72] to-[var(--color-brand-2)] px-6 py-3 text-sm font-bold text-white shadow-[0_14px_30px_-10px_rgba(224,52,154,0.55)] transition hover:-translate-y-0.5"
       >
         <Plus className="h-4 w-4" />

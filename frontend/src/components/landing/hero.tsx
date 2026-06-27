@@ -2,27 +2,18 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowRight, Sparkles, Star } from 'lucide-react';
-import { uploadCtaHref } from '@/lib/auth/cta-href';
-import { ALL_STICKERS, HERO_STICKERS } from './data';
+import { ArrowRight, Sparkles } from 'lucide-react';
+import { HERO_STICKERS } from './data';
 import { useT } from '@/components/language-provider';
 
 export function Hero({ loggedIn }: { loggedIn: boolean }) {
   const t = useT();
   return (
-    <section className="snap-section relative flex min-h-dvh scroll-mt-16 flex-col justify-center px-5 pt-20 pb-10 md:pt-14">
+    <section className="snap-section relative flex min-h-dvh scroll-mt-16 flex-col justify-center px-5 pt-20 pb-10 md:pt-0">
       <div className="mx-auto grid w-full max-w-6xl items-start gap-10 md:grid-cols-[1.05fr_1fr]">
         <div>
-          <span
-            className="reveal inline-flex items-center gap-2 rounded-full border border-[var(--color-brand)]/25 bg-[var(--color-brand)]/10 px-3 py-1 text-xs font-semibold text-[var(--color-brand)]"
-            style={{ animationDelay: '0ms' }}
-          >
-            <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-brand)] animate-pulse" />
-            {t('landing.hero.badge')}
-          </span>
-
           <h1
-            className="reveal mt-5 font-[family-name:var(--font-display)] text-[3.25rem] font-extrabold leading-[1.02] tracking-[-0.03em] md:text-[5.5rem]"
+            className="reveal font-[family-name:var(--font-display)] text-[3.25rem] font-extrabold leading-[1.02] tracking-[-0.03em] md:text-[5.5rem]"
             style={{ animationDelay: '100ms' }}
           >
             {t('landing.hero.title_prefix')}{' '}
@@ -58,7 +49,7 @@ export function Hero({ loggedIn }: { loggedIn: boolean }) {
             style={{ animationDelay: '300ms' }}
           >
             <Link
-              href={uploadCtaHref(loggedIn)}
+              href="/how-to"
               className="shimmer group relative inline-flex items-center gap-2 overflow-hidden rounded-full bg-gradient-to-r from-[var(--color-brand)] via-[#ff5e72] to-[var(--color-brand-2)] px-7 py-4 text-base font-bold text-white shadow-[0_18px_40px_-12px_rgba(224,52,154,0.55)] transition hover:-translate-y-0.5"
             >
               <Sparkles className="h-5 w-5" />
@@ -69,12 +60,6 @@ export function Hero({ loggedIn }: { loggedIn: boolean }) {
               </span>
               <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
             </Link>
-            <a
-              href="#how"
-              className="inline-flex items-center gap-2 rounded-full border border-[var(--color-border-strong)] bg-[var(--color-bg-elev)] px-7 py-4 text-base font-semibold text-[var(--color-fg)] transition hover:-translate-y-0.5"
-            >
-              {t('landing.hero.see_how')}
-            </a>
           </div>
 
           <p
@@ -83,36 +68,6 @@ export function Hero({ loggedIn }: { loggedIn: boolean }) {
           >
             {t('landing.hero.description')}
           </p>
-
-          <div
-            className="reveal mt-10 flex items-center gap-5 text-sm text-[var(--color-fg-muted)]"
-            style={{ animationDelay: '400ms' }}
-          >
-            <div className="flex -space-x-2">
-              {ALL_STICKERS.slice(0, 4).map((s, i) => (
-                <div
-                  key={i}
-                  className="h-9 w-9 overflow-hidden rounded-full border-2 border-[var(--color-bg)] bg-[var(--color-bg-elev)]"
-                >
-                  <Image
-                    src={s.src}
-                    alt=""
-                    width={48}
-                    height={48}
-                    className="h-full w-full object-cover"
-                  />
-                </div>
-              ))}
-            </div>
-            <div>
-              <div className="flex items-center gap-1 text-[var(--color-brand-2)]">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <Star key={i} className="h-3.5 w-3.5 fill-current" />
-                ))}
-              </div>
-              <span className="text-xs">{t('landing.hero.loved_by')}</span>
-            </div>
-          </div>
         </div>
 
         {/* RIGHT: portrait + floating stickers */}
@@ -141,9 +96,9 @@ export function Hero({ loggedIn }: { loggedIn: boolean }) {
           </div>
 
           {/* Floating sticker satellites */}
-          {HERO_STICKERS.map(({ idx, r, t: topPos, l, d }) => (
+          {HERO_STICKERS.map(({ src, r, t: topPos, l, d }, i) => (
             <div
-              key={idx}
+              key={i}
               className="absolute h-24 w-24 md:h-28 md:w-28"
               style={{
                 top: topPos,
@@ -156,7 +111,7 @@ export function Hero({ loggedIn }: { loggedIn: boolean }) {
                 style={{ transform: `rotate(${r}deg)` }}
               >
                 <Image
-                  src={ALL_STICKERS[idx].src}
+                  src={src}
                   alt=""
                   width={160}
                   height={160}
@@ -167,7 +122,7 @@ export function Hero({ loggedIn }: { loggedIn: boolean }) {
           ))}
 
           <div
-            className="absolute -bottom-2 right-2 rotate-6 rounded-2xl bg-[var(--color-fg)] px-4 py-2 text-sm font-bold text-[var(--color-bg)] shadow-xl"
+            className="absolute bottom-14 right-2 rotate-6 rounded-2xl bg-[var(--color-fg)] px-4 py-2 text-sm font-bold text-[var(--color-bg)] shadow-xl"
             style={{ animation: 'fade-up 0.6s ease-out 1.4s both' }}
           >
             {t('landing.hero.pack_count', { count: 12 })}

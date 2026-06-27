@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRegisterMutation } from "@/lib/store/auth-api";
@@ -22,11 +21,9 @@ export function RegisterForm() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [termsChecked, setTermsChecked] = useState(false);
-
   const pwOk = strengthOk(password);
   const confirmMismatch = confirmPassword.length > 0 && confirmPassword !== password;
-  const canSubmit = pwOk && !confirmMismatch && confirmPassword.length > 0 && termsChecked;
+  const canSubmit = pwOk && !confirmMismatch && confirmPassword.length > 0;
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -162,26 +159,6 @@ export function RegisterForm() {
           <p className="text-xs text-red-500">{t("auth.register.passwords_mismatch")}</p>
         )}
       </div>
-
-      <label className="flex items-start gap-2.5 text-sm text-[var(--color-fg-muted)]">
-        <input
-          type="checkbox"
-          checked={termsChecked}
-          onChange={(e) => setTermsChecked(e.target.checked)}
-          className="mt-0.5 h-4 w-4 rounded accent-[var(--color-brand)]"
-          required
-        />
-        <span>
-          {t("auth.register.terms_agree")}{" "}
-          <Link href="/terms" className="font-medium text-[var(--color-fg)] hover:underline">
-            {t("auth.register.terms_link")}
-          </Link>{" "}
-          {t("auth.register.and")}{" "}
-          <Link href="/privacy" className="font-medium text-[var(--color-fg)] hover:underline">
-            {t("auth.register.privacy_link")}
-          </Link>
-        </span>
-      </label>
 
       {error && (
         <p role="alert" className="text-sm text-red-500">

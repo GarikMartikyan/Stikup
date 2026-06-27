@@ -42,20 +42,6 @@ export function TipsPanel() {
         </p>
       </div>
 
-      <div className="rounded-3xl border border-dashed border-[var(--color-border-strong)] p-5 text-xs text-[var(--color-fg-muted)] md:hidden">
-        {t("upload.tips.privacy_note")}
-      </div>
     </aside>
-  );
-}
-
-export function PrivacyNote({ className = "" }: { className?: string }) {
-  const t = useT();
-  return (
-    <div
-      className={`rounded-3xl border border-dashed border-[var(--color-border-strong)] p-5 text-xs text-[var(--color-fg-muted)] ${className}`}
-    >
-      {t("upload.tips.privacy_note")}
-    </div>
   );
 }

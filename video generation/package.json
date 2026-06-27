@@ -3,15 +3,20 @@
   "version": "1.0.0",
   "scripts": {
     "studio": "remotion studio src/index.ts",
-    "render": "remotion render HowToVideo out/how-to.mp4 --overwrite",
-    "gif": "ffmpeg -i out/how-to.mp4 -vf 'fps=15,scale=540:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse' -loop 0 out/how-to.gif"
+    "render": "remotion render HowToDisney out/how-to-disney.mp4 --scale=2.5 --overwrite",
+    "render:old": "remotion render HowToVideo out/how-to.mp4 --overwrite",
+    "gif": "ffmpeg -i out/how-to-disney.mp4 -vf 'fps=15,scale=432:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse' -loop 0 out/how-to-disney.gif"
   },
   "dependencies": {
     "@remotion/cli": "4.0.484",
+    "@remotion/google-fonts": "^4.0.484",
     "@remotion/renderer": "4.0.484",
+    "@remotion/tailwind-v4": "^4.0.484",
+    "lucide-react": "^1.21.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "remotion": "4.0.484"
+    "remotion": "4.0.484",
+    "tailwindcss": "^4.3.1"
   },
   "devDependencies": {
     "@types/react": "^18.3.1",

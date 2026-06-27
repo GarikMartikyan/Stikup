@@ -74,13 +74,12 @@ export function DropZone({
         </button>
       ) : (
         <div className="relative">
-          <div className="grid h-[300px] place-items-center bg-[var(--color-bg-sunk)] md:h-[400px]">
+          <div className="relative h-[300px] bg-[var(--color-bg-sunk)] md:h-[400px]">
             <Image
               src={state.url}
               alt={t("upload.drop_zone.selfie_preview_alt")}
-              width={520}
-              height={520}
-              className="max-h-full max-w-full object-contain"
+              fill
+              className="object-cover object-center"
             />
           </div>
           <button

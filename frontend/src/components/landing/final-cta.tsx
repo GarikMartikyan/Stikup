@@ -28,7 +28,7 @@ export function FinalCta({ loggedIn }: { loggedIn: boolean }) {
         </p>
         <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
           <Link
-            href={uploadCtaHref(loggedIn)}
+            href={loggedIn ? "/how-to" : uploadCtaHref(loggedIn)}
             className="shimmer group relative inline-flex items-center gap-2 overflow-hidden rounded-full bg-white px-7 py-4 text-base font-bold text-[#1a1410] shadow-2xl transition hover:scale-105"
           >
             <Sparkles className="h-5 w-5" />

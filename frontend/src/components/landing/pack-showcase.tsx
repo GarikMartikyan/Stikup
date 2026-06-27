@@ -6,6 +6,8 @@ import { ArrowRight, Check, Lock } from "lucide-react";
 import { StickerCard } from "@/components/sticker-card";
 import { uploadCtaHref } from "@/lib/auth/cta-href";
 import { ALL_STICKERS } from "./data";
+
+const CHIBI_STICKERS = ALL_STICKERS.slice(0, 12);
 import { useT } from "@/components/language-provider";
 
 const PACK_BULLET_KEYS = [
@@ -89,12 +91,12 @@ export function PackShowcase({ loggedIn }: { loggedIn: boolean }) {
                 </div>
 
                 <div className="mt-4 grid grid-cols-4 gap-2.5">
-                  {ALL_STICKERS.map((s, i) => (
+                  {CHIBI_STICKERS.map((s, i) => (
                     <StickerCard
                       key={i}
                       src={s.src}
                       alt={s.alt}
-                      locked={i >= 3}
+                      locked={false}
                       rotate={(i % 2 === 0 ? 1 : -1) * (i % 3)}
                       delay={i * 50}
                       popIn

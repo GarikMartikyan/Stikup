@@ -18,8 +18,6 @@ export { LANDING_NAV_LINKS } from '@/lib/nav-links';
 // referenced by LANDING_NAV_LINKS (#how, #pack, #pricing, #faq).
 const LANDING_NAV_ROUTES = new Set<string>([
   '/',
-  '/privacy',
-  '/terms',
   '/support',
 ]);
 

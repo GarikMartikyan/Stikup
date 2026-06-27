@@ -1,5 +1,5 @@
-import Image from "next/image";
-import { ALL_STICKERS } from "./data";
+import Image from 'next/image';
+import { ALL_STICKERS } from './data';
 
 export function MarqueeStrip() {
   return (
@@ -11,7 +11,7 @@ export function MarqueeStrip() {
         {[...ALL_STICKERS, ...ALL_STICKERS].map((s, i) => (
           <div
             key={i}
-            className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl bg-[var(--color-bg-elev)] ring-1 ring-[var(--color-border)] shadow-sm md:h-20 md:w-20"
+            className="grid h-16 w-16 shrink-0 place-items-center rounded-lg bg-[var(--color-bg-elev)] ring-1 ring-[var(--color-border)] shadow-sm md:h-20 md:w-20"
           >
             <Image
               src={s.src}

@@ -67,7 +67,7 @@ export function UserDrawer({
 
   const USER_LINKS = [
     { href: '/', label: t('auth.user_drawer.home'), Icon: Home },
-    { href: '/how-to', label: t('auth.user_drawer.my_stickers'), Icon: LayoutGrid },
+    { href: '/my-stickers', label: t('auth.user_drawer.my_stickers'), Icon: LayoutGrid },
     { href: '/settings', label: t('auth.user_drawer.settings'), Icon: Settings },
   ] as const;
 

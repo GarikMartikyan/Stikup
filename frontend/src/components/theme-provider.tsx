@@ -31,17 +31,10 @@ function readStoredTheme(): Theme | null {
   return null;
 }
 
-function systemTheme(): Theme {
-  if (typeof window === "undefined") return "light";
-  return window.matchMedia("(prefers-color-scheme: dark)").matches
-    ? "dark"
-    : "light";
-}
-
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => {
-    if (typeof window === "undefined") return "light";
-    return readStoredTheme() ?? systemTheme();
+    if (typeof window === "undefined") return "dark";
+    return readStoredTheme() ?? "dark";
   });
 
   const applyTheme = useCallback((t: Theme) => {

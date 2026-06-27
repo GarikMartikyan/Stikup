@@ -39,3 +39,5 @@ yarn-debug.log*
 
 # Claude local config
 .claude/settings.local.json
+
+video generation/

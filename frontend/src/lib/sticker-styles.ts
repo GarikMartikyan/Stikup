@@ -2,11 +2,7 @@ export type StyleId =
   | "chibi"
   | "disney3d"
   | "anime"
-  | "ghibli"
-  | "comic"
-  | "pixel"
-  | "clay"
-  | "popart";
+  | "pixel";
 
 export type StickerStyle = {
   id: StyleId;
@@ -67,24 +63,6 @@ export const STICKER_STYLES: StickerStyle[] = [
       "- 2D cel-shaded anime look\n- Sharp clean outlines",
   },
   {
-    id: "ghibli",
-    name: "Ghibli",
-    tagline: "Soft & painterly",
-    styleIntro:
-      "Render the character in a soft, hand-painted Studio-Ghibli-inspired style — gentle watercolor-like shading, warm earthy palette, soft rounded features, and a calm storybook feel.",
-    styleConstraints:
-      "- Soft 2D painterly look with gentle outlines\n- Cozy, warm color palette",
-  },
-  {
-    id: "comic",
-    name: "Comic",
-    tagline: "Bold cartoon",
-    styleIntro:
-      "Render the character as a bold Western-cartoon / comic character — thick confident outlines, flat bright colors, simple cel shading, and exaggerated readable expressions.",
-    styleConstraints:
-      "- 2D comic style with bold black outlines\n- Flat, punchy colors",
-  },
-  {
     id: "pixel",
     name: "Pixel",
     tagline: "Retro 16-bit",
@@ -92,24 +70,6 @@ export const STICKER_STYLES: StickerStyle[] = [
       "Render the character as retro 16-bit pixel art — blocky pixels, a limited vibrant palette, and clear pixel-level expression detail, like a classic video-game sprite.",
     styleConstraints:
       "- Pixel-art style with visible square pixels (no smooth anti-aliasing on the character)\n- Limited retro color palette",
-  },
-  {
-    id: "clay",
-    name: "Clay",
-    tagline: "Claymation",
-    styleIntro:
-      "Render the character as a cute claymation / plasticine model — soft matte clay texture, rounded handmade forms, gentle sculpt marks, and soft studio lighting.",
-    styleConstraints:
-      "- Stylized 3D clay look (stop-motion feel)\n- Soft, matte surfaces",
-  },
-  {
-    id: "popart",
-    name: "Pop Art",
-    tagline: "Bold & vibrant",
-    styleIntro:
-      "Render the character as bold pop-art — high-contrast flat colors, clean fills, thick outlines, and vibrant comic-poster energy.",
-    styleConstraints:
-      "- 2D pop-art style with bold saturated colors and strong outlines\n- Keep the character clean (solid green background only, as specified)",
   },
 ];
 

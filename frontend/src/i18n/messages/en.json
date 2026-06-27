@@ -258,7 +258,8 @@
       "invalid_format": "Use a JPEG or PNG image.",
       "too_large": "File is over 8 MB. Try a smaller export.",
       "generation_failed": "Upload failed. Make sure you upload the clean 4×3 grid ChatGPT made (green background). Please try again.",
-      "no_generations": "You've used all your generations."
+      "no_generations": "You've used all your generations.",
+      "ad_unavailable": "Ad couldn't load. Please try again."
     },
     "telegram_gate": {
       "title": "Sticker creation runs inside Telegram. Open Stikup in Telegram to generate your pack.",

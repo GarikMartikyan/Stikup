@@ -41,6 +41,7 @@ model User {
   loginTokens      LoginToken[]
   sessions         Session[]
   packs            Pack[]
+  adRewards        AdReward[]
   referralsMade    Referral[]        @relation("referrer")
   referralReceived Referral?         @relation("referred")
 
@@ -151,4 +152,15 @@ model Referral {
 
   @@index([referrerId])
   @@map("referrals")
+}
+
+model AdReward {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("ad_rewards")
 }

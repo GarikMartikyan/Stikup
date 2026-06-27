@@ -37,7 +37,7 @@ export function RegisterForm() {
 
     try {
       await register({ email, password }).unwrap();
-      router.push("/my-stickers");
+      router.push("/");
       // Re-run the server layout so hasSession() recomputes and the header
       // swaps the Sign in button for the account drawer (mirrors logout).
       router.refresh();

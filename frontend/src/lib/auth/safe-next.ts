@@ -9,7 +9,7 @@
  */
 export function safeNextPath(
   next: string | null | undefined,
-  fallback = "/my-stickers",
+  fallback = "/",
 ): string {
   if (
     next &&

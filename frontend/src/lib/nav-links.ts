@@ -1,6 +1,3 @@
 export type NavLink = { href: string; label: string };
 
-export const LANDING_NAV_LINKS: ReadonlyArray<NavLink> = [
-  { href: '#how', label: 'nav_how' },
-  { href: '#pack', label: 'nav_pack' },
-];
+export const LANDING_NAV_LINKS: ReadonlyArray<NavLink> = [];

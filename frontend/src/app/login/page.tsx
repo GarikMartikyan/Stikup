@@ -10,7 +10,7 @@ export default async function LoginPage({
 }) {
   const session = await serverFetch<AuthMeResponse>("/auth/me");
   const { next } = await searchParams;
-  if (session) redirect(next && next.startsWith("/") ? next : "/my-stickers");
+  if (session) redirect(next && next.startsWith("/") ? next : "/");
 
   return <LoginPageContent next={next} />;
 }

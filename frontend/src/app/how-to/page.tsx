@@ -116,7 +116,7 @@ export default function HowToPage() {
               autoPlay
               muted
               playsInline
-              className="max-h-full max-w-md rounded-2xl object-contain shadow-2xl ring-1 ring-white/10"
+              className="max-h-full max-w-md rounded-xl object-contain shadow-2xl ring-1 ring-white/10"
               onEnded={() => setEnded(true)}
               onError={() => setEnded(true)}
             />
@@ -207,7 +207,10 @@ export default function HowToPage() {
                               <div>
                                 <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--color-brand)]">
                                   {j === 0 && (
-                                    <Zap className="h-2.5 w-2.5" strokeWidth={2.5} />
+                                    <Zap
+                                      className="h-2.5 w-2.5"
+                                      strokeWidth={2.5}
+                                    />
                                   )}
                                   {opt.label}
                                 </span>
@@ -238,25 +241,27 @@ export default function HowToPage() {
 
           {/* CTA row */}
           <div
-            className="reveal mt-2 flex flex-wrap items-center gap-3"
+            className={`reveal mt-2 flex flex-wrap items-center gap-3${
+              hasPacks ? '' : ' justify-end'
+            }`}
             style={{ animationDelay: '180ms' }}
           >
-            {/* Watch video — primary action */}
+            {/* Next step — primary action (opens the tutorial video) */}
             <button
               onClick={openVideo}
               className="shimmer group inline-flex items-center gap-2 overflow-hidden rounded-full bg-gradient-to-r from-[var(--color-brand)] via-[#ff5e72] to-[var(--color-brand-2)] px-7 py-4 text-base font-bold text-white shadow-[0_18px_40px_-12px_rgba(224,52,154,0.55)] transition hover:-translate-y-0.5"
             >
               <Play className="h-5 w-5 fill-white" />
-              <span>Watch video</span>
+              <span>{t('how_to.next_step')}</span>
             </button>
 
-            {/* Skip — only once the user already has a sticker pack */}
+            {/* Skip video — only once the user already has a sticker pack */}
             {hasPacks && (
               <Link
                 href="/create"
-                className="inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] px-6 py-4 text-base font-semibold text-[var(--color-fg)] transition hover:-translate-y-0.5 hover:bg-[var(--color-bg-subtle)]"
+                className="group inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] px-6 py-4 text-base font-semibold text-[var(--color-fg)] transition hover:-translate-y-0.5 hover:bg-[var(--color-bg-subtle)]"
               >
-                <span>Skip</span>
+                <span>{t('how_to.skip_video')}</span>
                 <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
               </Link>
             )}

@@ -43,7 +43,17 @@ COPY --from=build /app/package.json ./package.json
 COPY --from=build /app/backend ./backend
 # Debian 12's python3 is PEP 668 externally-managed; --break-system-packages is the
 # leanest fix here (no venv, no extra layers) for a single-purpose container.
-RUN pip3 install --no-cache-dir --break-system-packages -r backend/python/requirements.txt
+# Purge pip and its build tooling afterwards to shrink the image while keeping
+# python3 and the installed site-packages intact.
+RUN pip3 install --no-cache-dir --break-system-packages -r backend/python/requirements.txt \
+ && apt-get purge -y python3-pip && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*
 EXPOSE 3131
 WORKDIR /app/backend
+# Ensure the sticker packs directory exists with correct ownership before
+# switching to the non-root node user. The named volume (stickup-prod-stickers)
+# mounts here; a fresh volume inherits the image directory's ownership so node
+# can write on first bring-up without a privileged init container.
+RUN mkdir -p /app/backend/public/packs \
+ && chown -R node:node /app
+USER node
 CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main.js"]

@@ -31,15 +31,12 @@ model User {
   email              String?   @unique
   passwordHash       String?   @map("password_hash")
   referralCode       String?   @unique @map("referral_code")
-  generationsUsed    Int       @default(0) @map("generations_used")
-  // Set the first time the user "accepts" a pack — gets it on Telegram,
-  // downloads it, or unlocks it. Once set, generation/regeneration is locked.
-  generationLockedAt DateTime? @map("generation_locked_at") @db.Timestamptz(6)
 
   identities       ChannelIdentity[]
   loginTokens      LoginToken[]
   sessions         Session[]
   packs            Pack[]
+  packClaims       PackClaim[]
   referralsMade    Referral[]        @relation("referrer")
   referralReceived Referral?         @relation("referred")
 
@@ -98,10 +95,13 @@ model Session {
 }
 
 model PackClaim {
-  packId      String   @map("pack_id")
+  packId      String   @map("pack_id") @db.Uuid
   userId      String   @map("user_id") @db.Uuid
   deliveredAt DateTime @default(now()) @map("delivered_at") @db.Timestamptz(6)
   channel     Channel
+
+  pack Pack @relation(fields: [packId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([packId, userId])
   @@index([userId])
@@ -118,8 +118,9 @@ model Pack {
   sourceImageUrl         String?    @map("source_image_url")
   unlockedAt             DateTime?  @map("unlocked_at") @db.Timestamptz(6)
 
-  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user     User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   stickers Sticker[]
+  claims   PackClaim[]
 
   @@index([userId])
   @@map("packs")

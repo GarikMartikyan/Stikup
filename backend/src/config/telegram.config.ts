@@ -50,10 +50,10 @@ export const telegramConfig = registerAs(
   (): TelegramConfigSchema => {
     const raw = {
       botToken: process.env.TELEGRAM_BOT_TOKEN ?? '',
-      initDataMaxAgeSec: toInt(
-        process.env.TELEGRAM_INITDATA_MAX_AGE_SEC,
-        86400,
-      ),
+      // Mini App authenticates immediately on open, so keep the HMAC freshness
+      // window short (1h) to limit replay of a leaked initData string. Override
+      // via TELEGRAM_INITDATA_MAX_AGE_SEC if a longer window is needed.
+      initDataMaxAgeSec: toInt(process.env.TELEGRAM_INITDATA_MAX_AGE_SEC, 3600),
       // Use || undefined so an empty string is treated as unset and skips
       // the @IsUrl validator rather than failing it.
       miniAppUrl: process.env.TELEGRAM_MINI_APP_URL || undefined,

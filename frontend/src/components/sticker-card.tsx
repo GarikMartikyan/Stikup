@@ -50,20 +50,26 @@ export function StickerCard({
           locked ? "" : "group-hover:-translate-y-1 group-hover:scale-[1.04]"
         }`}
       >
-        <Image
-          src={src}
-          alt={alt}
-          width={size}
-          height={size}
-          className="h-full w-full object-contain p-2"
-          draggable={false}
-          unoptimized={unoptimized}
-        />
-
-        {locked && (
-          <div className="absolute right-1.5 top-1.5 grid h-7 w-7 place-items-center rounded-full bg-[var(--color-fg)] text-[var(--color-bg)] shadow-md ring-2 ring-[var(--color-bg-elev)]">
-            <Lock className="h-3.5 w-3.5" strokeWidth={2.5} />
+        {locked ? (
+          // Locked stickers must never be fetched: the backend gates their bytes
+          // (StickerFileController) and we render a placeholder instead of the
+          // real image, so the browser never even requests the locked artwork.
+          <div className="flex h-full w-full items-center justify-center rounded-[18%] bg-gradient-to-br from-[var(--color-bg-sunk)] to-[var(--color-border)]">
+            <Lock
+              className="h-1/4 w-1/4 text-[var(--color-fg-muted)]"
+              strokeWidth={2}
+            />
           </div>
+        ) : (
+          <Image
+            src={src}
+            alt={alt}
+            width={size}
+            height={size}
+            className="h-full w-full object-contain p-2"
+            draggable={false}
+            unoptimized={unoptimized}
+          />
         )}
       </div>
     </div>

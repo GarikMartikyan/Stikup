@@ -120,12 +120,17 @@ jest.mock('../sticker-assets', () => ({
     ]),
 }));
 
-// Mock sharp so persistSourceThumbnail doesn't require a native binary in tests.
+// Mock sharp so persistSourceThumbnail + the upload metadata guard don't require
+// a native binary in tests. metadata() returns a valid, in-bounds image by
+// default; individual tests override it to exercise the rejection paths.
 const mockSharpInstance = {
   rotate: jest.fn().mockReturnThis(),
   resize: jest.fn().mockReturnThis(),
   webp: jest.fn().mockReturnThis(),
   toBuffer: jest.fn().mockResolvedValue(Buffer.from('fake-webp')),
+  metadata: jest
+    .fn()
+    .mockResolvedValue({ format: 'png', width: 1024, height: 768 }),
 };
 jest.mock('sharp', () => jest.fn(() => mockSharpInstance));
 
@@ -207,6 +212,63 @@ describe('PackService', () => {
       );
       // sourceImageUrl is NOT persisted when the thumbnail can't be produced.
       expect(prisma.pack.update).not.toHaveBeenCalled();
+    });
+
+    it('rejects an upload that exceeds the max dimensions (pixel-bomb guard)', async () => {
+      const prisma = buildPrismaMock();
+      const bot = buildBotSenderMock();
+      const queue = buildQueueMock();
+      const service = buildService(prisma, bot, undefined, queue);
+
+      mockSharpInstance.metadata.mockResolvedValueOnce({
+        format: 'png',
+        width: 12000,
+        height: 12000,
+      });
+
+      await expect(
+        service.generatePack('user-abc', FAKE_IMAGE),
+      ).rejects.toThrow(/too large/i);
+
+      // Rejected before any pack row is created or job enqueued.
+      expect(prisma.pack.create).not.toHaveBeenCalled();
+      expect(queue.enqueueWebPack).not.toHaveBeenCalled();
+    });
+
+    it('rejects an undecodable / non-image upload', async () => {
+      const prisma = buildPrismaMock();
+      const bot = buildBotSenderMock();
+      const queue = buildQueueMock();
+      const service = buildService(prisma, bot, undefined, queue);
+
+      mockSharpInstance.metadata.mockRejectedValueOnce(
+        new Error('Input buffer contains unsupported image format'),
+      );
+
+      await expect(
+        service.generatePack('user-abc', FAKE_IMAGE),
+      ).rejects.toThrow(/not a valid image/i);
+
+      expect(prisma.pack.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects a disallowed image format', async () => {
+      const prisma = buildPrismaMock();
+      const bot = buildBotSenderMock();
+      const queue = buildQueueMock();
+      const service = buildService(prisma, bot, undefined, queue);
+
+      mockSharpInstance.metadata.mockResolvedValueOnce({
+        format: 'gif',
+        width: 512,
+        height: 512,
+      });
+
+      await expect(
+        service.generatePack('user-abc', FAKE_IMAGE),
+      ).rejects.toThrow(/PNG, JPEG, or WebP/i);
+
+      expect(prisma.pack.create).not.toHaveBeenCalled();
     });
 
     it('throws when user does not exist', async () => {

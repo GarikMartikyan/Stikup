@@ -46,7 +46,12 @@ import { TelegramModule } from './telegram/telegram.module';
         // loop) entirely. The injected Telegraf client still sends stickers
         // and messages — we only avoid the 409 Conflict that would crash a
         // local instance while the production bot owns the token.
-        ...(tg.launchBot ? {} : { launchOptions: false as const }),
+        // When we DO poll, dropPendingUpdates discards the backlog accumulated
+        // while the container was down (e.g. across a deploy), so a restart
+        // doesn't reprocess stale updates or fight a just-stopped poller.
+        ...(tg.launchBot
+          ? { launchOptions: { dropPendingUpdates: true } }
+          : { launchOptions: false as const }),
       }),
     }),
     ImageProcessingModule,

@@ -14,9 +14,16 @@
 .vscode
 .claude
 .playwright-mcp
+**/.playwright-mcp
 frontend/test-results
 frontend/e2e
 frontend/undefined
+
+# Large or irrelevant top-level directories.
+video generation/
+extra/
+docs/
+backend/openai-smoke-out/
 
 **/*.cpuprofile
 *.png

@@ -235,7 +235,10 @@ def split_grid_geometric(
                 continue
             sticker = fit_into_square(crop_to_content(cell), size)
             out_path = output_dir / f"{stem}_{idx:02d}.webp"
-            sticker.save(out_path, format="WEBP", lossless=True, quality=100)
+            # Lossy WebP (q90) for flat cartoon art: ~3-5x smaller than lossless
+            # at negligible visible quality loss, cutting the result-grid payload
+            # and each Telegram upload. method=6 = best compression effort.
+            sticker.save(out_path, format="WEBP", quality=90, method=6)
             print(f"Wrote {out_path}")
 
 
@@ -269,7 +272,8 @@ def split_grid(image_path: Path, output_dir: Path, rows: int, cols: int, size: i
 
         sticker = fit_into_square(crop, size)
         out_path = output_dir / f"{stem}_{idx:02d}.webp"
-        sticker.save(out_path, format="WEBP", lossless=True, quality=100)
+        # Lossy WebP (q90): see split_grid_geometric for rationale.
+        sticker.save(out_path, format="WEBP", quality=90, method=6)
         print(f"Wrote {out_path}")
 
 

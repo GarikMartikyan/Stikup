@@ -55,4 +55,7 @@ COPY --from=build /app/package.json ./package.json
 COPY --from=build /app/frontend ./frontend
 EXPOSE 3000
 WORKDIR /app/frontend
+# Frontend writes nothing to volumes but runs as non-root for defence-in-depth.
+RUN chown -R node:node /app
+USER node
 CMD ["npm", "run", "start"]

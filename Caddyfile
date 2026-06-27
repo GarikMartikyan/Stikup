@@ -9,6 +9,11 @@
 #  /auth/* and /api/* to the backend over the internal network
 #  (see frontend/next.config.ts rewrites). The backend is never
 #  exposed directly to the internet.
+#
+#  Security headers: HSTS, content-type sniff guard, referrer policy.
+#  X-Frame-Options and CSP are intentionally omitted: the Next app sets
+#  frame-ancestors per-route and is embedded in Telegram's Mini App
+#  iframe — a blanket deny here would break that.
 # =====================================================================
 
 {
@@ -18,6 +23,12 @@
 # Canonical apex host — serves the app.
 {$DOMAIN} {
 	encode gzip zstd
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+	}
 
 	reverse_proxy frontend:3000 {
 		# Preserve the original host/scheme so the backend builds correct

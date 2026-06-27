@@ -6,7 +6,16 @@ import {
   HttpStatus,
   Logger,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import type { Request, Response } from 'express';
+
+// Map Prisma known-error codes to safe HTTP statuses + generic client messages
+// (never leak the raw DB error). Anything unmapped becomes a generic 400.
+const PRISMA_ERROR_MAP: Record<string, { status: number; message: string }> = {
+  P2002: { status: HttpStatus.CONFLICT, message: 'Resource already exists' },
+  P2025: { status: HttpStatus.NOT_FOUND, message: 'Resource not found' },
+  P2003: { status: HttpStatus.BAD_REQUEST, message: 'Invalid reference' },
+};
 
 interface ErrorResponseBody {
   statusCode: number;
@@ -60,6 +69,25 @@ export class AllExceptionsFilter implements ExceptionFilter {
         path,
       };
       response.status(status).json(body);
+      return;
+    }
+
+    if (exception instanceof Prisma.PrismaClientKnownRequestError) {
+      const mapped = PRISMA_ERROR_MAP[exception.code] ?? {
+        status: HttpStatus.BAD_REQUEST,
+        message: 'Invalid request',
+      };
+      // Client-driven, expected condition — warn, don't error.
+      this.logger.warn(
+        `Prisma ${exception.code} on ${request?.method ?? 'UNKNOWN'} ${path}`,
+      );
+      const body: ErrorResponseBody = {
+        statusCode: mapped.status,
+        message: mapped.message,
+        timestamp,
+        path,
+      };
+      response.status(mapped.status).json(body);
       return;
     }
 

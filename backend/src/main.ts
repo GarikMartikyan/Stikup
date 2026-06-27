@@ -11,7 +11,6 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { appConfig } from './config/app.config';
 import { getEnvProfile } from './config/environment';
 import { frontendConfig } from './config/frontend.config';
-import { storageConfig } from './config/storage.config';
 import { buildOpenApiDocumentBuilder } from './openapi/document-builder';
 
 async function bootstrap(): Promise<void> {
@@ -30,8 +29,14 @@ async function bootstrap(): Promise<void> {
   const origins = Array.from(
     new Set([
       frontendCfg.publicAppUrl,
-      `http://localhost:${frontendCfg.port}`,
-      `http://127.0.0.1:${frontendCfg.port}`,
+      // localhost origins are dev-only — never trust them in production, where
+      // CORS runs with credentials:true.
+      ...(profile.isProd
+        ? []
+        : [
+            `http://localhost:${frontendCfg.port}`,
+            `http://127.0.0.1:${frontendCfg.port}`,
+          ]),
     ]),
   );
   app.enableCors({
@@ -50,12 +55,9 @@ async function bootstrap(): Promise<void> {
   );
   app.useGlobalFilters(new AllExceptionsFilter());
 
-  // Serve generated sticker packs. Next.js rewrites /api/:path* → backend /:path*,
-  // so the browser URL /api/static/packs/... maps to /static/packs/... here.
-  const storageCfg = app.get<ConfigType<typeof storageConfig>>(
-    storageConfig.KEY,
-  );
-  app.useStaticAssets(storageCfg.stickerDir, { prefix: '/static/packs' });
+  // Generated sticker packs are served by StickerFileController (owner- and
+  // unlock-gated), NOT as unconditional static assets — the 9 locked stickers
+  // are the per-pack referral gate and must not be world-readable.
 
   if (profile.swaggerEnabled) {
     const document = SwaggerModule.createDocument(

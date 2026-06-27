@@ -15,6 +15,17 @@
 #  non-secret runtime vars it actually reads, so a frontend compromise
 #  can never leak the bot token, Google secret, or DB password.
 #
+#  Resource limits: sized for 2 vCPU / 4 GB RAM droplet.
+#    Budget (leaves ~512 MB host headroom):
+#      postgres   768m  / 1.0 CPU
+#      redis      384m  / 0.5 CPU
+#      backend   1280m  / 1.5 CPU
+#      frontend   768m  / 1.5 CPU
+#      caddy      128m  / 0.5 CPU
+#      db-backup  192m  / 0.5 CPU
+#    memswap_limit == mem_limit: disables per-container swap so a memory
+#    leak fails fast instead of thrashing the shared box.
+#
 #  Deploy (on the server):
 #    docker compose \
 #      --env-file .env.production \
@@ -30,6 +41,19 @@ services:
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
+    # Tuned for 4 GB droplet: shared_buffers ~25 % of Postgres mem budget,
+    # effective_cache_size ~75 %, work_mem modest, max_connections capped so
+    # Prisma's connection_limit=10 leaves ample headroom.
+    command: >
+      postgres
+        -c shared_buffers=512MB
+        -c effective_cache_size=1536MB
+        -c work_mem=8MB
+        -c maintenance_work_mem=128MB
+        -c max_connections=50
+    mem_limit: 768m
+    memswap_limit: 768m
+    cpus: '1.0'
     # Bind to the droplet's loopback ONLY (never 0.0.0.0): reachable from
     # an on-droplet SSH tunnel (e.g. DataGrip) but not from the internet.
     ports:
@@ -49,6 +73,18 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
+    # BullMQ backing store: noeviction so queued jobs are never silently
+    # dropped; persistence off (RDB/AOF) because jobs are ephemeral and
+    # throughput is low. maxmemory cap kept well under container mem_limit.
+    command: >
+      redis-server
+        --maxmemory 256mb
+        --maxmemory-policy noeviction
+        --save ""
+        --appendonly no
+    mem_limit: 384m
+    memswap_limit: 384m
+    cpus: '0.5'
     volumes:
       - stickup-prod-redis:/data
     healthcheck:
@@ -63,6 +99,9 @@ services:
       context: .
       dockerfile: backend/Dockerfile
     restart: unless-stopped
+    mem_limit: 1280m
+    memswap_limit: 1280m
+    cpus: '1.5'
     depends_on:
       postgres:
         condition: service_healthy
@@ -75,10 +114,14 @@ services:
         required: false
     environment:
       # Reach Postgres/Redis over the compose network (override any host value).
-      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      # connection_limit=10: Prisma pool stays well under postgres max_connections=50.
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public&connection_limit=10
       REDIS_URL: redis://redis:6379
       # Stable in-container path; matches the named volume mount below.
       STICKER_STORAGE_DIR: /app/backend/public/packs
+      # Cap V8 old-gen below the 1280m container limit; leaves ~384m for the
+      # Python subprocess that splits sticker grids.
+      NODE_OPTIONS: --max-old-space-size=896
     volumes:
       - stickup-prod-stickers:/app/backend/public/packs
     healthcheck:
@@ -103,6 +146,9 @@ services:
         NEXT_PUBLIC_TELEGRAM_BOT_URL: ${NEXT_PUBLIC_TELEGRAM_BOT_URL}
         NEXT_PUBLIC_ADSGRAM_BLOCK_ID: ${NEXT_PUBLIC_ADSGRAM_BLOCK_ID:-}
     restart: unless-stopped
+    mem_limit: 768m
+    memswap_limit: 768m
+    cpus: '1.5'
     depends_on:
       backend:
         condition: service_healthy
@@ -114,6 +160,8 @@ services:
       BACKEND_URL: http://backend:3131
       # Name of the session cookie the frontend looks for (non-secret).
       SESSION_COOKIE_NAME: ${SESSION_COOKIE_NAME:-sid}
+      # Cap V8 old-gen below the 768m container limit.
+      NODE_OPTIONS: --max-old-space-size=512
     healthcheck:
       test:
         - CMD
@@ -128,6 +176,9 @@ services:
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
+    mem_limit: 128m
+    memswap_limit: 128m
+    cpus: '0.5'
     depends_on:
       frontend:
         condition: service_healthy
@@ -145,6 +196,9 @@ services:
   db-backup:
     image: prodrigestivill/postgres-backup-local:16-alpine
     restart: unless-stopped
+    mem_limit: 192m
+    memswap_limit: 192m
+    cpus: '0.5'
     depends_on:
       postgres:
         condition: service_healthy

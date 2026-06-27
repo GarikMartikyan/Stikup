@@ -3,7 +3,12 @@ import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  Logger,
+} from '@nestjs/common';
 import type { ConfigType } from '@nestjs/config';
 import { Prisma } from '@prisma/client';
 import sharp from 'sharp';
@@ -87,6 +92,34 @@ export class PackService {
     userId: string,
     sourceImage: Buffer,
   ): Promise<{ packId: string }> {
+    // Reject non-images and decompression/pixel bombs up front. metadata() reads
+    // only the image header (no full-bitmap decode), so a tiny flat-colour PNG
+    // that would expand to gigapixels is rejected HERE instead of OOM-ing the
+    // OpenCV/numpy worker on the shared droplet. Also enforces the format
+    // allowlist the splitter (cv2.imread) actually supports.
+    let meta: Awaited<ReturnType<ReturnType<typeof sharp>['metadata']>>;
+    try {
+      meta = await sharp(sourceImage).metadata();
+    } catch {
+      throw new BadRequestException('uploaded file is not a valid image');
+    }
+    const ALLOWED_FORMATS = ['png', 'jpeg', 'webp'];
+    if (!meta.format || !ALLOWED_FORMATS.includes(meta.format)) {
+      throw new BadRequestException('image must be PNG, JPEG, or WebP');
+    }
+    const width = meta.width ?? 0;
+    const height = meta.height ?? 0;
+    const MAX_EDGE = 6000; // px per side
+    const MAX_PIXELS = 40_000_000; // 40 MP
+    if (width < 1 || height < 1) {
+      throw new BadRequestException('could not read image dimensions');
+    }
+    if (width > MAX_EDGE || height > MAX_EDGE || width * height > MAX_PIXELS) {
+      throw new BadRequestException(
+        'image is too large (max 6000px per side, 40MP total)',
+      );
+    }
+
     // Verify the user exists. The pack FK would eventually error, but an
     // explicit check gives a clear message for the caller.
     const userExists = await this.prisma.user.findUnique({
@@ -475,10 +508,26 @@ export class PackService {
       throw err;
     }
 
+    // Send under a try/rollback: a mid-loop Telegram failure must NOT leave the
+    // claim persisted, or the user is permanently locked out of their free
+    // stickers (the claim short-circuits every retry). Roll the claim back so a
+    // retry can re-deliver.
     const stickers = this.getFreeStickerFiles();
-    for (const filename of stickers) {
-      const path = join(FREE_STICKER_DIR, filename);
-      await this.botSender.sendSticker(identity.channelUserId, path);
+    try {
+      for (const filename of stickers) {
+        const path = join(FREE_STICKER_DIR, filename);
+        await this.botSender.sendSticker(identity.channelUserId, path);
+      }
+    } catch (err) {
+      this.logger.warn(
+        `claim-free: send failed for pack ${packId}, rolling back claim: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+      await this.prisma.packClaim
+        .delete({ where: { packId_userId: { packId, userId } } })
+        .catch(() => {});
+      return { delivered: false, botUrl };
     }
 
     this.logger.log(

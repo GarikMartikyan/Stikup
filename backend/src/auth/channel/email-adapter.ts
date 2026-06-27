@@ -52,6 +52,11 @@ export class EmailAdapter {
     });
 
     if (!user?.passwordHash) {
+      // Run an equivalent-cost argon2 KDF even when the account doesn't exist so
+      // login latency is identical for registered vs unregistered emails — this
+      // closes the timing oracle (CWE-208) that otherwise leaks account
+      // existence despite the generic error message.
+      await argon2.hash(password);
       throw new UnauthorizedException('Invalid credentials');
     }
 

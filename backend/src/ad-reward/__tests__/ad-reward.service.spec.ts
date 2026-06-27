@@ -1,12 +1,6 @@
 import { PrismaService } from '../../prisma/prisma.service';
 import { AdRewardService } from '../ad-reward.service';
 
-const OFFER_STUB = {
-  baseGenerations: 2,
-  referralBonusGenerations: 2,
-  unlimitedGenerations: false,
-};
-
 function buildPrismaMock() {
   return {
     user: { findUnique: jest.fn() },
@@ -26,7 +20,10 @@ function buildService(
     unlimitedGenerations: boolean;
   },
 ) {
-  return new AdRewardService(prisma, offer as any);
+  return new AdRewardService(
+    prisma,
+    offer as unknown as ConstructorParameters<typeof AdRewardService>[1],
+  );
 }
 
 describe('AdRewardService.grantAdReward', () => {
@@ -68,8 +65,7 @@ describe('AdRewardService.grantAdReward', () => {
     const result = await service.grantAdReward('user-1');
 
     expect(prisma.adReward.create).not.toHaveBeenCalled();
-    expect(result.regensLeft).toBeGreaterThan(0);
+    // Unlimited returns the cap directly: 2 + 2*0 + 0 = 2.
+    expect(result).toEqual({ regensLeft: 2 });
   });
 });
-
-void OFFER_STUB;

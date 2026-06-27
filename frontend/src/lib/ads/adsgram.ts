@@ -2,9 +2,10 @@
  * Minimal, SSR-safe wrapper around the Adsgram Mini-App SDK.
  *
  * The SDK is loaded via a <Script> tag in layout.tsx and attaches itself to
- * `window.Adsgram`. This file only reads that global. `showInterstitial` is
- * best-effort: it always resolves to a tagged result and never rejects, and it
- * is bounded by a timeout so a hung ad can never block the caller.
+ * `window.Adsgram`. This file only reads that global. The exported
+ * `showInterstitial` / `showRewarded` are best-effort: they always resolve to a
+ * tagged result and never reject, and are bounded by a timeout so a hung ad can
+ * never block the caller.
  */
 import { isTelegramEnv } from "@/lib/telegram/webapp";
 import { adsgramBlockId, adsgramRewardBlockId } from "@/lib/config";

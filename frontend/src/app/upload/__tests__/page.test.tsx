@@ -79,7 +79,7 @@ describe('UploadPage submit', () => {
     expect(showInterstitialMock).not.toHaveBeenCalled();
   });
 
-  it('Telegram: runs ad + generation in parallel, then navigates to the result', async () => {
+  it('Telegram: creates the pack, plays the ad, then navigates to the result', async () => {
     isTelegramEnvMock.mockReturnValue(true);
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,

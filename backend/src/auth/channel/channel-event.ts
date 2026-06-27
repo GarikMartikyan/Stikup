@@ -7,5 +7,6 @@ export interface ChannelEvent {
     displayName?: string;
     username?: string;
     avatarUrl?: string;
+    languageCode?: string;
   };
 }

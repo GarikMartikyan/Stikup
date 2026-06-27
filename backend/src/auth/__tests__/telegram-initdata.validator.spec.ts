@@ -62,6 +62,7 @@ describe('validateInitData', () => {
       expect(result.user.displayName).toBe('Alice Smith');
       expect(result.user.username).toBe('alicesmith');
       expect(result.user.avatarUrl).toBe('https://t.me/alice.jpg');
+      expect(result.user.languageCode).toBe('en');
       expect(result.authDate).toBeInstanceOf(Date);
     });
 
@@ -110,6 +111,15 @@ describe('validateInitData', () => {
       expect(result.startParam).toBe(
         'MYCODE_550e8400-e29b-41d4-a716-446655440000',
       );
+    });
+
+    it('returns languageCode undefined when user has no language_code field', () => {
+      const userJson = JSON.stringify({ id: 9, first_name: 'Charlie' });
+      const initData = buildInitData({ user: userJson });
+      const result = validateInitData(initData, FAKE_BOT_TOKEN, MAX_AGE_SEC);
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.user.languageCode).toBeUndefined();
     });
 
     it('returns startParam undefined when absent', () => {

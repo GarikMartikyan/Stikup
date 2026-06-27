@@ -26,6 +26,7 @@
     "failed": "Sorry, something went wrong connecting your account. Please try again."
   },
   "referral": {
-    "unlocked": "🎉 Someone joined through your link — all 12 stickers in your pack are now unlocked!"
+    "unlocked": "🎉 Someone joined through your link — all 12 stickers in your pack are now unlocked!",
+    "your_pack": "Add your full pack to Telegram:"
   }
 }

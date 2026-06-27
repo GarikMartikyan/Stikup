@@ -77,6 +77,57 @@ describe('IdentityService', () => {
       expect(prisma.channelIdentity.update).not.toHaveBeenCalled();
     });
 
+    it('writes languageCode to the identity on create', async () => {
+      const prisma = buildPrismaMock();
+      (prisma.channelIdentity.findUnique as jest.Mock).mockResolvedValueOnce(
+        null,
+      );
+      (prisma.user.create as jest.Mock).mockResolvedValueOnce({
+        id: 'user-new-lang',
+      });
+      const service = new IdentityService(prisma);
+
+      const eventWithLang: ChannelEvent = {
+        channel: 'telegram',
+        channelUserId: '456',
+        profile: { displayName: 'Ada', username: 'ada', languageCode: 'ru' },
+      };
+
+      await service.resolveOrCreate(eventWithLang);
+
+      expect(prisma.user.create).toHaveBeenCalledWith({
+        data: {
+          identities: {
+            create: expect.objectContaining({ languageCode: 'ru' }),
+          },
+        },
+        select: { id: true },
+      });
+    });
+
+    it('updates languageCode on returning user', async () => {
+      const prisma = buildPrismaMock();
+      (prisma.channelIdentity.findUnique as jest.Mock).mockResolvedValueOnce({
+        userId: 'user-existing-lang',
+      });
+      const service = new IdentityService(prisma);
+
+      const eventWithLang: ChannelEvent = {
+        channel: 'telegram',
+        channelUserId: '123',
+        profile: { displayName: 'Ada', username: 'ada', languageCode: 'ru' },
+      };
+
+      await service.resolveOrCreate(eventWithLang);
+
+      expect(prisma.channelIdentity.update).toHaveBeenCalledWith({
+        where: {
+          channel_channelUserId: { channel: 'telegram', channelUserId: '123' },
+        },
+        data: expect.objectContaining({ languageCode: 'ru' }),
+      });
+    });
+
     it('updates displayName + username on returning user and returns existing userId', async () => {
       const prisma = buildPrismaMock();
       (prisma.channelIdentity.findUnique as jest.Mock).mockResolvedValueOnce({

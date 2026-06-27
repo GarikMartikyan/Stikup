@@ -1,4 +1,5 @@
 import { Prisma } from '@prisma/client';
+import { I18nService } from 'nestjs-i18n';
 
 import type { BotSender } from '../../auth/channel/bot-sender';
 import type { TelegramStickerService } from '../../auth/channel/telegram-sticker.service';
@@ -64,6 +65,17 @@ function buildStickerServiceMock(): jest.Mocked<TelegramStickerService> {
   } as unknown as jest.Mocked<TelegramStickerService>;
 }
 
+function buildI18nMock(): jest.Mocked<I18nService> {
+  return {
+    t: jest
+      .fn()
+      .mockImplementation(
+        (key: string, opts?: { lang?: string }) =>
+          `${key}:${opts?.lang ?? 'en'}`,
+      ),
+  } as unknown as jest.Mocked<I18nService>;
+}
+
 const OFFER_STUB = {
   packSize: 12,
   freeStickerCount: 3,
@@ -75,6 +87,7 @@ function buildService(
   prisma: jest.Mocked<PrismaService>,
   botSender: jest.Mocked<BotSender>,
   stickerSvc?: jest.Mocked<TelegramStickerService>,
+  i18n?: jest.Mocked<I18nService>,
 ) {
   const service = new ReferralService(
     prisma,
@@ -82,6 +95,7 @@ function buildService(
     botSender,
     stickerSvc ?? buildStickerServiceMock(),
     { stickerDir: '/tmp/stikup-test-packs' },
+    i18n ?? buildI18nMock(),
   );
   return service;
 }
@@ -378,7 +392,10 @@ describe('ReferralService', () => {
       expect(prisma.pack.update).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: 'pack-a' },
-          data: { telegramStickerCount: 12 },
+          data: {
+            telegramStickerSetName: 'pabcdef_by_testbot',
+            telegramStickerCount: 12,
+          },
         }),
       );
       // Message should contain pack link
@@ -388,19 +405,20 @@ describe('ReferralService', () => {
       );
     });
 
-    it('skips top-up when pack has no Telegram sticker set yet', async () => {
+    it('always calls ensureSet on unlock even when pack has no existing Telegram sticker set', async () => {
       const prisma = buildPrismaMock();
       const bot = buildBotSenderMock();
       const stickerSvc = buildStickerServiceMock();
-      const service = buildService(prisma, bot, stickerSvc);
+      const i18n = buildI18nMock();
+      const service = buildService(prisma, bot, stickerSvc, i18n);
 
       (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
         id: 'referrer-id',
       });
       (prisma.referral.create as jest.Mock).mockResolvedValueOnce({});
-      // Pack has no Telegram set yet
+      // Pack has NO Telegram set yet
       (prisma.pack.findUnique as jest.Mock).mockResolvedValueOnce({
-        id: 'pack-a',
+        id: 'pack-new',
         userId: 'referrer-id',
         unlockedAt: null,
         telegramStickerSetName: null,
@@ -409,21 +427,190 @@ describe('ReferralService', () => {
       (prisma.channelIdentity.findFirst as jest.Mock).mockResolvedValueOnce({
         channelUserId: '12345',
         username: 'alice',
+        languageCode: 'en',
       });
 
-      await service.attribute('new-user-id', 'REFCODE', 'email', 'pack-a');
+      await service.attribute('new-user-id', 'REFCODE', 'email', 'pack-new');
+      await new Promise((r) => setTimeout(r, 0));
+
+      // ensureSet must be called even though telegramStickerSetName was null
+      expect(stickerSvc.ensureSet).toHaveBeenCalledTimes(1);
+      expect(stickerSvc.ensureSet).toHaveBeenCalledWith(
+        expect.objectContaining({ packId: 'pack-new' }),
+      );
+      // Both set name and count are persisted
+      expect(prisma.pack.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'pack-new' },
+          data: {
+            telegramStickerSetName: 'pabcdef_by_testbot',
+            telegramStickerCount: 12,
+          },
+        }),
+      );
+      // Message includes the pack link
+      expect(bot.sendMessage).toHaveBeenCalledWith(
+        '12345',
+        expect.stringContaining('t.me/addstickers'),
+      );
+    });
+
+    it('sends localized unlock message in Russian when referrer has ru languageCode', async () => {
+      const prisma = buildPrismaMock();
+      const bot = buildBotSenderMock();
+      const stickerSvc = buildStickerServiceMock();
+      const i18n = buildI18nMock();
+      const service = buildService(prisma, bot, stickerSvc, i18n);
+
+      (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
+        id: 'referrer-id',
+      });
+      (prisma.referral.create as jest.Mock).mockResolvedValueOnce({});
+      (prisma.pack.findUnique as jest.Mock).mockResolvedValueOnce({
+        id: 'pack-ru',
+        userId: 'referrer-id',
+        unlockedAt: null,
+        telegramStickerSetName: null,
+        telegramStickerCount: 0,
+      });
+      (prisma.channelIdentity.findFirst as jest.Mock).mockResolvedValueOnce({
+        channelUserId: '99999',
+        username: 'ivan',
+        languageCode: 'ru',
+      });
+
+      await service.attribute('new-user-id', 'REFCODE', 'telegram', 'pack-ru');
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(i18n.t).toHaveBeenCalledWith('telegram.referral.unlocked', {
+        lang: 'ru',
+      });
+      expect(i18n.t).toHaveBeenCalledWith('telegram.referral.your_pack', {
+        lang: 'ru',
+      });
+      expect(bot.sendMessage).toHaveBeenCalledWith(
+        '99999',
+        expect.stringContaining('telegram.referral.unlocked:ru'),
+      );
+      expect(bot.sendMessage).toHaveBeenCalledWith(
+        '99999',
+        expect.stringContaining('telegram.referral.your_pack:ru'),
+      );
+    });
+
+    it('sends localized unlock message in English when referrer has null languageCode', async () => {
+      const prisma = buildPrismaMock();
+      const bot = buildBotSenderMock();
+      const stickerSvc = buildStickerServiceMock();
+      const i18n = buildI18nMock();
+      const service = buildService(prisma, bot, stickerSvc, i18n);
+
+      (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
+        id: 'referrer-id',
+      });
+      (prisma.referral.create as jest.Mock).mockResolvedValueOnce({});
+      (prisma.pack.findUnique as jest.Mock).mockResolvedValueOnce({
+        id: 'pack-en',
+        userId: 'referrer-id',
+        unlockedAt: null,
+        telegramStickerSetName: null,
+        telegramStickerCount: 0,
+      });
+      (prisma.channelIdentity.findFirst as jest.Mock).mockResolvedValueOnce({
+        channelUserId: '88888',
+        username: 'alice',
+        languageCode: null,
+      });
+
+      await service.attribute('new-user-id', 'REFCODE', 'telegram', 'pack-en');
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(i18n.t).toHaveBeenCalledWith('telegram.referral.unlocked', {
+        lang: 'en',
+      });
+      expect(bot.sendMessage).toHaveBeenCalledWith(
+        '88888',
+        expect.stringContaining('telegram.referral.unlocked:en'),
+      );
+    });
+
+    it('sends message without pack link when sticker files are unavailable', async () => {
+      const prisma = buildPrismaMock();
+      const bot = buildBotSenderMock();
+      const stickerSvc = buildStickerServiceMock();
+      const i18n = buildI18nMock();
+      const service = buildService(prisma, bot, stickerSvc, i18n);
+
+      (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
+        id: 'referrer-id',
+      });
+      (prisma.referral.create as jest.Mock).mockResolvedValueOnce({});
+      (prisma.pack.findUnique as jest.Mock).mockResolvedValueOnce({
+        id: 'pack-no-files',
+        userId: 'referrer-id',
+        unlockedAt: null,
+        telegramStickerSetName: null,
+        telegramStickerCount: 0,
+      });
+      (prisma.channelIdentity.findFirst as jest.Mock).mockResolvedValueOnce({
+        channelUserId: '77777',
+        username: 'alice',
+        languageCode: 'en',
+      });
+      jest.mocked(getPackStickerFiles).mockReturnValueOnce([]);
+
+      await service.attribute(
+        'new-user-id',
+        'REFCODE',
+        'telegram',
+        'pack-no-files',
+      );
       await new Promise((r) => setTimeout(r, 0));
 
       expect(stickerSvc.ensureSet).not.toHaveBeenCalled();
-      // Still unlocks the pack and sends the notification (without links)
-      expect(prisma.pack.update).toHaveBeenCalledWith({
-        where: { id: 'pack-a' },
-        data: { unlockedAt: expect.any(Date) },
-      });
       expect(bot.sendMessage).toHaveBeenCalledTimes(1);
       expect(bot.sendMessage).toHaveBeenCalledWith(
-        '12345',
-        expect.stringContaining('unlocked'),
+        '77777',
+        'telegram.referral.unlocked:en',
+      );
+    });
+
+    it('sends message without pack link when ensureSet throws', async () => {
+      const prisma = buildPrismaMock();
+      const bot = buildBotSenderMock();
+      const stickerSvc = buildStickerServiceMock();
+      const i18n = buildI18nMock();
+      const service = buildService(prisma, bot, stickerSvc, i18n);
+
+      (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
+        id: 'referrer-id',
+      });
+      (prisma.referral.create as jest.Mock).mockResolvedValueOnce({});
+      (prisma.pack.findUnique as jest.Mock).mockResolvedValueOnce({
+        id: 'pack-fail2',
+        userId: 'referrer-id',
+        unlockedAt: null,
+        telegramStickerSetName: null,
+        telegramStickerCount: 0,
+      });
+      (prisma.channelIdentity.findFirst as jest.Mock).mockResolvedValueOnce({
+        channelUserId: '66666',
+        username: 'alice',
+        languageCode: 'en',
+      });
+      (stickerSvc.ensureSet as jest.Mock).mockRejectedValueOnce(
+        new Error('Telegram API error'),
+      );
+
+      await expect(
+        service.attribute('new-user-id', 'REFCODE', 'telegram', 'pack-fail2'),
+      ).resolves.toBeUndefined();
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(bot.sendMessage).toHaveBeenCalledTimes(1);
+      expect(bot.sendMessage).toHaveBeenCalledWith(
+        '66666',
+        'telegram.referral.unlocked:en',
       );
     });
 

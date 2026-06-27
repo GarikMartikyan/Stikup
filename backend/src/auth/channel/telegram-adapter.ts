@@ -31,6 +31,7 @@ export class TelegramAdapter {
         displayName: displayName || undefined,
         username: from.username,
         avatarUrl,
+        languageCode: from.language_code,
       },
     };
   }

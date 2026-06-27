@@ -34,6 +34,7 @@ export class IdentityService {
           displayName: event.profile.displayName,
           username: event.profile.username,
           avatarUrl: event.profile.avatarUrl,
+          languageCode: event.profile.languageCode,
         },
       });
       return { userId: existing.userId, created: false };
@@ -48,6 +49,7 @@ export class IdentityService {
             displayName: event.profile.displayName,
             username: event.profile.username,
             avatarUrl: event.profile.avatarUrl,
+            languageCode: event.profile.languageCode,
           },
         },
       },
@@ -87,6 +89,7 @@ export class IdentityService {
           displayName: event.profile.displayName,
           username: event.profile.username,
           avatarUrl: event.profile.avatarUrl,
+          languageCode: event.profile.languageCode,
         },
       });
       return { status: 'already' };
@@ -101,6 +104,7 @@ export class IdentityService {
           displayName: event.profile.displayName,
           username: event.profile.username,
           avatarUrl: event.profile.avatarUrl,
+          languageCode: event.profile.languageCode,
         },
       });
     } catch (err) {

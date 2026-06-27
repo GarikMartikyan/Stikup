@@ -4,6 +4,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { ConfigType } from '@nestjs/config';
 import type { Channel } from '@prisma/client';
 import { Prisma } from '@prisma/client';
+import { I18nService } from 'nestjs-i18n';
 
 import { BOT_SENDER, type BotSender } from '../auth/channel/bot-sender';
 import { TelegramStickerService } from '../auth/channel/telegram-sticker.service';
@@ -11,11 +12,10 @@ import { offerConfig } from '../config/offer.config';
 import { storageConfig } from '../config/storage.config';
 import { getPackStickerFiles } from '../pack/sticker-assets';
 import { PrismaService } from '../prisma/prisma.service';
+import { resolveLang } from '../telegram/telegram-i18n';
 
 const REFERRAL_CODE_BYTES = 6; // 6 bytes → 8 base62 chars
 const PENDING_REFERRAL_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
-const REFERRAL_UNLOCK_MESSAGE =
-  '🎉 A friend joined through your link — your sticker pack is now fully unlocked (all 12)!';
 
 function toBase62(buf: Buffer): string {
   const alphabet =
@@ -42,6 +42,7 @@ export class ReferralService {
     private readonly telegramStickerService: TelegramStickerService,
     @Inject(storageConfig.KEY)
     private readonly storage: ConfigType<typeof storageConfig>,
+    private readonly i18n: I18nService,
   ) {}
 
   async getOrCreateReferralInfo(userId: string): Promise<{
@@ -122,65 +123,68 @@ export class ReferralService {
           });
 
           // Best-effort: notify the referrer via Telegram if they have an
-          // identity, and top up this pack's sticker set if it is below full size.
+          // identity, and deliver the full sticker set now that the pack is unlocked.
           const tgIdentity = await this.prisma.channelIdentity.findFirst({
             where: { userId: referrer.id, channel: 'telegram' },
-            select: { channelUserId: true, username: true },
+            select: { channelUserId: true, username: true, languageCode: true },
           });
 
           if (tgIdentity) {
+            const lang = resolveLang(tgIdentity.languageCode ?? undefined);
+            const message = this.i18n.t('telegram.referral.unlocked', {
+              lang,
+            });
             const packSize = this.offer.packSize;
-            const setLinks: string[] = [];
+            const usernameOrFallback =
+              tgIdentity.username ?? `user${tgIdentity.channelUserId}`;
 
-            // Top-up only the specific unlocked pack if it has a partial set.
-            if (
-              pack.telegramStickerSetName != null &&
-              pack.telegramStickerCount < packSize
-            ) {
-              const usernameOrFallback =
-                tgIdentity.username ?? `user${tgIdentity.channelUserId}`;
+            const files = getPackStickerFiles(
+              this.storage.stickerDir,
+              pack.id,
+              packSize,
+            );
 
-              const files = getPackStickerFiles(
-                this.storage.stickerDir,
-                pack.id,
-                packSize,
+            let shareUrl: string | undefined;
+
+            if (files.length === 0) {
+              this.logger.warn(
+                `referral top-up: real stickers unavailable for pack ${pack.id}; skipping`,
               );
-
-              if (files.length === 0) {
+            } else {
+              try {
+                const result = await this.telegramStickerService.ensureSet({
+                  channelUserId: tgIdentity.channelUserId,
+                  packId: pack.id,
+                  usernameOrFallback,
+                  files,
+                });
+                await this.prisma.pack.update({
+                  where: { id: pack.id },
+                  data: {
+                    telegramStickerSetName: result.name,
+                    telegramStickerCount: result.count,
+                  },
+                });
+                shareUrl = result.shareUrl;
+              } catch (topUpErr: unknown) {
                 this.logger.warn(
-                  `referral top-up: real stickers unavailable for pack ${pack.id}; skipping`,
+                  `referral top-up: ensureSet failed for pack ${pack.id}: ${topUpErr instanceof Error ? topUpErr.message : String(topUpErr)}`,
                 );
-              } else {
-                try {
-                  const result = await this.telegramStickerService.ensureSet({
-                    channelUserId: tgIdentity.channelUserId,
-                    packId: pack.id,
-                    usernameOrFallback,
-                    files,
-                  });
-                  await this.prisma.pack.update({
-                    where: { id: pack.id },
-                    data: { telegramStickerCount: result.count },
-                  });
-                  setLinks.push(result.shareUrl);
-                } catch (topUpErr: unknown) {
-                  this.logger.warn(
-                    `referral top-up: ensureSet failed for pack ${pack.id}: ${topUpErr instanceof Error ? topUpErr.message : String(topUpErr)}`,
-                  );
-                }
               }
             }
 
-            const linkText =
-              setLinks.length > 0
-                ? '\n\nYour updated pack:\n' + setLinks.join('\n')
-                : '';
+            const text = shareUrl
+              ? message +
+                '\n\n' +
+                this.i18n.t('telegram.referral.your_pack', {
+                  lang,
+                }) +
+                '\n' +
+                shareUrl
+              : message;
 
             this.botSender
-              .sendMessage(
-                tgIdentity.channelUserId,
-                REFERRAL_UNLOCK_MESSAGE + linkText,
-              )
+              .sendMessage(tgIdentity.channelUserId, text)
               .catch((err: unknown) => {
                 this.logger.warn(
                   `referral unlock notification failed for user ${referrer.id}: ${err instanceof Error ? err.message : String(err)}`,

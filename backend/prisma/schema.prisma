@@ -51,6 +51,7 @@ model ChannelIdentity {
   displayName   String?  @map("display_name")
   username      String?
   avatarUrl     String?  @map("avatar_url")
+  languageCode  String?  @map("language_code")
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)

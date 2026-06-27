@@ -5,6 +5,7 @@ export interface TgUser {
   displayName: string | undefined;
   username: string | undefined;
   avatarUrl: string | undefined;
+  languageCode: string | undefined;
 }
 
 export type ValidateInitDataResult =
@@ -139,6 +140,7 @@ function _validate(
     displayName,
     username: tgUser.username,
     avatarUrl: tgUser.photo_url,
+    languageCode: tgUser.language_code,
   };
 
   const startParam = params.get('start_param') ?? undefined;

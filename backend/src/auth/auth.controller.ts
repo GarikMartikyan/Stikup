@@ -464,6 +464,7 @@ export class AuthController {
         displayName: user.displayName,
         username: user.username,
         avatarUrl: user.avatarUrl,
+        languageCode: user.languageCode,
       },
     });
 

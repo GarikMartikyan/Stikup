@@ -65,7 +65,7 @@ export default function CreatePage() {
             {copied ? t("create.copied") : t("create.copy_prompt")}
           </button>
           <a
-            href={`https://chat.openai.com/?q=${encodeURIComponent(prompt)}`}
+            href={`https://chatgpt.com/?q=${encodeURIComponent(prompt)}`}
             target="_blank"
             rel="noopener noreferrer"
             onClick={() => setHasInteracted(true)}

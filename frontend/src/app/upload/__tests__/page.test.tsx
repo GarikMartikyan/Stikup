@@ -103,7 +103,10 @@ describe('UploadPage submit', () => {
   it('Telegram: does not POST and shows ad-required error when ad is not shown', async () => {
     isTelegramEnvMock.mockReturnValue(true);
     showRewardedMock.mockResolvedValue('skipped');
-    const fetchMock = vi.fn();
+    // Pre-flight /auth/me succeeds so the ad gate (not auth) is what blocks.
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue({ ok: true, status: 200, json: async () => ({}) });
     global.fetch = fetchMock as unknown as typeof fetch;
 
     render(<UploadPage />);
@@ -115,12 +118,18 @@ describe('UploadPage submit', () => {
     expect(
       await screen.findByText('upload.error.ad_required'),
     ).toBeInTheDocument();
-    expect(fetchMock).not.toHaveBeenCalled();
+    // The ad was not watched, so no pack is created.
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      '/api/packs',
+      expect.anything(),
+    );
     expect(pushMock).not.toHaveBeenCalled();
   });
 
-  it('Telegram: 401 redirects to login', async () => {
+  it('Telegram: pre-flight auth 401 redirects to login WITHOUT spending an ad', async () => {
     isTelegramEnvMock.mockReturnValue(true);
+    // /auth/me returns 401 — the session is gone, so we must bounce to login
+    // before the rewarded ad plays (never waste a watched ad on a dead session).
     global.fetch = vi.fn().mockResolvedValue({
       ok: false,
       status: 401,
@@ -133,9 +142,26 @@ describe('UploadPage submit', () => {
       await screen.findByRole('button', { name: /upload\.actions\.generate/ }),
     );
 
-    await waitFor(() =>
-      expect(pushMock).toHaveBeenCalledWith('/login'),
+    await waitFor(() => expect(pushMock).toHaveBeenCalledWith('/login'));
+    expect(showRewardedMock).not.toHaveBeenCalled();
+  });
+
+  it('Telegram: POST 401 (session expired after pre-flight) redirects to login', async () => {
+    isTelegramEnvMock.mockReturnValue(true);
+    // Pre-flight /auth/me passes, ad plays, but the pack POST then 401s.
+    global.fetch = vi.fn().mockImplementation((url: string) =>
+      url === '/auth/me'
+        ? Promise.resolve({ ok: true, status: 200, json: async () => ({}) })
+        : Promise.resolve({ ok: false, status: 401, json: async () => ({}) }),
+    ) as unknown as typeof fetch;
+
+    render(<UploadPage />);
+    selectGrid();
+    fireEvent.click(
+      await screen.findByRole('button', { name: /upload\.actions\.generate/ }),
     );
+
+    await waitFor(() => expect(pushMock).toHaveBeenCalledWith('/login'));
     expect(showRewardedMock).toHaveBeenCalledOnce();
   });
 });

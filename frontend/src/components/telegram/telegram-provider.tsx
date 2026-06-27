@@ -234,8 +234,7 @@ export function TelegramProvider({ children }: { children: React.ReactNode }) {
     };
     // retryCount intentionally re-runs the effect on retry.
     // setTheme / adoptTelegramLanguage are stable useCallbacks — included for
-    // lint hygiene. adoptTelegramLanguage is idempotent (it no-ops once a
-    // preference is stored), so re-running on retry is harmless.
+    // lint hygiene. Re-running adoptTelegramLanguage on retry is harmless.
   }, [isInTelegram, retryCount, setTheme, adoptTelegramLanguage]);
 
   // Fix 5: Wire Telegram BackButton to drive in-app back navigation.

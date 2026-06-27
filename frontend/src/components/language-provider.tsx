@@ -50,10 +50,8 @@ type LanguageContextValue = {
   language: Language;
   setLanguage: (l: Language) => void;
   /**
-   * Adopt a locale derived from an external language code (e.g. the Telegram
-   * user's `language_code`) — but only on first open, when the user has no
-   * stored preference yet. A no-op when the code is unsupported or a choice
-   * already exists, so it never overrides a manual selection.
+   * Set the app language from the Telegram user's `language_code`.
+   * Russian → "ru", anything else (including unsupported or missing) → "en".
    */
   adoptTelegramLanguage: (code: string | null | undefined) => void;
   t: TFunction;
@@ -121,11 +119,9 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
   const adoptTelegramLanguage = useCallback(
     (code: string | null | undefined) => {
-      // First-open only: a stored value (manual switch or a previously adopted
-      // language) always wins, so we never override the user's choice.
-      if (readStoredLanguage() !== null) return;
+      // Russian → "ru", everything else (unsupported or absent) → "en".
       const detected = normalizeLanguage(code);
-      if (detected) setLanguage(detected);
+      setLanguage(detected ?? "en");
     },
     [setLanguage],
   );

@@ -8,6 +8,14 @@ import cv2
 import numpy as np
 from PIL import Image
 
+# A geometric cell is accepted only when its keyed content is centred within
+# this margin on both axes. A correctly-aligned rows x cols sheet keeps each
+# face near its cell centre (~0.5); a mis-aligned sheet (faces not lined up with
+# the assumed grid) pushes the dominant blob hard against an edge (~0.1 / 0.9),
+# which this rejects so the caller fails the pack instead of shipping a
+# half-cropped sticker.
+CENTER_MARGIN = 0.18
+
 
 def remove_green_background(bgr: np.ndarray) -> np.ndarray:
     """Chroma-key the green background out, returning a BGRA image."""
@@ -207,8 +215,23 @@ def split_grid_geometric(
             # output count reflects real faces and the caller can reject a bad
             # generation instead of shipping a blank sticker.
             cell_alpha = cell[:, :, 3]
-            if int((cell_alpha > 10).sum()) < 0.02 * cell_alpha.size:
+            ys, xs = np.where(cell_alpha > 10)
+            if len(xs) < 0.02 * cell_alpha.size:
                 print(f"Skipping empty cell {idx:02d}")
+                continue
+            # Reject a cell whose content is shoved against an edge: that means
+            # the assumed grid is mis-aligned with the sheet and this cell holds
+            # a partial/half face rather than one centred figure. Skipping it
+            # drops the output below the expected count, so the caller fails the
+            # pack instead of silently shipping mis-cropped stickers.
+            ch, cw = cell_alpha.shape[:2]
+            cx = float(xs.mean()) / cw
+            cy = float(ys.mean()) / ch
+            if not (
+                CENTER_MARGIN <= cx <= 1 - CENTER_MARGIN
+                and CENTER_MARGIN <= cy <= 1 - CENTER_MARGIN
+            ):
+                print(f"Skipping off-center cell {idx:02d} (centroid {cx:.2f},{cy:.2f})")
                 continue
             sticker = fit_into_square(crop_to_content(cell), size)
             out_path = output_dir / f"{stem}_{idx:02d}.webp"

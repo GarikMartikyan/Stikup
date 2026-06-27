@@ -224,7 +224,7 @@
     "drop_zone": {
       "upload_aria": "Upload the sticker grid",
       "title": "Drop the grid image or tap to pick",
-      "formats": "JPEG · PNG · up to 8 MB",
+      "formats": "JPEG · PNG · WebP · up to 8 MB",
       "hint_drag": "Drag & drop",
       "hint_paste": "Paste",
       "hint_camera": "Open files",
@@ -252,7 +252,7 @@
     },
     "error": {
       "photo_not_accepted": "Image not accepted",
-      "invalid_format": "Use a JPEG or PNG image.",
+      "invalid_format": "Use a JPEG, PNG, or WebP image.",
       "too_large": "File is over 8 MB. Try a smaller export.",
       "generation_failed": "Upload failed. Make sure you upload the clean 4×3 grid ChatGPT made (green background). Please try again.",
       "ad_required": "Watch the ad to create your stickers, then try again."

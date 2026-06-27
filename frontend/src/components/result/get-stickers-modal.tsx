@@ -6,6 +6,7 @@ import { Download, Send, Settings, X } from "lucide-react";
 import Link from "next/link";
 import { useConnectionStatus } from "@/lib/hooks/use-connection-status";
 import { useT } from "@/components/language-provider";
+import { getWebApp } from "@/lib/telegram/webapp";
 import type { StickerItem } from "./sticker-grid";
 
 type GetStickersModalProps = {
@@ -81,10 +82,19 @@ export function GetStickersModal({
         setTelegramBusy(false);
         return;
       }
-      setPackLink(data.stickerSetUrl ?? data.botUrl);
+      const link = data.stickerSetUrl ?? data.botUrl;
+      setPackLink(link);
       setTelegramBusy(false);
       // Getting the pack on Telegram is an acceptance — lock regeneration.
       if (data.delivered) onAccept?.();
+      // Auto-open the sticker pack so no second click is needed.
+      if (link) {
+        try {
+          getWebApp()?.openTelegramLink(link);
+        } catch {
+          window.open(link, "_blank");
+        }
+      }
     } catch {
       setTelegramBusy(false);
     }

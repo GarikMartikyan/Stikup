@@ -28,7 +28,7 @@ export default function UploadPage() {
   const router = useRouter();
 
   const acceptFile = useCallback((file: File) => {
-    if (!ACCEPTED.includes(file.type) && !/\.heic$|\.heif$/i.test(file.name)) {
+    if (!ACCEPTED.includes(file.type)) {
       setState({
         kind: "error",
         message: t("upload.error.invalid_format"),
@@ -85,7 +85,22 @@ export default function UploadPage() {
     setSubmitting(true);
     setAdError(null);
 
-    // Play a rewarded ad first; only proceed to pack creation if fully watched.
+    // Verify the session BEFORE spending an ad view. An expired/missing session
+    // would otherwise make the user watch a full rewarded ad and only then get
+    // bounced to /login. A transient error on this pre-flight is non-fatal —
+    // fall through and let the POST below surface real failures.
+    try {
+      const me = await fetch("/auth/me", { credentials: "include" });
+      if (me.status === 401) {
+        setSubmitting(false);
+        router.push("/login");
+        return;
+      }
+    } catch {
+      // Network blip on the pre-flight — proceed; the POST handles real errors.
+    }
+
+    // Play a rewarded ad; only proceed to pack creation if fully watched.
     const ad = await showRewarded();
     if (ad !== "shown") {
       setAdError(t("upload.error.ad_required"));
@@ -155,7 +170,7 @@ export default function UploadPage() {
             <input
               ref={galleryRef}
               type="file"
-              accept="image/jpeg,image/png,image/heic,image/heif"
+              accept="image/jpeg,image/png,image/webp"
               className="sr-only"
               onChange={onPick}
             />

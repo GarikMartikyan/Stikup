@@ -63,6 +63,8 @@ export interface TelegramWebApp {
   setBackgroundColor(color: string): void;
   onEvent(eventType: string, callback: () => void): void;
   offEvent(eventType: string, callback: () => void): void;
+  /** Open a Telegram-specific URL (tg:// or https://t.me/) inside the client. */
+  openTelegramLink(url: string): void;
 }
 
 declare global {

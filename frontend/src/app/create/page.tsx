@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowRight, Copy, ExternalLink } from 'lucide-react';
 import { StylePicker } from '@/components/create/StylePicker';
@@ -18,6 +19,7 @@ export default function CreatePage() {
   );
   const [hasInteracted, setHasInteracted] = useState(false);
   const [copied, setCopied] = useState(false);
+  const router = useRouter();
   const prompt = buildPrompt(selectedStyle);
 
   const handleCopy = async () => {
@@ -27,14 +29,15 @@ export default function CreatePage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // "Open ChatGPT" also copies the prompt to the clipboard so the user can
-  // paste it into a fresh chat. We open the bare https://chatgpt.com/ (no ?q=):
-  // the user attaches their image first, then pastes the prompt. Keeping the
-  // link short and on the live domain avoids the "invalid URL" the deprecated
-  // chat.openai.com + giant ?q= URL produced mid-redirect on mobile. The anchor
-  // keeps target="_blank" so the create page stays open for the next step.
+  // "Open ChatGPT" copies the prompt and advances the current tab to /upload,
+  // while the anchor's target="_blank" opens chatgpt.com in a NEW tab. The user
+  // attaches their image there, pastes the prompt, generates the grid, then
+  // returns to the (already-on-/upload) app tab to upload it. We open the bare
+  // https://chatgpt.com/ (no ?q=) to avoid the "invalid URL" the deprecated
+  // chat.openai.com + giant ?q= URL produced mid-redirect on mobile.
   const openChatGpt = () => {
     void handleCopy();
+    router.push('/upload');
   };
 
   return (
@@ -89,7 +92,7 @@ export default function CreatePage() {
         {/* Next step — disabled until user copies or opens ChatGPT */}
         <div className="reveal mt-4" style={{ animationDelay: '200ms' }}>
           <Link
-            href={`/upload?style=${encodeURIComponent(selectedStyle)}`}
+            href="/upload"
             aria-disabled={!hasInteracted}
             onClick={(e) => {
               if (!hasInteracted) e.preventDefault();

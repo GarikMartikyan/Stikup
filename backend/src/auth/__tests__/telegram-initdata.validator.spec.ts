@@ -165,6 +165,17 @@ describe('validateInitData', () => {
       expect(result.ok).toBe(false);
       if (!result.ok) expect(result.reason).toBe('hash_mismatch');
     });
+
+    it('rejects a start_param that was appended after signing (not in the signed payload)', () => {
+      // Security boundary: start_param is trusted ONLY because it is inside the
+      // HMAC-verified initData.  An attacker who appends it after signing
+      // changes the data-check-string, so the recomputed HMAC won't match.
+      const signed = buildInitData({ user: VALID_USER_JSON });
+      const tampered = `${signed}&start_param=evil_injected_payload`;
+      const result = validateInitData(tampered, FAKE_BOT_TOKEN, MAX_AGE_SEC);
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.reason).toBe('hash_mismatch');
+    });
   });
 
   describe('staleness guard', () => {

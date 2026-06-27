@@ -6,9 +6,9 @@ import { LanguageProvider } from "@/components/language-provider";
 import { ThemeProvider } from "@/components/theme-provider";
 import { StoreProvider } from "@/lib/store/providers";
 import { TelegramProvider } from "@/components/telegram/telegram-provider";
-import { hasSession } from "@/lib/auth/has-session";
 import { ReferralCapture } from "@/components/referral-capture";
 import { ScrollToTop } from "@/components/scroll-to-top";
+import { BrowserGuard } from "@/components/browser-guard";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -45,8 +45,6 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const loggedIn = await hasSession();
-
   return (
     <html
       lang="en"
@@ -71,9 +69,10 @@ export default async function RootLayout({
           <LanguageProvider>
             <StoreProvider>
               <TelegramProvider>
+                <BrowserGuard />
                 <ScrollToTop />
                 <ReferralCapture />
-                <AppHeader loggedIn={loggedIn} />
+                <AppHeader />
                 {children}
               </TelegramProvider>
             </StoreProvider>

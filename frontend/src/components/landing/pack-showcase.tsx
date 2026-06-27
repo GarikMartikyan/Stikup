@@ -1,9 +1,9 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { ArrowRight, Check, Lock } from "lucide-react";
 import { StickerCard } from "@/components/sticker-card";
+import { AppLink } from "@/components/app-link";
 import { uploadCtaHref } from "@/lib/auth/cta-href";
 import { ALL_STICKERS } from "./data";
 
@@ -50,13 +50,13 @@ export function PackShowcase({ loggedIn }: { loggedIn: boolean }) {
               ))}
             </ul>
 
-            <Link
+            <AppLink
               href={ctaHref}
               className="mt-8 inline-flex items-center gap-2 text-base font-bold text-[var(--color-brand)] hover:opacity-80"
             >
               {loggedIn ? t("landing.pack_showcase.cta_authenticated") : t("landing.pack_showcase.cta_anonymous")}
               <ArrowRight className="h-4 w-4" />
-            </Link>
+            </AppLink>
           </div>
 
           {/* The 12-grid mockup with 3 unlocked + 9 locked */}
@@ -109,12 +109,12 @@ export function PackShowcase({ loggedIn }: { loggedIn: boolean }) {
                     <Lock className="h-3.5 w-3.5 text-[var(--color-fg-muted)]" />
                     <span className="text-[var(--color-fg-muted)]">{t("landing.pack_showcase.stickers_locked")}</span>
                   </div>
-                  <Link
+                  <AppLink
                     href={loggedIn ? "/how-to" : "/create"}
                     className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-[var(--color-brand)] to-[var(--color-brand-2)] px-3.5 py-1.5 text-xs font-bold text-white shadow-sm"
                   >
                     {loggedIn ? t("landing.pack_showcase.unlock_authenticated") : t("landing.pack_showcase.unlock_anonymous")}
-                  </Link>
+                  </AppLink>
                 </div>
               </div>
             </div>

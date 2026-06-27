@@ -23,7 +23,8 @@
     "brand_home_label": "Stikup home",
     "switch_to_light": "Switch to light theme",
     "switch_to_dark": "Switch to dark theme",
-    "connect_reminder": "Connect your accounts"
+    "connect_reminder": "Connect your accounts",
+    "open_in_telegram": "Open in Telegram"
   },
   "auth": {
     "common": {

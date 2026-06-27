@@ -5,8 +5,8 @@ import { usePathname } from 'next/navigation';
 import { Brand } from '@/components/brand';
 import { LanguageToggle } from '@/components/language-toggle';
 import { ThemeToggle } from '@/components/theme-toggle';
-import { SignInButton } from '@/components/auth/sign-in-button';
 import { UserDrawer } from '@/components/auth/user-drawer';
+import { OpenInTelegramButton } from '@/components/open-in-telegram-button';
 import { useT } from '@/components/language-provider';
 import { useTelegram } from '@/components/telegram/telegram-provider';
 import { LANDING_NAV_LINKS, type NavLink } from '@/lib/nav-links';
@@ -21,23 +21,12 @@ const LANDING_NAV_ROUTES = new Set<string>([
   '/support',
 ]);
 
-// Auth flow routes — hide the right-side CTA (Sign in / account drawer) since
-// the page itself is the auth action.
-const AUTH_ROUTES = new Set<string>([
-  '/login',
-  '/register',
-  '/logout',
-  '/auth/forgot',
-  '/auth/login-failed',
-]);
-
 type AppHeaderProps = {
   navLinks?: ReadonlyArray<NavLink>;
-  loggedIn?: boolean;
   right?: ReactNode;
 };
 
-export function AppHeader({ navLinks, loggedIn, right }: AppHeaderProps) {
+export function AppHeader({ navLinks, right }: AppHeaderProps) {
   const t = useT();
   const pathname = usePathname();
   const { isTelegram, status } = useTelegram();
@@ -54,22 +43,15 @@ export function AppHeader({ navLinks, loggedIn, right }: AppHeaderProps) {
         ? LANDING_NAV_LINKS
         : undefined);
 
-  const onAuthRoute = Boolean(pathname && AUTH_ROUTES.has(pathname));
-
+  // Inside Telegram: render the account drawer once auto-login resolves, so its
+  // /auth/me runs after the session cookie exists (avoids a 401-then-stale-cache
+  // race). In a browser the app is Telegram-only, so the right-side control is
+  // always an "Open in Telegram" CTA that funnels visitors into the Mini App.
   const rightContent = isTelegram
-    ? // Render the drawer only after auto-login resolves, so its /auth/me runs
-      // once the session cookie exists (avoids a 401-then-stale-cache race).
-      status === 'authed'
+    ? status === 'authed'
       ? <UserDrawer hideSignOut />
       : null
-    : right ??
-      (onAuthRoute ? null : loggedIn === false ? (
-        <SignInButton />
-      ) : (
-        // Server sees a session cookie but it may be stale — UserDrawer falls
-        // back to a sign-in button when /auth/me returns 401.
-        <UserDrawer fallback={<SignInButton />} />
-      ));
+    : right ?? <OpenInTelegramButton />;
 
   return (
     <header className="sticky top-0 z-40 border-b border-[var(--color-border)] bg-[var(--color-bg-elev)]/80 backdrop-blur-xl">

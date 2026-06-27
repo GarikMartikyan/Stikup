@@ -1,9 +1,9 @@
 'use client';
 
 import Image from 'next/image';
-import Link from 'next/link';
 import { ArrowRight, Sparkles } from 'lucide-react';
 import { HERO_STICKERS } from './data';
+import { AppLink } from '@/components/app-link';
 import { useT } from '@/components/language-provider';
 
 export function Hero({ loggedIn }: { loggedIn: boolean }) {
@@ -48,7 +48,7 @@ export function Hero({ loggedIn }: { loggedIn: boolean }) {
             className="reveal mt-8 flex flex-wrap gap-3"
             style={{ animationDelay: '300ms' }}
           >
-            <Link
+            <AppLink
               href="/how-to"
               className="shimmer group relative inline-flex items-center gap-2 overflow-hidden rounded-full bg-gradient-to-r from-[var(--color-brand)] via-[#ff5e72] to-[var(--color-brand-2)] px-7 py-4 text-base font-bold text-white shadow-[0_18px_40px_-12px_rgba(224,52,154,0.55)] transition hover:-translate-y-0.5"
             >
@@ -59,7 +59,7 @@ export function Hero({ loggedIn }: { loggedIn: boolean }) {
                   : t('landing.hero.cta_anonymous')}
               </span>
               <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
-            </Link>
+            </AppLink>
           </div>
 
           <p

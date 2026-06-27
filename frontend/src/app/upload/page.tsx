@@ -115,9 +115,11 @@ export default function UploadPage() {
       }
     };
 
-    // Ad and generation run together; navigate only after both settle.
-    // showInterstitial never rejects, so its result is best-effort and ignored.
-    const [, packId] = await Promise.all([showInterstitial(), createPack()]);
+    // Upload starts immediately; ad plays concurrently. After the ad closes,
+    // navigate instantly if the upload is already done, otherwise wait for it.
+    const packIdPromise = createPack();
+    await showInterstitial();
+    const packId = await packIdPromise;
 
     if (packId) {
       router.push(`/result/${packId}`);

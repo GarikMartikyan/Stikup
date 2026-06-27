@@ -23,7 +23,8 @@
     "brand_home_label": "Stikup домой",
     "switch_to_light": "Включить светлую тему",
     "switch_to_dark": "Включить тёмную тему",
-    "connect_reminder": "Подключите аккаунты"
+    "connect_reminder": "Подключите аккаунты",
+    "open_in_telegram": "Открыть в Telegram"
   },
   "auth": {
     "common": {

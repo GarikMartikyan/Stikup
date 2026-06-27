@@ -1,8 +1,7 @@
 "use client";
 
-import { KeyRound, Languages, Palette, Send, Trash2 } from "lucide-react";
+import { KeyRound, Languages, Palette, Send } from "lucide-react";
 
-import { DeleteAccountSetting } from "@/components/settings/delete-account-setting";
 import { GoogleConnectionSetting } from "@/components/settings/google-connection-setting";
 import { LanguageSetting } from "@/components/settings/language-setting";
 import { SettingSection } from "@/components/settings/setting-section";
@@ -10,7 +9,7 @@ import { TelegramConnectionSetting } from "@/components/settings/telegram-connec
 import { ThemeSetting } from "@/components/settings/theme-setting";
 import { useT } from "@/components/language-provider";
 
-export function SettingsContent({ email }: { email: string | null }) {
+export function SettingsContent() {
   const t = useT();
 
   return (
@@ -57,15 +56,6 @@ export function SettingsContent({ email }: { email: string | null }) {
           <LanguageSetting />
         </SettingSection>
 
-        <SettingSection
-          id="delete-account"
-          icon={Trash2}
-          title={t("settings.delete_account.section_title")}
-          description={t("settings.delete_account.section_description")}
-          danger
-        >
-          <DeleteAccountSetting email={email} />
-        </SettingSection>
       </main>
     </div>
   );

@@ -122,13 +122,17 @@ describe("PackActions — unlock shares a pack-specific link via navigator.share
 });
 
 describe("PackActions — clipboard fallback (when navigator.share is absent)", () => {
-  it("transitions the button to 'link copied' state after completing the clipboard write", async () => {
-    // jsdom's navigator.clipboard is non-configurable, so we verify the UX
-    // outcome (link-copied state) rather than spy on the write call directly.
-    // URL correctness is proven by the navigator.share suite above.
-    vi.stubGlobal("navigator", { ...global.navigator, share: undefined });
-
+  it("transitions the button to 'link copied' state after a successful clipboard write", async () => {
+    // setup() BEFORE stubbing navigator: userEvent installs its own
+    // navigator.clipboard stub at setup, so our spy must be applied afterward.
     const user = userEvent.setup();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal("navigator", {
+      ...global.navigator,
+      share: undefined,
+      clipboard: { writeText },
+    });
+
     await renderPackActions({ unlocked: false });
 
     await user.click(screen.getByRole("button", { name: /unlock all/i }));
@@ -136,11 +140,40 @@ describe("PackActions — clipboard fallback (when navigator.share is absent)", 
     await waitFor(() => {
       expect(screen.getByRole("button", { name: /link copied/i })).toBeInTheDocument();
     });
+    expect(writeText).toHaveBeenCalledWith(EXPECTED_PACK_LINK);
+  });
+
+  it("does NOT claim 'link copied' when the clipboard write fails", async () => {
+    // Regression guard: a swallowed clipboard error must not flash a false
+    // success — the user would believe they hold a link they never received.
+    const user = userEvent.setup();
+    const writeText = vi.fn().mockRejectedValue(new Error("denied"));
+    vi.stubGlobal("navigator", {
+      ...global.navigator,
+      share: undefined,
+      clipboard: { writeText },
+    });
+
+    await renderPackActions({ unlocked: false });
+
+    await user.click(screen.getByRole("button", { name: /unlock all/i }));
+
+    await waitFor(() => expect(writeText).toHaveBeenCalled());
+    // Button falls back to its idle "unlock all" label, never "link copied".
+    expect(screen.queryByRole("button", { name: /link copied/i })).toBeNull();
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /unlock all/i })).toBeInTheDocument(),
+    );
   });
 
   it("fetches /api/referral/me even when taking the clipboard path", async () => {
-    vi.stubGlobal("navigator", { ...global.navigator, share: undefined });
     const user = userEvent.setup();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal("navigator", {
+      ...global.navigator,
+      share: undefined,
+      clipboard: { writeText },
+    });
     await renderPackActions({ unlocked: false });
 
     await user.click(screen.getByRole("button", { name: /unlock all/i }));
@@ -149,6 +182,59 @@ describe("PackActions — clipboard fallback (when navigator.share is absent)", 
     expect(fetchSpy).toHaveBeenCalledWith("/api/referral/me", {
       credentials: "include",
     });
+  });
+});
+
+describe("PackActions — cancelling the native share sheet", () => {
+  it("falls back to copying the link (not the Telegram picker) when share is aborted", async () => {
+    // Regression guard: dismissing the OS share sheet must still deliver the
+    // link via the clipboard, without opening the intrusive Telegram picker.
+    const user = userEvent.setup();
+    const shareSpy = vi.fn().mockRejectedValue(
+      Object.assign(new Error("cancelled"), { name: "AbortError" }),
+    );
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    const openTelegramLink = vi.fn();
+    (window as unknown as { Telegram: unknown }).Telegram = { WebApp: { openTelegramLink } };
+    vi.stubGlobal("navigator", {
+      ...global.navigator,
+      share: shareSpy,
+      clipboard: { writeText },
+    });
+
+    await renderPackActions({ unlocked: false });
+
+    await user.click(screen.getByRole("button", { name: /unlock all/i }));
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /link copied/i })).toBeInTheDocument(),
+    );
+    expect(writeText).toHaveBeenCalledWith(EXPECTED_PACK_LINK);
+    expect(openTelegramLink).not.toHaveBeenCalled();
+
+    delete (window as unknown as { Telegram?: unknown }).Telegram;
+  });
+});
+
+describe("PackActions — Telegram picker fallback (share absent, inside Telegram)", () => {
+  afterEach(() => {
+    delete (window as unknown as { Telegram?: unknown }).Telegram;
+  });
+
+  it("opens the Telegram share picker with the encoded referral link", async () => {
+    vi.stubGlobal("navigator", { ...global.navigator, share: undefined });
+    const openTelegramLink = vi.fn();
+    (window as unknown as { Telegram: unknown }).Telegram = { WebApp: { openTelegramLink } };
+
+    const user = userEvent.setup();
+    await renderPackActions({ unlocked: false });
+
+    await user.click(screen.getByRole("button", { name: /unlock all/i }));
+    await waitFor(() => expect(openTelegramLink).toHaveBeenCalled());
+
+    const picker: string = openTelegramLink.mock.calls[0][0];
+    expect(picker).toContain("https://t.me/share/url?url=");
+    expect(picker).toContain(encodeURIComponent(EXPECTED_PACK_LINK));
   });
 });
 

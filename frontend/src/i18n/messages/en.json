@@ -302,7 +302,9 @@
       "regen_left": "1 free retry left",
       "recommended": "Recommended",
       "link_copied": "Link copied!",
-      "copying_link": "Copying link…",
+      "link_shared": "Shared!",
+      "sharing": "Opening share…",
+      "share_text": "Unlock my full sticker pack on Stikup 🎉",
       "no_regens": "No retries left",
       "claimed": "You've got this pack"
     },

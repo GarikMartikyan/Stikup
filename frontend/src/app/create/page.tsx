@@ -7,6 +7,7 @@ import { ArrowRight, Copy, ExternalLink } from 'lucide-react';
 import { StylePicker } from '@/components/create/StylePicker';
 import {
   buildPrompt,
+  promptToChatGPTUrl,
   STICKER_STYLES,
   type StyleId,
 } from '@/lib/sticker-styles';
@@ -23,18 +24,27 @@ export default function CreatePage() {
   const prompt = buildPrompt(selectedStyle);
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(prompt);
+    // Flip hasInteracted FIRST so the "Continue" step reveals even if the
+    // clipboard write is blocked (insecure context / denied permission) — the
+    // prompt is still reachable via the ChatGPT ?q= pre-fill, so the user must
+    // never be left without a way forward.
     setHasInteracted(true);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      await navigator.clipboard.writeText(prompt);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard unavailable — no "Copied!" confirmation, but the flow proceeds.
+    }
   };
 
-  // "Open ChatGPT" copies the prompt and advances the current tab to /upload,
-  // while the anchor's target="_blank" opens chatgpt.com in a NEW tab. The user
-  // attaches their image there, pastes the prompt, generates the grid, then
-  // returns to the (already-on-/upload) app tab to upload it. We open the bare
-  // https://chatgpt.com/ (no ?q=) to avoid the "invalid URL" the deprecated
-  // chat.openai.com + giant ?q= URL produced mid-redirect on mobile.
+  // "Open ChatGPT" advances the current tab to /upload while the anchor's
+  // target="_blank" opens ChatGPT in a NEW tab with the prompt pre-filled via
+  // ?q= (see promptToChatGPTUrl — it flattens the markdown to a short, single
+  // line so the URL survives ChatGPT's mobile redirect). We still copy the
+  // prompt as a fallback in case the composer doesn't auto-populate. The user
+  // attaches their image there, generates the grid, then returns to the
+  // (already-on-/upload) app tab to upload it.
   const openChatGpt = () => {
     void handleCopy();
     router.push('/upload');
@@ -78,7 +88,7 @@ export default function CreatePage() {
             {copied ? t('create.copied') : t('create.copy_prompt')}
           </button>
           <a
-            href="https://chatgpt.com/"
+            href={promptToChatGPTUrl(prompt)}
             target="_blank"
             rel="noopener noreferrer"
             onClick={openChatGpt}
@@ -89,24 +99,18 @@ export default function CreatePage() {
           </a>
         </div>
 
-        {/* Next step — disabled until user copies or opens ChatGPT */}
-        <div className="reveal mt-4" style={{ animationDelay: '200ms' }}>
-          <Link
-            href="/upload"
-            aria-disabled={!hasInteracted}
-            onClick={(e) => {
-              if (!hasInteracted) e.preventDefault();
-            }}
-            className={`shimmer group inline-flex items-center gap-2 overflow-hidden rounded-full bg-gradient-to-r from-[var(--color-brand)] via-[#ff5e72] to-[var(--color-brand-2)] px-6 py-3 text-sm font-bold text-white shadow-[0_18px_40px_-12px_rgba(224,52,154,0.55)] transition ${
-              hasInteracted
-                ? 'hover:-translate-y-0.5'
-                : 'cursor-not-allowed opacity-40'
-            }`}
-          >
-            {t('create.continue')}
-            <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
-          </Link>
-        </div>
+        {/* Next step — hidden until the user copies the prompt */}
+        {hasInteracted && (
+          <div className="reveal mt-4" style={{ animationDelay: '200ms' }}>
+            <Link
+              href="/upload"
+              className="shimmer group inline-flex items-center gap-2 overflow-hidden rounded-full bg-gradient-to-r from-[var(--color-brand)] via-[#ff5e72] to-[var(--color-brand-2)] px-6 py-3 text-sm font-bold text-white shadow-[0_18px_40px_-12px_rgba(224,52,154,0.55)] transition hover:-translate-y-0.5"
+            >
+              {t('create.continue')}
+              <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
+            </Link>
+          </div>
+        )}
 
         {/* How-to hint */}
         <div

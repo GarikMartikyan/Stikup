@@ -17,12 +17,12 @@ import {
   Wand2,
   Zap,
 } from 'lucide-react';
-import { useT } from '@/components/language-provider';
+import { useLanguage } from '@/components/language-provider';
 
 const STEP_ICONS = [Wand2, ClipboardCopy, Bot, Download, Upload, Users];
 
 export default function HowToPage() {
-  const t = useT();
+  const { t, language } = useLanguage();
   const [hasPacks, setHasPacks] = useState<boolean | null>(null);
   const [showVideo, setShowVideo] = useState(false);
   // Player state: 'playing' shows no overlay, 'paused' shows the pause icon,
@@ -157,7 +157,8 @@ export default function HowToPage() {
             >
               <video
                 ref={videoRef}
-                src="/how-to-disney.mp4"
+                key={language}
+                src={`/how-to-disney-${language}.mp4`}
                 autoPlay
                 muted
                 playsInline

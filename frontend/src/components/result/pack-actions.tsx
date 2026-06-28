@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Download, RefreshCw, Unlock } from "lucide-react";
 import { GetStickersModal } from "./get-stickers-modal";
 import { useT } from "@/components/language-provider";
 import { telegramReferralHref } from "@/lib/telegram/href";
+import { getWebApp } from "@/lib/telegram/webapp";
 import type { StickerItem } from "./sticker-grid";
 
 type PackActionsProps = {
@@ -25,47 +26,119 @@ export function PackActions({ packId, packSize, unlocked, locked: lockedInitial,
   const t = useT();
   const router = useRouter();
   const [showModal, setShowModal] = useState(false);
-  const [linkCopied, setLinkCopied] = useState(false);
+  // null = idle, "shared" = handed off to a share target, "copied" = clipboard fallback.
+  const [feedback, setFeedback] = useState<null | "shared" | "copied">(null);
   const [unlockBusy, setUnlockBusy] = useState(false);
   const [regenBusy, setRegenBusy] = useState(false);
+  // The pack-specific Telegram referral deep link, pre-fetched on mount. Having
+  // it ready lets navigator.share() fire SYNCHRONOUSLY inside the tap handler —
+  // the Web Share API needs transient user activation, which is consumed by any
+  // `await` that runs before it (iOS / Telegram WebView are strict about this).
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
   // Accepting the pack (get on Telegram / download) locks regeneration. Seed
   // from the server value and flip locally the moment the user accepts.
   const [locked, setLocked] = useState(lockedInitial);
+
+  const fetchReferralUrl = useCallback(async (): Promise<string> => {
+    const res = await fetch("/api/referral/me", { credentials: "include" });
+    if (!res.ok) throw new Error(`referral/me ${res.status}`);
+    const data = (await res.json()) as { code: string; referredCount: number };
+    // Tapping this link opens the bot, records a pending referral, then opens
+    // the Mini App; the referral is credited when the friend registers.
+    return telegramReferralHref(data.code, packId);
+  }, [packId]);
+
+  // Pre-fetch the referral link as soon as an unlockable pack renders so the
+  // share sheet can open instantly (and synchronously) on tap.
+  useEffect(() => {
+    if (unlocked) return;
+    let cancelled = false;
+    fetchReferralUrl()
+      .then((url) => {
+        if (!cancelled) setShareUrl(url);
+      })
+      .catch(() => {
+        /* best-effort; handler will retry on tap */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [unlocked, fetchReferralUrl]);
+
+  const flash = useCallback((kind: "shared" | "copied") => {
+    setFeedback(kind);
+    setTimeout(() => setFeedback(null), 2500);
+  }, []);
+
+  // Copy the link and only claim "copied" when the write actually lands — a
+  // swallowed failure must NOT flash a false "Link copied!" (the user would
+  // think they have the link when the clipboard is empty).
+  const copyToClipboard = useCallback(
+    async (url: string) => {
+      try {
+        await navigator.clipboard.writeText(url);
+        flash("copied");
+      } catch {
+        /* clipboard unavailable — no success claim, nothing more we can do */
+      }
+    },
+    [flash],
+  );
 
   const handleUnlock = useCallback(async () => {
     if (unlocked || unlockBusy) return;
     setUnlockBusy(true);
 
     try {
-      const res = await fetch("/api/referral/me", { credentials: "include" });
-      if (!res.ok) throw new Error(`referral/me ${res.status}`);
-      const data = (await res.json()) as { code: string; referredCount: number };
-
-      // Telegram deep link: tapping it opens the Mini App, auto-logs-in the
-      // friend, and credits the referral via start_param.
-      const url = telegramReferralHref(data.code, packId);
-
-      // Try Web Share API first (mobile browsers), fall back to clipboard.
-      const shared =
-        typeof navigator.share === "function"
-          ? await navigator
-              .share({ url })
-              .then(() => true)
-              .catch(() => false)
-          : false;
-
-      if (!shared) {
-        await navigator.clipboard.writeText(url);
+      // Prefer the pre-fetched link; only fetch inline if it hasn't landed yet.
+      // (The inline-fetch path loses the tap's activation, so native share may
+      // be skipped there — acceptable for that rare cold case.)
+      let url = shareUrl;
+      if (!url) {
+        url = await fetchReferralUrl();
+        setShareUrl(url);
       }
 
-      setLinkCopied(true);
-      setTimeout(() => setLinkCopied(false), 2500);
+      const shareText = t("result.actions.share_text");
+
+      // 1) Phone-native OS share sheet — the primary path. Called with no
+      //    intervening `await` when the link is pre-fetched, so activation holds.
+      if (typeof navigator.share === "function") {
+        try {
+          await navigator.share({ text: shareText, url });
+          flash("shared");
+          return;
+        } catch (err) {
+          // User cancelled the sheet → still hand them the link via the
+          // clipboard (so they're never left empty-handed), but don't open the
+          // intrusive Telegram picker for an action they explicitly declined.
+          if ((err as Error)?.name === "AbortError") {
+            await copyToClipboard(url);
+            return;
+          }
+          // Share genuinely unavailable (e.g. Telegram WebView) → fall through.
+        }
+      }
+
+      // 2) Inside Telegram → its native "send to a chat" picker. The picker UI
+      //    IS the feedback; openTelegramLink is fire-and-forget (no send/cancel
+      //    signal) and backgrounds the Mini App, so claiming "Shared!" here
+      //    would be a false success — leave the button untouched.
+      const tg = getWebApp();
+      if (typeof tg?.openTelegramLink === "function") {
+        const picker = `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(shareText)}`;
+        tg.openTelegramLink(picker);
+        return;
+      }
+
+      // 3) Last resort → clipboard (only flashes "copied" on a successful write).
+      await copyToClipboard(url);
     } catch {
       // best-effort
     } finally {
       setUnlockBusy(false);
     }
-  }, [unlocked, unlockBusy, packId]);
+  }, [unlocked, unlockBusy, shareUrl, fetchReferralUrl, t, flash, copyToClipboard]);
 
   const handleRegenerate = useCallback(async () => {
     if (regenBusy) return;
@@ -94,7 +167,12 @@ export function PackActions({ packId, packSize, unlocked, locked: lockedInitial,
             disabled={unlockBusy}
             className="shimmer inline-flex items-center gap-2 overflow-hidden rounded-full bg-gradient-to-r from-[var(--color-brand)] via-[#ff5e72] to-[var(--color-brand-2)] px-5 py-2 text-sm font-bold text-white shadow-[0_8px_24px_-8px_rgba(224,52,154,0.55)] transition hover:-translate-y-0.5 disabled:cursor-wait disabled:opacity-80"
           >
-            {linkCopied ? (
+            {feedback === "shared" ? (
+              <>
+                <Check className="h-4 w-4" strokeWidth={3} />
+                {t("result.actions.link_shared")}
+              </>
+            ) : feedback === "copied" ? (
               <>
                 <Check className="h-4 w-4" strokeWidth={3} />
                 {t("result.actions.link_copied")}
@@ -102,7 +180,7 @@ export function PackActions({ packId, packSize, unlocked, locked: lockedInitial,
             ) : unlockBusy ? (
               <>
                 <RefreshCw className="h-4 w-4 animate-spin" />
-                {t("result.actions.copying_link")}
+                {t("result.actions.sharing")}
               </>
             ) : (
               <>

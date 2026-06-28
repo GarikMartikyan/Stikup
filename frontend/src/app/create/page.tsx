@@ -12,6 +12,7 @@ import {
   type StyleId,
 } from '@/lib/sticker-styles';
 import { useT } from '@/components/language-provider';
+import { fireSound } from '@/lib/sound';
 
 export default function CreatePage() {
   const t = useT();
@@ -24,6 +25,7 @@ export default function CreatePage() {
   const prompt = buildPrompt(selectedStyle);
 
   const handleCopy = async () => {
+    fireSound("tap");
     // Flip hasInteracted FIRST so the "Continue" step reveals even if the
     // clipboard write is blocked (insecure context / denied permission) — the
     // prompt is still reachable via the ChatGPT ?q= pre-fill, so the user must
@@ -48,6 +50,7 @@ export default function CreatePage() {
   // there, generates the grid, then returns to the (already-on-/upload) app tab
   // to upload it.
   const openChatGpt = () => {
+    fireSound("tap");
     setHasInteracted(true);
     router.push('/upload');
   };

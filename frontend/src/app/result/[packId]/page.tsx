@@ -9,6 +9,7 @@ import { PackActions } from "@/components/result/pack-actions";
 import { ALL_STICKERS, FREE_COUNT, PACK_SIZE } from "@/components/result/data";
 import { useT } from "@/components/language-provider";
 import type { StickerItem } from "@/components/result/sticker-grid";
+import { fireSound } from "@/lib/sound";
 
 // Safety timeout: stop polling after 3 minutes and treat as failed.
 const POLL_TIMEOUT_MS = 3 * 60 * 1000;
@@ -151,6 +152,7 @@ export default function ResultPage({
     const deadlineId = setTimeout(() => {
       // Safety timeout: treat as failed after POLL_TIMEOUT_MS.
       cancelledRef.current = true;
+      fireSound("error");
       setState({ kind: "failed" });
     }, POLL_TIMEOUT_MS);
 
@@ -171,6 +173,7 @@ export default function ResultPage({
           // A real backend error (401/429/500/…) must surface as failure, not
           // be masked by demo content. The demo fallback is reserved for the
           // 404/403 (no such pack) case above and network errors (catch below).
+          fireSound("error");
           setState({ kind: "failed" });
           return;
         }
@@ -196,11 +199,13 @@ export default function ResultPage({
         }
 
         if (data.status === "failed") {
+          fireSound("error");
           setState({ kind: "failed" });
           return;
         }
 
         // status === "ready"
+        fireSound("success");
         setState({ kind: "ready", pack: parsePack(data) });
       } catch {
         if (cancelledRef.current) return;

@@ -10,6 +10,7 @@ import { SoundSetting } from "../sound-setting";
 vi.mock("@/lib/sound", () => ({
   playSound: vi.fn(),
   triggerHaptic: vi.fn(),
+  setSoundEnabled: vi.fn(),
 }));
 
 function renderSetting(storageValue?: string) {

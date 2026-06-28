@@ -1,5 +1,10 @@
 import { SOUND_SRC, SOUND_VOLUME, type SoundEvent } from "./manifest";
 
+/** Module-level enabled flag — synced from SoundProvider via setSoundEnabled. */
+let soundEnabled = true;
+export function setSoundEnabled(b: boolean): void { soundEnabled = b; }
+export function isSoundEnabled(): boolean { return soundEnabled; }
+
 /** Lazily-created base audio elements, keyed by sound event. */
 const cache = new Map<SoundEvent, HTMLAudioElement>();
 

@@ -8,6 +8,7 @@ import { useConnectionStatus } from "@/lib/hooks/use-connection-status";
 import { useT } from "@/components/language-provider";
 import { getWebApp } from "@/lib/telegram/webapp";
 import type { StickerItem } from "./sticker-grid";
+import { fireSound } from "@/lib/sound";
 
 type GetStickersModalProps = {
   packId: string;
@@ -86,7 +87,10 @@ export function GetStickersModal({
       setPackLink(link);
       setTelegramBusy(false);
       // Getting the pack on Telegram is an acceptance — lock regeneration.
-      if (data.delivered) onAccept?.();
+      if (data.delivered) {
+        fireSound("success");
+        onAccept?.();
+      }
       // Auto-open the sticker pack so no second click is needed.
       if (link) {
         try {
@@ -140,6 +144,7 @@ export function GetStickersModal({
       }
     }
 
+    fireSound("success");
     onAccept?.();
     setDownloadBusy(false);
     onClose();

@@ -16,6 +16,7 @@ import { useT } from "@/components/language-provider";
 import { isTelegramEnv } from "@/lib/telegram/webapp";
 import { showRewarded } from "@/lib/ads/adsgram";
 import { OpenInTelegram } from "@/components/upload/open-in-telegram";
+import { fireSound } from "@/lib/sound";
 
 export default function UploadPage() {
   const galleryRef = useRef<HTMLInputElement | null>(null);
@@ -74,6 +75,7 @@ export default function UploadPage() {
 
   const submit = useCallback(async () => {
     if (state.kind !== "ready") return;
+    fireSound("tap");
     const file = state.file;
 
     // Web (outside Telegram): don't generate — funnel the user into Telegram.
@@ -121,6 +123,7 @@ export default function UploadPage() {
         return;
       }
       if (!res.ok) {
+        fireSound("error");
         setState({
           kind: "error",
           message: t("upload.error.generation_failed"),
@@ -130,6 +133,7 @@ export default function UploadPage() {
       const { packId } = (await res.json()) as { packId: string };
       router.push(`/result/${packId}`);
     } catch {
+      fireSound("error");
       setState({
         kind: "error",
         message: t("upload.error.generation_failed"),

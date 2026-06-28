@@ -8,6 +8,7 @@ import { SoundProvider, useSound } from "../sound-provider";
 vi.mock("@/lib/sound", () => ({
   playSound: vi.fn(),
   triggerHaptic: vi.fn(),
+  setSoundEnabled: vi.fn(),
 }));
 
 import { playSound, triggerHaptic } from "@/lib/sound";

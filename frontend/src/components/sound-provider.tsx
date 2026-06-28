@@ -4,10 +4,11 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useState,
 } from "react";
 
-import { playSound, triggerHaptic } from "@/lib/sound";
+import { playSound, setSoundEnabled, triggerHaptic } from "@/lib/sound";
 import type { SoundEvent } from "@/lib/sound";
 
 type SoundContextValue = {
@@ -48,6 +49,10 @@ export function SoundProvider({ children }: { children: React.ReactNode }) {
     }
     setEnabledState(b);
   }, []);
+
+  // Keep the module-level flag in sync so fireSound() respects the user's pref
+  // even when called outside React context (handlers, effects, timeouts).
+  useEffect(() => { setSoundEnabled(enabled); }, [enabled]);
 
   const toggle = useCallback(() => {
     setEnabled(!enabled);

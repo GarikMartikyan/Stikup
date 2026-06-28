@@ -9,6 +9,7 @@ import { useT } from "@/components/language-provider";
 import { telegramReferralHref } from "@/lib/telegram/href";
 import { getWebApp } from "@/lib/telegram/webapp";
 import type { StickerItem } from "./sticker-grid";
+import { fireSound } from "@/lib/sound";
 
 type PackActionsProps = {
   packId: string;
@@ -80,6 +81,7 @@ export function PackActions({ packId, packSize, unlocked, locked: lockedInitial,
       try {
         await navigator.clipboard.writeText(url);
         flash("copied");
+        fireSound("unlock");
       } catch {
         /* clipboard unavailable — no success claim, nothing more we can do */
       }
@@ -89,6 +91,7 @@ export function PackActions({ packId, packSize, unlocked, locked: lockedInitial,
 
   const handleUnlock = useCallback(async () => {
     if (unlocked || unlockBusy) return;
+    fireSound("tap");
     setUnlockBusy(true);
 
     try {
@@ -109,6 +112,7 @@ export function PackActions({ packId, packSize, unlocked, locked: lockedInitial,
         try {
           await navigator.share({ text: shareText, url });
           flash("shared");
+          fireSound("unlock");
           return;
         } catch (err) {
           // User cancelled the sheet → still hand them the link via the
@@ -130,6 +134,7 @@ export function PackActions({ packId, packSize, unlocked, locked: lockedInitial,
       if (typeof tg?.openTelegramLink === "function") {
         const picker = `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(shareText)}`;
         tg.openTelegramLink(picker);
+        fireSound("unlock");
         return;
       }
 
@@ -144,6 +149,7 @@ export function PackActions({ packId, packSize, unlocked, locked: lockedInitial,
 
   const handleRegenerate = useCallback(async () => {
     if (regenBusy) return;
+    fireSound("tap");
     setRegenBusy(true);
     // Best-effort DELETE — ignore failure, user wants to start over.
     await fetch(`/api/packs/${encodeURIComponent(packId)}`, {
@@ -165,7 +171,7 @@ export function PackActions({ packId, packSize, unlocked, locked: lockedInitial,
         ) : (
           <button
             type="button"
-            onClick={() => setShowInviteModal(true)}
+            onClick={() => { fireSound("tap"); setShowInviteModal(true); }}
             className="shimmer inline-flex items-center gap-2 overflow-hidden rounded-full bg-gradient-to-r from-[var(--color-brand)] via-[#ff5e72] to-[var(--color-brand-2)] px-5 py-2 text-sm font-bold text-white shadow-[0_8px_24px_-8px_rgba(224,52,154,0.55)] transition hover:-translate-y-0.5"
           >
             <Unlock className="h-4 w-4" strokeWidth={2.2} />
@@ -176,7 +182,7 @@ export function PackActions({ packId, packSize, unlocked, locked: lockedInitial,
         {/* Get stickers */}
         <button
           type="button"
-          onClick={() => setShowModal(true)}
+          onClick={() => { fireSound("tap"); setShowModal(true); }}
           className="inline-flex items-center gap-2 rounded-full border border-[var(--color-border-strong)] bg-[var(--color-bg-elev)] px-5 py-2 text-sm font-semibold text-[var(--color-fg)] transition hover:-translate-y-0.5 hover:border-[var(--color-brand)] hover:text-[var(--color-brand)]"
         >
           <Download className="h-4 w-4" strokeWidth={2.2} />

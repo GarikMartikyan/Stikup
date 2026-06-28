@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Download, RefreshCw, Unlock } from "lucide-react";
 import { GetStickersModal } from "./get-stickers-modal";
+import { InviteFriendModal } from "./invite-friend-modal";
 import { useT } from "@/components/language-provider";
 import { telegramReferralHref } from "@/lib/telegram/href";
 import { getWebApp } from "@/lib/telegram/webapp";
@@ -26,6 +27,7 @@ export function PackActions({ packId, packSize, unlocked, locked: lockedInitial,
   const t = useT();
   const router = useRouter();
   const [showModal, setShowModal] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
   // null = idle, "shared" = handed off to a share target, "copied" = clipboard fallback.
   const [feedback, setFeedback] = useState<null | "shared" | "copied">(null);
   const [unlockBusy, setUnlockBusy] = useState(false);
@@ -163,31 +165,11 @@ export function PackActions({ packId, packSize, unlocked, locked: lockedInitial,
         ) : (
           <button
             type="button"
-            onClick={handleUnlock}
-            disabled={unlockBusy}
-            className="shimmer inline-flex items-center gap-2 overflow-hidden rounded-full bg-gradient-to-r from-[var(--color-brand)] via-[#ff5e72] to-[var(--color-brand-2)] px-5 py-2 text-sm font-bold text-white shadow-[0_8px_24px_-8px_rgba(224,52,154,0.55)] transition hover:-translate-y-0.5 disabled:cursor-wait disabled:opacity-80"
+            onClick={() => setShowInviteModal(true)}
+            className="shimmer inline-flex items-center gap-2 overflow-hidden rounded-full bg-gradient-to-r from-[var(--color-brand)] via-[#ff5e72] to-[var(--color-brand-2)] px-5 py-2 text-sm font-bold text-white shadow-[0_8px_24px_-8px_rgba(224,52,154,0.55)] transition hover:-translate-y-0.5"
           >
-            {feedback === "shared" ? (
-              <>
-                <Check className="h-4 w-4" strokeWidth={3} />
-                {t("result.actions.link_shared")}
-              </>
-            ) : feedback === "copied" ? (
-              <>
-                <Check className="h-4 w-4" strokeWidth={3} />
-                {t("result.actions.link_copied")}
-              </>
-            ) : unlockBusy ? (
-              <>
-                <RefreshCw className="h-4 w-4 animate-spin" />
-                {t("result.actions.sharing")}
-              </>
-            ) : (
-              <>
-                <Unlock className="h-4 w-4" strokeWidth={2.2} />
-                {t("result.actions.unlock_all", { count: packSize })}
-              </>
-            )}
+            <Unlock className="h-4 w-4" strokeWidth={2.2} />
+            {t("result.actions.unlock_all", { count: packSize })}
           </button>
         )}
 
@@ -233,6 +215,18 @@ export function PackActions({ packId, packSize, unlocked, locked: lockedInitial,
         onClose={() => setShowModal(false)}
         onAccept={() => setLocked(true)}
       />
+
+      {!unlocked && (
+        <InviteFriendModal
+          open={showInviteModal}
+          onClose={() => setShowInviteModal(false)}
+          packSize={packSize}
+          shareUrl={shareUrl}
+          onSend={handleUnlock}
+          sendBusy={unlockBusy}
+          sendFeedback={feedback}
+        />
+      )}
     </>
   );
 }

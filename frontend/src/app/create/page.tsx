@@ -41,12 +41,14 @@ export default function CreatePage() {
   // "Open ChatGPT" advances the current tab to /upload while the anchor's
   // target="_blank" opens ChatGPT in a NEW tab with the prompt pre-filled via
   // ?q= (see promptToChatGPTUrl — it flattens the markdown to a short, single
-  // line so the URL survives ChatGPT's mobile redirect). We still copy the
-  // prompt as a fallback in case the composer doesn't auto-populate. The user
-  // attaches their image there, generates the grid, then returns to the
-  // (already-on-/upload) app tab to upload it.
+  // line so the URL survives ChatGPT's mobile redirect). We deliberately do NOT
+  // copy the prompt here — the ?q= pre-fill carries it, and the dedicated "Copy
+  // prompt" button is the only path that touches the clipboard. We still flip
+  // hasInteracted so the "Continue" step reveals. The user attaches their image
+  // there, generates the grid, then returns to the (already-on-/upload) app tab
+  // to upload it.
   const openChatGpt = () => {
-    void handleCopy();
+    setHasInteracted(true);
     router.push('/upload');
   };
 

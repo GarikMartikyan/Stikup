@@ -320,6 +320,15 @@
       "connect_telegram_prompt": "Connect your Telegram account in Settings to receive stickers via bot.",
       "go_to_settings": "Go to Settings",
       "close": "Close"
+    },
+    "invite_modal": {
+      "title": "Invite a friend",
+      "description": "You need to invite your friend via this link. When they join, all {count} stickers unlock.",
+      "loading": "Preparing your link",
+      "copy": "Copy",
+      "copied": "Copied!",
+      "send": "Send",
+      "close": "Close"
     }
   },
   "settings": {

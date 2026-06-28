@@ -1,14 +1,18 @@
 /**
  * Tests for PackActions component.
  *
- * URL-construction correctness is validated end-to-end via the navigator.share
- * path (see "shares pack-specific link" suite). The clipboard path is tested
- * for UX completion (link-copied state) rather than spy-level URL capture
- * because jsdom's navigator.clipboard is non-configurable at runtime.
+ * "Unlock all" no longer shares directly — it opens the InviteFriendModal, and
+ * the share/copy/Telegram-picker flow now lives behind the modal's "Send"
+ * button. Each share-path test therefore opens the modal first, then clicks
+ * Send. URL-construction correctness is validated end-to-end via the
+ * navigator.share path; the clipboard path is tested for UX completion
+ * (link-copied state) rather than spy-level URL capture because jsdom's
+ * navigator.clipboard is non-configurable at runtime.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { UserEvent } from "@testing-library/user-event";
 import React from "react";
 import { LanguageProvider } from "@/components/language-provider";
 
@@ -18,7 +22,9 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
 }));
 
-// GetStickersModal uses createPortal — stub it so tests don't need a full DOM portal.
+// GetStickersModal uses createPortal — stub it so tests don't need a full DOM
+// portal. InviteFriendModal is intentionally NOT mocked: its Send button is
+// what now drives the share flow under test.
 vi.mock("../get-stickers-modal", () => ({
   GetStickersModal: () => null,
 }));
@@ -72,6 +78,12 @@ async function renderPackActions(
   );
 }
 
+/** Open the invite modal, then trigger the share flow via its Send button. */
+async function openModalAndSend(user: UserEvent) {
+  await user.click(screen.getByRole("button", { name: /unlock all/i }));
+  await user.click(await screen.findByRole("button", { name: /^send$/i }));
+}
+
 // ─── setup / teardown ────────────────────────────────────────────────────────
 
 beforeEach(() => {
@@ -89,8 +101,8 @@ afterEach(() => {
 
 // ─── tests ───────────────────────────────────────────────────────────────────
 
-describe("PackActions — unlock shares a pack-specific link via navigator.share", () => {
-  it("shares a t.me ?start=ref_ bot deep link encoding code and pack id", async () => {
+describe("PackActions — unlock opens the invite modal", () => {
+  it("shows the invite copy and the referral link, and does not share until Send", async () => {
     const shareSpy = vi.fn().mockResolvedValue(undefined);
     vi.stubGlobal("navigator", { ...global.navigator, share: shareSpy });
 
@@ -98,6 +110,38 @@ describe("PackActions — unlock shares a pack-specific link via navigator.share
     await renderPackActions({ unlocked: false });
 
     await user.click(screen.getByRole("button", { name: /unlock all/i }));
+
+    // Modal is open with the invite instruction and the pack link.
+    expect(await screen.findByText(/invite your friend via this link/i)).toBeInTheDocument();
+    expect(await screen.findByText(EXPECTED_PACK_LINK)).toBeInTheDocument();
+    // Opening the modal must NOT have shared anything yet.
+    expect(shareSpy).not.toHaveBeenCalled();
+  });
+
+  it("closes the modal when the backdrop is clicked", async () => {
+    const user = userEvent.setup();
+    await renderPackActions({ unlocked: false });
+
+    await user.click(screen.getByRole("button", { name: /unlock all/i }));
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog.className).not.toContain("pointer-events-none");
+
+    const backdrop = document.querySelector(".inset-0") as HTMLElement;
+    await user.click(backdrop);
+
+    await waitFor(() => expect(dialog.className).toContain("pointer-events-none"));
+  });
+});
+
+describe("PackActions — Send shares a pack-specific link via navigator.share", () => {
+  it("shares a t.me ?start=ref_ bot deep link encoding code and pack id", async () => {
+    const shareSpy = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal("navigator", { ...global.navigator, share: shareSpy });
+
+    const user = userEvent.setup();
+    await renderPackActions({ unlocked: false });
+
+    await openModalAndSend(user);
     await waitFor(() => expect(shareSpy).toHaveBeenCalled());
 
     const sharedUrl: string = shareSpy.mock.calls[0][0].url;
@@ -112,7 +156,7 @@ describe("PackActions — unlock shares a pack-specific link via navigator.share
     const user = userEvent.setup();
     await renderPackActions({ unlocked: false });
 
-    await user.click(screen.getByRole("button", { name: /unlock all/i }));
+    await openModalAndSend(user);
     await waitFor(() => expect(fetchSpy).toHaveBeenCalled());
 
     expect(fetchSpy).toHaveBeenCalledWith("/api/referral/me", {
@@ -121,8 +165,31 @@ describe("PackActions — unlock shares a pack-specific link via navigator.share
   });
 });
 
-describe("PackActions — clipboard fallback (when navigator.share is absent)", () => {
-  it("transitions the button to 'link copied' state after a successful clipboard write", async () => {
+describe("PackActions — copy button (inside the invite modal)", () => {
+  it("copies the referral link and flashes a copied state on the copy button", async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal("navigator", {
+      ...global.navigator,
+      share: undefined,
+      clipboard: { writeText },
+    });
+
+    await renderPackActions({ unlocked: false });
+
+    await user.click(screen.getByRole("button", { name: /unlock all/i }));
+    const copyButton = await screen.findByRole("button", { name: /^copy$/i });
+    await user.click(copyButton);
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith(EXPECTED_PACK_LINK));
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /copied!/i })).toBeInTheDocument(),
+    );
+  });
+});
+
+describe("PackActions — clipboard fallback on Send (when navigator.share is absent)", () => {
+  it("transitions the Send button to 'link copied' after a successful clipboard write", async () => {
     // setup() BEFORE stubbing navigator: userEvent installs its own
     // navigator.clipboard stub at setup, so our spy must be applied afterward.
     const user = userEvent.setup();
@@ -135,7 +202,7 @@ describe("PackActions — clipboard fallback (when navigator.share is absent)", 
 
     await renderPackActions({ unlocked: false });
 
-    await user.click(screen.getByRole("button", { name: /unlock all/i }));
+    await openModalAndSend(user);
 
     await waitFor(() => {
       expect(screen.getByRole("button", { name: /link copied/i })).toBeInTheDocument();
@@ -156,32 +223,14 @@ describe("PackActions — clipboard fallback (when navigator.share is absent)", 
 
     await renderPackActions({ unlocked: false });
 
-    await user.click(screen.getByRole("button", { name: /unlock all/i }));
+    await openModalAndSend(user);
 
     await waitFor(() => expect(writeText).toHaveBeenCalled());
-    // Button falls back to its idle "unlock all" label, never "link copied".
+    // Send falls back to its idle label, never "link copied".
     expect(screen.queryByRole("button", { name: /link copied/i })).toBeNull();
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: /unlock all/i })).toBeInTheDocument(),
+      expect(screen.getByRole("button", { name: /^send$/i })).toBeInTheDocument(),
     );
-  });
-
-  it("fetches /api/referral/me even when taking the clipboard path", async () => {
-    const user = userEvent.setup();
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    vi.stubGlobal("navigator", {
-      ...global.navigator,
-      share: undefined,
-      clipboard: { writeText },
-    });
-    await renderPackActions({ unlocked: false });
-
-    await user.click(screen.getByRole("button", { name: /unlock all/i }));
-    await waitFor(() => screen.getByRole("button", { name: /link copied/i }));
-
-    expect(fetchSpy).toHaveBeenCalledWith("/api/referral/me", {
-      credentials: "include",
-    });
   });
 });
 
@@ -204,7 +253,7 @@ describe("PackActions — cancelling the native share sheet", () => {
 
     await renderPackActions({ unlocked: false });
 
-    await user.click(screen.getByRole("button", { name: /unlock all/i }));
+    await openModalAndSend(user);
 
     await waitFor(() =>
       expect(screen.getByRole("button", { name: /link copied/i })).toBeInTheDocument(),
@@ -229,7 +278,7 @@ describe("PackActions — Telegram picker fallback (share absent, inside Telegra
     const user = userEvent.setup();
     await renderPackActions({ unlocked: false });
 
-    await user.click(screen.getByRole("button", { name: /unlock all/i }));
+    await openModalAndSend(user);
     await waitFor(() => expect(openTelegramLink).toHaveBeenCalled());
 
     const picker: string = openTelegramLink.mock.calls[0][0];

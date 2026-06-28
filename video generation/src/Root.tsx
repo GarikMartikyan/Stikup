@@ -14,7 +14,17 @@ export const RemotionRoot: React.FC = () => {
         durationInFrames={DISNEY_DURATION}
         fps={30}
         width={432}
-        height={960}
+        height={768}
+        defaultProps={{locale: 'en' as const}}
+      />
+      <Composition
+        id="HowToDisneyRU"
+        component={HowToDisney}
+        durationInFrames={DISNEY_DURATION}
+        fps={30}
+        width={432}
+        height={768}
+        defaultProps={{locale: 'ru' as const}}
       />
       <Composition
         id="HowToVideo"

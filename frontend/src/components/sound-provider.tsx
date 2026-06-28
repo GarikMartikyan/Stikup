@@ -9,13 +9,13 @@ import {
 } from "react";
 
 import { playSound, setSoundEnabled, triggerHaptic } from "@/lib/sound";
-import type { SoundEvent } from "@/lib/sound";
+import type { AudioEvent } from "@/lib/sound";
 
 type SoundContextValue = {
   enabled: boolean;
   setEnabled(b: boolean): void;
   toggle(): void;
-  play(event: SoundEvent): void;
+  play(event: AudioEvent): void;
 };
 
 const SoundContext = createContext<SoundContextValue | null>(null);
@@ -59,7 +59,7 @@ export function SoundProvider({ children }: { children: React.ReactNode }) {
   }, [enabled, setEnabled]);
 
   const play = useCallback(
-    (event: SoundEvent) => {
+    (event: AudioEvent) => {
       if (!enabled) return;
       playSound(event);
       triggerHaptic(event);

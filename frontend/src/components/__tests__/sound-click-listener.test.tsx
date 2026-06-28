@@ -2,9 +2,9 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-vi.mock("@/lib/sound", () => ({ fireSound: vi.fn() }));
+vi.mock("@/lib/sound", () => ({ fireHaptic: vi.fn() }));
 
-import { fireSound } from "@/lib/sound";
+import { fireHaptic } from "@/lib/sound";
 import { SoundClickListener } from "../sound-click-listener";
 
 describe("SoundClickListener", () => {
@@ -12,7 +12,7 @@ describe("SoundClickListener", () => {
     vi.clearAllMocks();
   });
 
-  it("fires the tap sound when a button is clicked", async () => {
+  it("fires the tap haptic when a button is clicked", async () => {
     const user = userEvent.setup();
     render(
       <>
@@ -21,7 +21,7 @@ describe("SoundClickListener", () => {
       </>,
     );
     await user.click(screen.getByRole("button", { name: "Go" }));
-    expect(fireSound).toHaveBeenCalledWith("tap");
+    expect(fireHaptic).toHaveBeenCalledWith("tap");
   });
 
   it("fires when clicking an element nested inside a button", async () => {
@@ -35,7 +35,7 @@ describe("SoundClickListener", () => {
       </>,
     );
     await user.click(screen.getByText("Inner"));
-    expect(fireSound).toHaveBeenCalledWith("tap");
+    expect(fireHaptic).toHaveBeenCalledWith("tap");
   });
 
   it("fires for an element with role=button", async () => {
@@ -49,7 +49,7 @@ describe("SoundClickListener", () => {
       </>,
     );
     await user.click(screen.getByRole("button", { name: "Div button" }));
-    expect(fireSound).toHaveBeenCalledWith("tap");
+    expect(fireHaptic).toHaveBeenCalledWith("tap");
   });
 
   it("does NOT fire for a plain link", async () => {
@@ -61,7 +61,7 @@ describe("SoundClickListener", () => {
       </>,
     );
     await user.click(screen.getByText("A link"));
-    expect(fireSound).not.toHaveBeenCalled();
+    expect(fireHaptic).not.toHaveBeenCalled();
   });
 
   it("does NOT fire for a disabled button", () => {
@@ -74,7 +74,7 @@ describe("SoundClickListener", () => {
     // fireEvent forces the click even though a disabled button wouldn't emit one
     // from a real user — this exercises the guard directly.
     fireEvent.click(screen.getByRole("button", { name: "Nope" }));
-    expect(fireSound).not.toHaveBeenCalled();
+    expect(fireHaptic).not.toHaveBeenCalled();
   });
 
   it("removes its listener on unmount", async () => {
@@ -90,6 +90,6 @@ describe("SoundClickListener", () => {
     // confirm no stray listener fires.
     render(<button>Lonely</button>);
     await user.click(screen.getByRole("button", { name: "Lonely" }));
-    expect(fireSound).not.toHaveBeenCalled();
+    expect(fireHaptic).not.toHaveBeenCalled();
   });
 });

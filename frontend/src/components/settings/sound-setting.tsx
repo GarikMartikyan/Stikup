@@ -5,8 +5,8 @@ import { useEffect, useState } from "react";
 import { useSound } from "@/components/sound-provider";
 import { useT } from "@/components/language-provider";
 // Direct engine import: used only when turning ON so we can give immediate
-// audible+haptic confirmation before the provider state has updated.
-import { playSound, triggerHaptic } from "@/lib/sound";
+// haptic confirmation before the provider state has updated.
+import { triggerHaptic } from "@/lib/sound";
 
 export function SoundSetting() {
   const { enabled, toggle } = useSound();
@@ -21,10 +21,10 @@ export function SoundSetting() {
   function handleClick() {
     const next = !enabled;
     toggle();
-    // When turning ON, play feedback immediately using the engine directly
-    // because the provider's `play` still reads the not-yet-updated `enabled`.
+    // When turning ON, buzz immediately using the engine directly because the
+    // provider's `play` still reads the not-yet-updated `enabled`. The tap is
+    // silent, so this is a haptic-only confirmation.
     if (next) {
-      playSound("tap");
       triggerHaptic("tap");
     }
   }

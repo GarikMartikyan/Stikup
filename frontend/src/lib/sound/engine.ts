@@ -1,4 +1,4 @@
-import { SOUND_SRC, SOUND_VOLUME, type SoundEvent } from "./manifest";
+import { SOUND_SRC, SOUND_VOLUME, type AudioEvent } from "./manifest";
 
 /** Module-level enabled flag — synced from SoundProvider via setSoundEnabled. */
 let soundEnabled = true;
@@ -6,14 +6,14 @@ export function setSoundEnabled(b: boolean): void { soundEnabled = b; }
 export function isSoundEnabled(): boolean { return soundEnabled; }
 
 /** Lazily-created base audio elements, keyed by sound event. */
-const cache = new Map<SoundEvent, HTMLAudioElement>();
+const cache = new Map<AudioEvent, HTMLAudioElement>();
 
 /**
- * Play a sound effect for the given event.
- * Plays a clone of the cached element so rapid overlapping calls (e.g. tap)
- * never cut each other off. Never throws — all errors are swallowed.
+ * Play a sound effect for the given audible event.
+ * Plays a clone of the cached element so rapid overlapping calls never cut each
+ * other off. Never throws — all errors are swallowed.
  */
-export function playSound(event: SoundEvent): void {
+export function playSound(event: AudioEvent): void {
   if (typeof window === "undefined") return;
   if (typeof Audio === "undefined") return;
   try {

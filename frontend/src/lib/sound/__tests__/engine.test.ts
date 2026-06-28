@@ -16,7 +16,7 @@ describe("playSound", () => {
   });
 
   it("calls play() when a sound event is triggered", () => {
-    playSound("tap");
+    playSound("success");
     expect(playSpy).toHaveBeenCalledTimes(1);
   });
 
@@ -25,8 +25,8 @@ describe("playSound", () => {
     expect(() => playSound("success")).not.toThrow();
   });
 
-  it("does not throw for all sound events", () => {
-    const events = ["tap", "success", "unlock", "error"] as const;
+  it("does not throw for all audible events", () => {
+    const events = ["success", "unlock", "error"] as const;
     for (const event of events) {
       expect(() => playSound(event)).not.toThrow();
     }

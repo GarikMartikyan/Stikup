@@ -13,6 +13,8 @@ vi.mock("@/lib/sound", () => ({
   setSoundEnabled: vi.fn(),
 }));
 
+import { playSound, triggerHaptic } from "@/lib/sound";
+
 function renderSetting(storageValue?: string) {
   if (storageValue !== undefined) {
     window.localStorage.setItem("stikup:sound", storageValue);
@@ -79,5 +81,17 @@ describe("SoundSetting", () => {
 
     act(() => switchEl.click());
     expect(switchEl.getAttribute("aria-checked")).toBe("true");
+  });
+
+  it("turning ON buzzes (haptic) but plays no sound — tap is silent", async () => {
+    renderSetting("off");
+    await act(async () => {});
+    const switchEl = screen.getByRole("switch");
+    expect(switchEl.getAttribute("aria-checked")).toBe("false");
+
+    act(() => switchEl.click());
+
+    expect(triggerHaptic).toHaveBeenCalledWith("tap");
+    expect(playSound).not.toHaveBeenCalled();
   });
 });

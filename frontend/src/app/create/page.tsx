@@ -12,7 +12,7 @@ import {
   type StyleId,
 } from '@/lib/sticker-styles';
 import { useT } from '@/components/language-provider';
-import { fireSound } from '@/lib/sound';
+import { fireHaptic } from '@/lib/sound';
 
 export default function CreatePage() {
   const t = useT();
@@ -49,7 +49,7 @@ export default function CreatePage() {
   // there, generates the grid, then returns to the (already-on-/upload) app tab
   // to upload it.
   const openChatGpt = () => {
-    fireSound("tap");
+    fireHaptic("tap");
     setHasInteracted(true);
     router.push('/upload');
   };

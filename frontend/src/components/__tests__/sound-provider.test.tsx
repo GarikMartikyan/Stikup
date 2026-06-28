@@ -22,7 +22,7 @@ function Consumer() {
     <div>
       <span data-testid="state" data-enabled={String(enabled)} />
       <button data-testid="toggle" onClick={toggle} />
-      <button data-testid="play" onClick={() => play("tap")} />
+      <button data-testid="play" onClick={() => play("success")} />
     </div>
   );
 }
@@ -109,8 +109,8 @@ describe("SoundProvider", () => {
       screen.getByTestId("play").click();
     });
 
-    expect(playSound).toHaveBeenCalledWith("tap");
-    expect(triggerHaptic).toHaveBeenCalledWith("tap");
+    expect(playSound).toHaveBeenCalledWith("success");
+    expect(triggerHaptic).toHaveBeenCalledWith("success");
   });
 
   it("play() does NOT call playSound or triggerHaptic when disabled", () => {

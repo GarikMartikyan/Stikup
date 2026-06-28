@@ -18,7 +18,7 @@ a whole sticker pack) in the first 2 seconds.
 | Concept    | **Transformation reveal** — selfie → 12 stickers                              |
 | Length     | ~12s (target 8–15s)                                                           |
 | Language   | English only                                                                  |
-| Audio      | **Silent / text-driven** (mute-safe); creator adds a trending sound on upload |
+| Audio      | Background music (`public/background.mp3`) + Mixkit SFX baked in (was silent) |
 | Lead style | Disney 3D (only full 12-sticker asset set); anime/chibi/pixel teased          |
 | CTA        | "Make your pack — free" · `stikup.app` · "Open in Telegram" cue               |
 
@@ -72,11 +72,20 @@ src/promo/
 
 - New `<Composition id="LaunchPromo">` in `src/Root.tsx`, 1080×1920, 30fps,
   `PROMO_DURATION` frames. Existing compositions untouched.
-- `package.json` script: `render:promo` → `remotion render LaunchPromo out/launch-promo.mp4 --overwrite`.
+- `package.json` script: `render:promo` → high-quality H.264 (`--image-format=png
+--crf=16 --color-space=bt709 --audio-bitrate=320k`). `render:promo:gif` for a
+  silent GIF preview.
+
+## Audio (added after initial silent design)
+
+- **Background music:** `public/background.mp3`, ~0.6 volume, fade in/out, first 12s.
+- **SFX layer:** `src/promo/Sfx.tsx` places Mixkit sounds on the global timeline —
+  whoosh (scene changes), scan + magic (reveal), pop ×12 (cascade), tap ×3 + ding
+  (steps), logo sting + end sparkle (CTA). Files in `public/sfx/`. Long clips are
+  trimmed + faded per cue. All Mixkit (free for commercial use).
 
 ## Out of scope (YAGNI)
 
 - No Russian cut (English only this pass).
-- No baked-in audio track.
 - No 1:1 / 16:9 crops (vertical master only).
 - No changes to the existing how-to compositions.

@@ -1,16 +1,14 @@
 # Sound effects
 
-UI sound effects sourced from **Mixkit** (https://mixkit.co/free-sound-effects/)
-under the Mixkit Free Sound Effects License — free for commercial and
-non-commercial use, no attribution required. The license permits using these
-sounds inside this app; it does not permit redistributing the raw files as a
-standalone download.
+These UI sound effects were provided by the project owner (the files in this
+folder were added/replaced manually).
 
-| File         | Mixkit sound                     | Mixkit ID |
-| ------------ | -------------------------------- | --------- |
-| tap.mp3      | "Long pop"                       | 2358      |
-| success.mp3  | "Fantasy game success notification" | 270    |
-| unlock.mp3   | "Unlock game notification"       | 253       |
-| error.mp3    | "Negative tone interface tap"    | 2569      |
+| File         | Plays on                                    |
+| ------------ | ------------------------------------------- |
+| tap.mp3      | every button press (app-wide)               |
+| success.mp3  | sticker pack ready / stickers claimed       |
+| unlock.mp3   | referral share/copy succeeds                |
+| error.mp3    | generation / upload / result failure        |
 
-Source URL pattern: https://assets.mixkit.co/active_storage/sfx/<ID>/<ID>-preview.mp3
+> If any of these originate from a library that requires attribution (e.g.
+> Mixkit, Freesound), record the source and license here.

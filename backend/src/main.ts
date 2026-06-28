@@ -7,7 +7,6 @@ import cookieParser from 'cookie-parser';
 import type { Application } from 'express';
 
 import { AppModule } from './app.module';
-import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { appConfig } from './config/app.config';
 import { getEnvProfile } from './config/environment';
 import { frontendConfig } from './config/frontend.config';
@@ -53,7 +52,10 @@ async function bootstrap(): Promise<void> {
       forbidNonWhitelisted: true,
     }),
   );
-  app.useGlobalFilters(new AllExceptionsFilter());
+
+  // AllExceptionsFilter is registered as APP_FILTER in app.module.ts so that
+  // AdminAlertService can be injected into it via NestJS DI.
+  app.enableShutdownHooks();
 
   // Generated sticker packs are served by StickerFileController (owner- and
   // unlock-gated), NOT as unconditional static assets — the 9 locked stickers

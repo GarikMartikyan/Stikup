@@ -2,14 +2,16 @@ import * as path from 'node:path';
 
 import { Module } from '@nestjs/common';
 import type { ConfigType } from '@nestjs/config';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { AcceptLanguageResolver, I18nModule, QueryResolver } from 'nestjs-i18n';
 
 import { HttpOnlyThrottlerGuard } from './common/guards/http-only-throttler.guard';
 import { TelegrafModule } from 'nestjs-telegraf';
 
+import { AdminModule } from './admin/admin.module';
 import { AuthModule } from './auth/auth.module';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { AppConfigModule } from './config/app-config.module';
 import { telegramConfig } from './config/telegram.config';
 import { HealthModule } from './health/health.module';
@@ -61,7 +63,11 @@ import { TelegramModule } from './telegram/telegram.module';
     ReferralModule,
     JobsModule,
     HealthModule,
+    AdminModule,
   ],
-  providers: [{ provide: APP_GUARD, useClass: HttpOnlyThrottlerGuard }],
+  providers: [
+    { provide: APP_GUARD, useClass: HttpOnlyThrottlerGuard },
+    { provide: APP_FILTER, useClass: AllExceptionsFilter },
+  ],
 })
 export class AppModule {}

@@ -32,6 +32,13 @@ export class TelegramConfigSchema {
   // stickers/messages) regardless — only inbound polling is gated here.
   @IsBoolean()
   launchBot!: boolean;
+
+  // Telegram numeric user id that receives monitoring alerts and may run
+  // /userscount. Leave blank to disable admin features.
+  @IsOptional()
+  @IsInt()
+  @IsPositive()
+  adminChatId?: number;
 }
 
 function toBool(raw: string | undefined, fallback: boolean): boolean {
@@ -43,6 +50,12 @@ function toInt(raw: string | undefined, fallback: number): number {
   if (raw === undefined || raw === '') return fallback;
   const parsed = Number(raw);
   return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function toIntOptional(raw: string | undefined): number | undefined {
+  if (raw === undefined || raw.trim() === '') return undefined;
+  const parsed = parseInt(raw, 10);
+  return Number.isFinite(parsed) ? parsed : undefined;
 }
 
 export const telegramConfig = registerAs(
@@ -63,6 +76,7 @@ export const telegramConfig = registerAs(
         process.env.TELEGRAM_BOT_LAUNCH,
         getEnvProfile().isProd,
       ),
+      adminChatId: toIntOptional(process.env.ADMIN_TELEGRAM_ID),
     };
 
     const instance = plainToInstance(TelegramConfigSchema, raw);

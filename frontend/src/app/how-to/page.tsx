@@ -8,7 +8,9 @@ import {
   ClipboardCopy,
   Download,
   ExternalLink,
+  Pause,
   Play,
+  RotateCcw,
   Sparkles,
   Upload,
   Users,
@@ -23,7 +25,13 @@ export default function HowToPage() {
   const t = useT();
   const [hasPacks, setHasPacks] = useState<boolean | null>(null);
   const [showVideo, setShowVideo] = useState(false);
-  const [ended, setEnded] = useState(false);
+  // Player state: 'playing' shows no overlay, 'paused' shows the pause icon,
+  // 'ended' shows the replay icon. `watched` stays true once the video has
+  // finished at least once, so the "Next" button stays unlocked across replays.
+  const [status, setStatus] = useState<'playing' | 'paused' | 'ended'>(
+    'playing',
+  );
+  const [watched, setWatched] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -34,8 +42,26 @@ export default function HowToPage() {
   }, []);
 
   function openVideo() {
-    setEnded(false);
+    setStatus('playing');
+    setWatched(false);
     setShowVideo(true);
+  }
+
+  // Toggle play/pause on tap; restart from the beginning once it has ended.
+  function toggleVideo() {
+    const video = videoRef.current;
+    if (!video) return;
+    if (status === 'ended') {
+      video.currentTime = 0;
+      void video.play();
+      setStatus('playing');
+    } else if (status === 'paused') {
+      void video.play();
+      setStatus('playing');
+    } else {
+      video.pause();
+      setStatus('paused');
+    }
   }
 
   type Step = {
@@ -110,21 +136,58 @@ export default function HowToPage() {
 
           {/* Video */}
           <div className="flex flex-1 items-center justify-center overflow-hidden px-4">
-            <video
-              ref={videoRef}
-              src="/how-to-disney.mp4"
-              autoPlay
-              muted
-              playsInline
-              className="max-h-full max-w-md rounded-xl object-contain shadow-2xl ring-1 ring-white/10"
-              onEnded={() => setEnded(true)}
-              onError={() => setEnded(true)}
-            />
+            <div
+              role="button"
+              tabIndex={0}
+              aria-label={
+                status === 'ended'
+                  ? 'Replay video'
+                  : status === 'paused'
+                    ? 'Resume video'
+                    : 'Pause video'
+              }
+              onClick={toggleVideo}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  toggleVideo();
+                }
+              }}
+              className="relative inline-flex max-h-full cursor-pointer"
+            >
+              <video
+                ref={videoRef}
+                src="/how-to-disney.mp4"
+                autoPlay
+                muted
+                playsInline
+                className="max-h-full max-w-md rounded-xl object-contain shadow-2xl ring-1 ring-white/10"
+                onPlay={() => setStatus('playing')}
+                onEnded={() => {
+                  setStatus('ended');
+                  setWatched(true);
+                }}
+                onError={() => setWatched(true)}
+              />
+
+              {/* Center overlay: pause icon while paused, replay icon once ended */}
+              {status !== 'playing' && (
+                <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                  <span className="grid h-16 w-16 place-items-center rounded-full bg-black/45 text-white/90 backdrop-blur-sm ring-1 ring-white/15">
+                    {status === 'ended' ? (
+                      <RotateCcw className="h-8 w-8" strokeWidth={2.2} />
+                    ) : (
+                      <Pause className="h-8 w-8 fill-current" strokeWidth={1.5} />
+                    )}
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Footer: Next appears only after the video ends */}
           <div className="flex shrink-0 items-center justify-center px-5 pb-9 pt-4">
-            {ended ? (
+            {watched ? (
               <Link
                 href="/create"
                 className="shimmer group inline-flex items-center gap-2 overflow-hidden rounded-full bg-gradient-to-r from-[var(--color-brand)] via-[#ff5e72] to-[var(--color-brand-2)] px-8 py-4 text-base font-bold text-white shadow-[0_18px_40px_-12px_rgba(224,52,154,0.55)] transition hover:-translate-y-0.5"

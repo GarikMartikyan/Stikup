@@ -343,6 +343,14 @@
       "light": "Light",
       "dark": "Dark"
     },
+    "sound": {
+      "section_title": "Sound & haptics",
+      "section_description": "Play sound effects and vibration as you use Stikup on this device.",
+      "toggle_label": "Sound & haptics",
+      "on": "On",
+      "off": "Off",
+      "switch_aria": "Toggle sound effects and haptics"
+    },
     "language": {
       "section_title": "Language",
       "section_description": "Preferred interface language for this device.",

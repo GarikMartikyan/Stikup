@@ -6,6 +6,7 @@ import { LanguageProvider } from "@/components/language-provider";
 import { ThemeProvider } from "@/components/theme-provider";
 import { StoreProvider } from "@/lib/store/providers";
 import { TelegramProvider } from "@/components/telegram/telegram-provider";
+import { SoundProvider } from "@/components/sound-provider";
 import { ScrollToTop } from "@/components/scroll-to-top";
 import { BrowserGuard } from "@/components/browser-guard";
 import "./globals.css";
@@ -68,10 +69,12 @@ export default async function RootLayout({
           <LanguageProvider>
             <StoreProvider>
               <TelegramProvider>
-                <BrowserGuard />
-                <ScrollToTop />
-                <AppHeader />
-                {children}
+                <SoundProvider>
+                  <BrowserGuard />
+                  <ScrollToTop />
+                  <AppHeader />
+                  {children}
+                </SoundProvider>
               </TelegramProvider>
             </StoreProvider>
           </LanguageProvider>

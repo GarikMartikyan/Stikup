@@ -1,12 +1,13 @@
 "use client";
 
-import { KeyRound, Languages, Palette, Send } from "lucide-react";
+import { KeyRound, Languages, Palette, Send, Volume2 } from "lucide-react";
 
 import { GoogleConnectionSetting } from "@/components/settings/google-connection-setting";
 import { LanguageSetting } from "@/components/settings/language-setting";
 import { SettingSection } from "@/components/settings/setting-section";
 import { TelegramConnectionSetting } from "@/components/settings/telegram-connection-setting";
 import { ThemeSetting } from "@/components/settings/theme-setting";
+import { SoundSetting } from "@/components/settings/sound-setting";
 import { useT } from "@/components/language-provider";
 
 export function SettingsContent() {
@@ -46,6 +47,14 @@ export function SettingsContent() {
           description={t("settings.theme.section_description")}
         >
           <ThemeSetting />
+        </SettingSection>
+
+        <SettingSection
+          icon={Volume2}
+          title={t("settings.sound.section_title")}
+          description={t("settings.sound.section_description")}
+        >
+          <SoundSetting />
         </SettingSection>
 
         <SettingSection

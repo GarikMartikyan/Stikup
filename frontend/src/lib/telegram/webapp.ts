@@ -43,6 +43,12 @@ export interface TgBackButton {
 export interface TelegramWebApp {
   /** Raw initData string for server-side validation. */
   initData: string;
+  /** Native haptic feedback. Absent on old clients / outside Telegram. */
+  HapticFeedback?: {
+    impactOccurred(style: "light" | "medium" | "heavy" | "rigid" | "soft"): void;
+    notificationOccurred(type: "error" | "success" | "warning"): void;
+    selectionChanged(): void;
+  };
   /** Parsed initData as an object. */
   initDataUnsafe: {
     user?: TgUser;

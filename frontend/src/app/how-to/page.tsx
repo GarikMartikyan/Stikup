@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import Link from 'next/link';
 import {
   ArrowRight,
@@ -14,12 +15,18 @@ import {
   Sparkles,
   Upload,
   Users,
+  Volume2,
+  VolumeX,
   Wand2,
   Zap,
 } from 'lucide-react';
 import { useLanguage } from '@/components/language-provider';
 
 const STEP_ICONS = [Wand2, ClipboardCopy, Bot, Download, Upload, Users];
+
+// Shared look for the circular controls layered over the tutorial video.
+const OVERLAY_PILL =
+  'grid place-items-center rounded-full bg-black/45 text-white/90 ring-1 ring-white/15 backdrop-blur-sm';
 
 export default function HowToPage() {
   const { t, language } = useLanguage();
@@ -32,6 +39,12 @@ export default function HowToPage() {
     'playing',
   );
   const [watched, setWatched] = useState(false);
+  // The tutorial plays WITH sound by default; the top-right button toggles this.
+  const [muted, setMuted] = useState(false);
+  // True when the video can't load or play at all — we then surface an explicit
+  // "Skip" affordance instead of silently unlocking "Next" or stranding the user
+  // on a frozen frame with no way out.
+  const [failed, setFailed] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -41,10 +54,44 @@ export default function HowToPage() {
       .catch(() => setHasPacks(false));
   }, []);
 
+  // Reflect the mute preference on the element whenever it changes. React's
+  // `muted` JSX attribute alone is unreliable, so we set the DOM property.
+  useEffect(() => {
+    if (videoRef.current) videoRef.current.muted = muted;
+  }, [muted]);
+
+  // Lock background scroll while the tutorial overlay is open, matching the
+  // app's other full-screen modals (sticker-lightbox, user-drawer, etc.).
+  useEffect(() => {
+    document.body.style.overflow = showVideo ? 'hidden' : '';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [showVideo]);
+
+  // Open the tutorial WITH sound. The unmuted play() must run inside this click
+  // handler's user-gesture call stack — browsers (notably iOS Safari and the
+  // Telegram in-app webview) block autoplay with sound from async effects.
+  // flushSync mounts the <video> synchronously so play() fires while the gesture
+  // is still active. If the browser blocks it anyway, fall back to muted playback
+  // so the tutorial still starts; a total failure surfaces the Skip control.
+  // The <video> has no `key`, so it persists across a language change and keeps
+  // playing (the src swaps for the next open) rather than remounting to a frozen
+  // frame.
   function openVideo() {
     setStatus('playing');
     setWatched(false);
-    setShowVideo(true);
+    setFailed(false);
+    setMuted(false);
+    flushSync(() => setShowVideo(true));
+    const video = videoRef.current;
+    if (!video) return;
+    video.muted = false;
+    void video.play().catch(() => {
+      video.muted = true;
+      setMuted(true);
+      void video.play().catch(() => setFailed(true));
+    });
   }
 
   // Toggle play/pause on tap; restart from the beginning once it has ended.
@@ -72,7 +119,8 @@ export default function HowToPage() {
     options?: { label: string; icon: React.ElementType; text: string }[];
   };
 
-  const steps: Step[] = [
+  const steps: Step[] = useMemo<Step[]>(() => {
+    return [
     {
       icon: STEP_ICONS[0],
       title: t('how_to.step1_title'),
@@ -117,13 +165,34 @@ export default function HowToPage() {
       title: t('how_to.step6_title'),
       body: t('how_to.step6_body'),
     },
-  ];
+    ];
+  }, [t]);
 
   return (
     <>
       {/* Tutorial video overlay (locked until it ends) */}
       {showVideo && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-black/95 backdrop-blur-sm">
+        <div
+          data-no-tap-sound
+          className="fixed inset-0 z-50 flex flex-col bg-black/95 backdrop-blur-sm"
+        >
+          {/* Mute / unmute — top right */}
+          <button
+            type="button"
+            onClick={() => setMuted((m) => !m)}
+            aria-pressed={muted}
+            aria-label={
+              muted ? t('how_to.video_unmute') : t('how_to.video_mute')
+            }
+            className={`${OVERLAY_PILL} absolute right-4 top-6 z-10 h-11 w-11 transition hover:bg-black/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80`}
+          >
+            {muted ? (
+              <VolumeX className="h-5 w-5" strokeWidth={2} />
+            ) : (
+              <Volume2 className="h-5 w-5" strokeWidth={2} />
+            )}
+          </button>
+
           {/* Header */}
           <div className="shrink-0 px-5 pb-3 pt-7 text-center">
             <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--color-brand)]">
@@ -157,10 +226,7 @@ export default function HowToPage() {
             >
               <video
                 ref={videoRef}
-                key={language}
                 src={`/how-to-disney-${language}.mp4`}
-                autoPlay
-                muted
                 playsInline
                 className="max-h-full max-w-md rounded-xl object-contain shadow-2xl ring-1 ring-white/10"
                 onPlay={() => setStatus('playing')}
@@ -168,13 +234,13 @@ export default function HowToPage() {
                   setStatus('ended');
                   setWatched(true);
                 }}
-                onError={() => setWatched(true)}
+                onError={() => setFailed(true)}
               />
 
               {/* Center overlay: pause icon while paused, replay icon once ended */}
               {status !== 'playing' && (
                 <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                  <span className="grid h-16 w-16 place-items-center rounded-full bg-black/45 text-white/90 backdrop-blur-sm ring-1 ring-white/15">
+                  <span className={`${OVERLAY_PILL} h-16 w-16`}>
                     {status === 'ended' ? (
                       <RotateCcw className="h-8 w-8" strokeWidth={2.2} />
                     ) : (
@@ -196,6 +262,19 @@ export default function HowToPage() {
                 <span>{t('how_to.video_next')}</span>
                 <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
               </Link>
+            ) : failed ? (
+              <div className="flex flex-col items-center gap-3 text-center">
+                <p className="text-sm font-medium text-white/60">
+                  {t('how_to.video_error')}
+                </p>
+                <Link
+                  href="/create"
+                  className="group inline-flex items-center gap-2 rounded-full border border-white/20 px-6 py-3 text-sm font-semibold text-white/90 transition hover:bg-white/10"
+                >
+                  <span>{t('how_to.skip_video')}</span>
+                  <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
+                </Link>
+              </div>
             ) : (
               <p className="text-sm font-medium text-white/50">
                 {t('how_to.video_watch_to_continue')}

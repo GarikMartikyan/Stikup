@@ -24,6 +24,9 @@ export function SoundClickListener() {
       const target = e.target as Element | null;
       const el = target?.closest?.('button, [role="button"]');
       if (!el) return;
+      // Let surfaces with their own audio (e.g. the tutorial video overlay) opt
+      // out via `data-no-tap-sound`, so the tap SFX doesn't layer over playback.
+      if (el.closest("[data-no-tap-sound]")) return;
       // Don't sound a press that can't do anything.
       if (
         el.hasAttribute("disabled") ||

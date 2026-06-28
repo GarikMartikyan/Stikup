@@ -551,6 +551,9 @@
     "video_watch_to_continue": "Watch the video to continue",
     "video_replay": "Replay video",
     "video_resume": "Resume video",
-    "video_pause": "Pause video"
+    "video_pause": "Pause video",
+    "video_mute": "Mute",
+    "video_unmute": "Unmute",
+    "video_error": "The video couldn't play. You can skip ahead."
   }
 }

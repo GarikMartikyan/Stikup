@@ -95,7 +95,7 @@ export function PackShowcase({ loggedIn }: { loggedIn: boolean }) {
                     <StickerCard
                       key={i}
                       src={s.src}
-                      alt={s.alt}
+                      alt={t("landing.pack_showcase.sticker_alt", { n: i + 1 })}
                       locked={false}
                       rotate={(i % 2 === 0 ? 1 : -1) * (i % 3)}
                       delay={i * 50}

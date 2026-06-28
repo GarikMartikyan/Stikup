@@ -4,10 +4,22 @@ import Link from "next/link";
 import { ArrowRight, Check, Lock } from "lucide-react";
 import { StickerCard } from "@/components/sticker-card";
 import type { DashboardPack } from "./data";
-import { useT } from "@/components/language-provider";
+import { useLanguage, type Language } from "@/components/language-provider";
+
+const DATE_LOCALE: Record<Language, string> = { en: "en-US", ru: "ru-RU" };
+
+function formatDate(iso: string, language: Language): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString(DATE_LOCALE[language], {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
 
 export function PackCard({ pack }: { pack: DashboardPack }) {
-  const t = useT();
+  const { t, language } = useLanguage();
   const unlockedCount = pack.unlocked ? pack.stickers.length : pack.freeCount;
   const lockedCount = Math.max(0, pack.stickers.length - unlockedCount);
 
@@ -16,7 +28,7 @@ export function PackCard({ pack }: { pack: DashboardPack }) {
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-fg-subtle)]">
-            {pack.createdAtLabel}
+            {formatDate(pack.createdAt, language)}
           </div>
           <div className="mt-1 font-[family-name:var(--font-display)] text-2xl font-bold tracking-tight">
             {t("dashboard.pack_card.title")}
@@ -43,7 +55,7 @@ export function PackCard({ pack }: { pack: DashboardPack }) {
           <StickerCard
             key={s.index}
             src={s.url}
-            alt={`Sticker ${s.index + 1}`}
+            alt={t("dashboard.pack_card.sticker_alt", { n: s.index + 1 })}
             locked={!pack.unlocked && i >= pack.freeCount}
             rotate={(i % 2 === 0 ? 1 : -1) * (i % 3)}
           />

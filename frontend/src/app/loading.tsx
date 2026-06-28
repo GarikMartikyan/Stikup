@@ -1,12 +1,16 @@
+"use client";
+
+import { useT } from "@/components/language-provider";
+
 /**
  * Global loading UI shown via React Suspense while route segments stream.
  *
- * Server Component by default. Next.js automatically skips this for very fast
- * transitions, so it should be safe to render unconditionally here.
- * "Loading" text is kept as a non-translatable constant since this renders
- * before any client provider is available.
+ * Next.js automatically skips this for very fast transitions, so it should be
+ * safe to render unconditionally here. The label uses useT(), which falls back
+ * to English when no provider is mounted yet and upgrades after hydration.
  */
 export default function Loading() {
+  const t = useT();
   return (
     <main
       className="mx-auto flex flex-1 w-full max-w-2xl flex-col items-center justify-center px-5 py-12"
@@ -16,7 +20,7 @@ export default function Loading() {
       <div className="flex flex-col items-center gap-4">
         <div className="h-10 w-10 animate-pulse rounded-full bg-[var(--color-bg-elev)] shadow-[var(--shadow-card)]" />
         <div className="font-mono text-xs uppercase tracking-[0.18em] text-[var(--color-fg-subtle)]">
-          Loading
+          {t("common.loading")}
         </div>
       </div>
     </main>

@@ -66,7 +66,7 @@ export function StickerLightbox({
   if (!current) return null;
 
   const src = current.url;
-  const alt = `Sticker ${current.index + 1}`;
+  const alt = t("result.sticker_grid.sticker_n", { n: current.index + 1 });
 
   return createPortal(
     <div

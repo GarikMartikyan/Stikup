@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import { STICKER_STYLES, type StyleId } from '@/lib/sticker-styles';
+import { useT } from '@/components/language-provider';
 
 const STYLE_PREVIEW: Record<StyleId, string> = {
   chibi: '/assets/chibi/sticker_8.webp',
@@ -16,10 +17,11 @@ type StylePickerProps = {
 };
 
 export function StylePicker({ selected, onSelect }: StylePickerProps) {
+  const t = useT();
   return (
     <div
       role="radiogroup"
-      aria-label="Art styles"
+      aria-label={t('create.style_picker_label')}
       className="grid grid-cols-2 gap-3 sm:grid-cols-4"
     >
       {STICKER_STYLES.map((style) => {
@@ -69,7 +71,7 @@ export function StylePicker({ selected, onSelect }: StylePickerProps) {
                 {style.name}
               </div>
               <div className="mt-0.5 text-sm text-[var(--color-fg-muted)]">
-                {style.tagline}
+                {t(`create.style_tagline.${style.id}`)}
               </div>
             </div>
           </button>

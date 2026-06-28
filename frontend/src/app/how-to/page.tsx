@@ -127,10 +127,10 @@ export default function HowToPage() {
           {/* Header */}
           <div className="shrink-0 px-5 pb-3 pt-7 text-center">
             <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--color-brand)]">
-              Tutorial
+              {t('how_to.video_eyebrow')}
             </span>
             <h2 className="mt-1 text-base font-semibold text-white">
-              How to create your sticker pack
+              {t('how_to.video_heading')}
             </h2>
           </div>
 
@@ -141,10 +141,10 @@ export default function HowToPage() {
               tabIndex={0}
               aria-label={
                 status === 'ended'
-                  ? 'Replay video'
+                  ? t('how_to.video_replay')
                   : status === 'paused'
-                    ? 'Resume video'
-                    : 'Pause video'
+                    ? t('how_to.video_resume')
+                    : t('how_to.video_pause')
               }
               onClick={toggleVideo}
               onKeyDown={(e) => {
@@ -193,12 +193,12 @@ export default function HowToPage() {
                 href="/create"
                 className="shimmer group inline-flex items-center gap-2 overflow-hidden rounded-full bg-gradient-to-r from-[var(--color-brand)] via-[#ff5e72] to-[var(--color-brand-2)] px-8 py-4 text-base font-bold text-white shadow-[0_18px_40px_-12px_rgba(224,52,154,0.55)] transition hover:-translate-y-0.5"
               >
-                <span>Next</span>
+                <span>{t('how_to.video_next')}</span>
                 <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
               </Link>
             ) : (
               <p className="text-sm font-medium text-white/50">
-                Watch the video to continue
+                {t('how_to.video_watch_to_continue')}
               </p>
             )}
           </div>
@@ -210,7 +210,7 @@ export default function HowToPage() {
           {/* Header */}
           <div className="reveal">
             <span className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-brand)]">
-              Guide
+              {t('how_to.eyebrow')}
             </span>
             <h1 className="mt-1 font-[family-name:var(--font-display)] text-3xl font-extrabold tracking-[-0.02em] md:text-4xl">
               {t('how_to.page_title')}

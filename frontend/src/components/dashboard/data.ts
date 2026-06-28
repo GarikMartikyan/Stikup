@@ -1,6 +1,7 @@
 export type DashboardPack = {
   id: string;
-  createdAtLabel: string;
+  /** ISO timestamp; formatted per the active language in the UI. */
+  createdAt: string;
   status: string;
   unlocked: boolean;
   freeCount: number;

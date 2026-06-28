@@ -1,25 +1,27 @@
+"use client";
+
 import Link from "next/link";
+import { useT } from "@/components/language-provider";
 
 /**
- * 404 page. Server Component — no hooks, no client state.
- * Styling kept in sync with error.tsx for visual consistency.
+ * 404 page. Styling kept in sync with error.tsx for visual consistency.
  *
- * Note: Next.js prerendering of the special _not-found route does not run
- * through the root layout's client component tree. We therefore inline a
- * lightweight header here (brand wordmark only, no ThemeToggle) rather than
- * importing AppHeader, which pulls in ThemeToggle (a "use client" component
- * relying on a React context that is absent during static generation of this
- * special segment). Strings are hardcoded in English for the same reason —
- * the LanguageProvider context is unavailable during special-segment prerender.
+ * Note: we inline a lightweight header here (brand wordmark only, no
+ * ThemeToggle) rather than importing AppHeader, which pulls in ThemeToggle (a
+ * component relying on a React context that is absent during static generation
+ * of this special segment). Translations use useT(), which falls back to
+ * English when the LanguageProvider context is unavailable (e.g. during
+ * special-segment prerender) and upgrades to the user's language after hydration.
  */
 export default function NotFound() {
+  const t = useT();
   return (
     <div className="relative flex min-h-dvh flex-col">
       <header className="sticky top-0 z-40 border-b border-[var(--color-border)] bg-[var(--color-bg)]/85 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-6xl items-center px-5">
           <Link
             href="/"
-            aria-label="Stikup home"
+            aria-label={t("header.brand_home_label")}
             className="inline-flex items-baseline gap-0.5 font-[family-name:var(--font-display)] text-lg font-extrabold tracking-[-0.04em] text-[var(--color-fg)]"
           >
             <span>Stikup</span>
@@ -34,17 +36,17 @@ export default function NotFound() {
             404
           </div>
           <h1 className="mt-3 font-[family-name:var(--font-display)] text-3xl font-extrabold tracking-[-0.02em] md:text-4xl">
-            Page not found
+            {t("errors.not_found.title")}
           </h1>
           <p className="mt-3 text-sm text-[var(--color-fg-muted)]">
-            The page you&apos;re looking for doesn&apos;t exist or has moved.
+            {t("errors.not_found.body")}
           </p>
           <div className="mt-6">
             <Link
               href="/"
               className="inline-flex items-center justify-center gap-2 rounded-full bg-[var(--color-fg)] px-4 py-2 text-sm font-semibold text-[var(--color-bg)] shadow-sm transition hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]"
             >
-              Go home
+              {t("errors.not_found.go_home")}
             </Link>
           </div>
         </div>

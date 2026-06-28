@@ -7,7 +7,6 @@ export type StyleId =
 export type StickerStyle = {
   id: StyleId;
   name: string;
-  tagline: string;
   /** The "Render the character as ... with:" block + its bullet list. */
   render: string;
   /** Parenthetical guidance appended to the "same hairstyle" identity line. */
@@ -105,7 +104,6 @@ export const STICKER_STYLES: StickerStyle[] = [
   {
     id: "chibi",
     name: "Chibi",
-    tagline: "Cute & soft",
     render: `Render the character in a cute **2D chibi style** with:
 
 * soft, exaggerated proportions (large head, small body)
@@ -120,7 +118,6 @@ export const STICKER_STYLES: StickerStyle[] = [
   {
     id: "disney3d",
     name: "Disney 3D",
-    tagline: "Pixar-style 3D",
     render: `Render the character as a polished **3D animated movie character inspired by modern family animation** with:
 
 * soft rounded forms
@@ -134,7 +131,6 @@ export const STICKER_STYLES: StickerStyle[] = [
   {
     id: "anime",
     name: "Anime",
-    tagline: "Crisp cel-shaded",
     render: `Render the character in a clean **modern anime style** with:
 
 * crisp cel-shaded coloring
@@ -149,7 +145,6 @@ export const STICKER_STYLES: StickerStyle[] = [
   {
     id: "pixel",
     name: "Pixel",
-    tagline: "Retro 16-bit",
     render: `Render the character as retro **16-bit pixel art** with:
 
 * blocky, clearly visible square pixels

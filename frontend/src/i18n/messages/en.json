@@ -130,6 +130,7 @@
       "unlock_anonymous": "Sign in to unlock",
       "stickers_locked": "9 stickers locked",
       "your_pack_ready": "Your pack · ready",
+      "sticker_alt": "Sticker {n}",
       "bullets": {
         "b1": "12 expressive emotions, hand-curated",
         "b2": "Real Telegram sticker set you own",
@@ -199,7 +200,8 @@
       "unlocked": "Unlocked",
       "locked_count": "{count} locked",
       "sticker_total": "{count} stickers",
-      "view": "View pack"
+      "view": "View pack",
+      "sticker_alt": "Sticker {n}"
     },
     "empty_state": {
       "title": "No sticker packs yet",
@@ -483,6 +485,12 @@
     "title": "Pick your style.",
     "description": "Choose an art style and we'll build the ChatGPT prompt for you.",
     "style_picker_label": "Art styles",
+    "style_tagline": {
+      "chibi": "Cute & soft",
+      "disney3d": "Pixar-style 3D",
+      "anime": "Crisp cel-shaded",
+      "pixel": "Retro 16-bit"
+    },
     "prompt_label": "Your ChatGPT prompt",
     "copy_prompt": "Copy prompt",
     "copied": "Copied!",
@@ -504,6 +512,7 @@
     }
   },
   "how_to": {
+    "eyebrow": "Guide",
     "got_it": "Got it, show my stickers",
     "page_title": "How to make your stickers",
     "page_subtitle": "Six simple steps — from choosing a style to sending your pack in Telegram.",
@@ -527,6 +536,13 @@
     "step6_body": "You get 3 stickers free right away. Invite one friend who signs up and all 12 unlock — no payment required.",
     "next_step": "Next step",
     "skip_video": "Skip video",
-    "cta": "Start now — pick your style"
+    "cta": "Start now — pick your style",
+    "video_eyebrow": "Tutorial",
+    "video_heading": "How to create your sticker pack",
+    "video_next": "Next",
+    "video_watch_to_continue": "Watch the video to continue",
+    "video_replay": "Replay video",
+    "video_resume": "Resume video",
+    "video_pause": "Pause video"
   }
 }

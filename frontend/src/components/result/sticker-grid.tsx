@@ -67,7 +67,7 @@ export function StickerGrid({ stickers, freeCount, unlocked, unoptimized = false
             >
               <StickerCard
                 src={s.url}
-                alt={`Sticker ${s.index + 1}`}
+                alt={t("result.sticker_grid.sticker_n", { n: s.index + 1 })}
                 locked={isLocked}
                 rotate={isLocked ? 0 : (i - 1) * 2}
                 delay={i * 60}

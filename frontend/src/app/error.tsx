@@ -2,10 +2,12 @@
 
 import { useEffect } from "react";
 
+import { useT } from "@/components/language-provider";
+
 /**
- * Root error boundary. Must be "use client" per Next.js convention.
- * Strings are hardcoded in English — the LanguageProvider context may be
- * unavailable when this renders as the global error fallback.
+ * Route-segment error boundary. Must be "use client" per Next.js convention.
+ * It renders inside the root layout, so the LanguageProvider is available;
+ * useT() also falls back to English if the context is ever missing.
  */
 export default function Error({
   error,
@@ -14,6 +16,8 @@ export default function Error({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const t = useT();
+
   useEffect(() => {
     console.error(error);
   }, [error]);
@@ -24,14 +28,13 @@ export default function Error({
     <main className="mx-auto flex flex-1 w-full max-w-2xl flex-col items-center justify-center px-5 py-12">
       <div className="w-full rounded-3xl border border-[var(--color-border)] bg-[var(--color-bg-elev)] p-8 shadow-[var(--shadow-card)] md:p-10">
         <div className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-fg-subtle)]">
-          Error
+          {t("errors.error_boundary.eyebrow")}
         </div>
         <h1 className="mt-3 font-[family-name:var(--font-display)] text-3xl font-extrabold tracking-[-0.02em] md:text-4xl">
-          Something went wrong
+          {t("errors.error_boundary.title")}
         </h1>
         <p className="mt-3 text-sm text-[var(--color-fg-muted)]">
-          We hit an unexpected hiccup while rendering this page. You can try
-          again — if it keeps happening, please come back in a minute.
+          {t("errors.error_boundary.body")}
         </p>
 
         {isDev && error.message ? (
@@ -47,7 +50,7 @@ export default function Error({
             onClick={() => reset()}
             className="inline-flex items-center justify-center gap-2 rounded-full bg-[var(--color-fg)] px-4 py-2 text-sm font-semibold text-[var(--color-bg)] shadow-sm transition hover:opacity-90"
           >
-            Try again
+            {t("errors.error_boundary.try_again")}
           </button>
         </div>
       </div>

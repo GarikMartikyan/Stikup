@@ -15,16 +15,6 @@ type PackSummary = {
   stickers: { index: number; url: string }[];
 };
 
-function formatDate(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  return d.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
-}
-
 export default async function MyStickersPage() {
   const session = await requireSession();
 
@@ -34,7 +24,7 @@ export default async function MyStickersPage() {
 
   const packs: DashboardPack[] = summaries.map((p) => ({
     id: p.id,
-    createdAtLabel: formatDate(p.createdAt),
+    createdAt: p.createdAt,
     status: p.status,
     unlocked: p.unlocked,
     freeCount: p.freeCount,

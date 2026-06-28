@@ -91,7 +91,6 @@ export function PackActions({ packId, packSize, unlocked, locked: lockedInitial,
 
   const handleUnlock = useCallback(async () => {
     if (unlocked || unlockBusy) return;
-    fireSound("tap");
     setUnlockBusy(true);
 
     try {
@@ -149,7 +148,6 @@ export function PackActions({ packId, packSize, unlocked, locked: lockedInitial,
 
   const handleRegenerate = useCallback(async () => {
     if (regenBusy) return;
-    fireSound("tap");
     setRegenBusy(true);
     // Best-effort DELETE — ignore failure, user wants to start over.
     await fetch(`/api/packs/${encodeURIComponent(packId)}`, {
@@ -171,7 +169,7 @@ export function PackActions({ packId, packSize, unlocked, locked: lockedInitial,
         ) : (
           <button
             type="button"
-            onClick={() => { fireSound("tap"); setShowInviteModal(true); }}
+            onClick={() => setShowInviteModal(true)}
             className="shimmer inline-flex items-center gap-2 overflow-hidden rounded-full bg-gradient-to-r from-[var(--color-brand)] via-[#ff5e72] to-[var(--color-brand-2)] px-5 py-2 text-sm font-bold text-white shadow-[0_8px_24px_-8px_rgba(224,52,154,0.55)] transition hover:-translate-y-0.5"
           >
             <Unlock className="h-4 w-4" strokeWidth={2.2} />
@@ -182,7 +180,7 @@ export function PackActions({ packId, packSize, unlocked, locked: lockedInitial,
         {/* Get stickers */}
         <button
           type="button"
-          onClick={() => { fireSound("tap"); setShowModal(true); }}
+          onClick={() => setShowModal(true)}
           className="inline-flex items-center gap-2 rounded-full border border-[var(--color-border-strong)] bg-[var(--color-bg-elev)] px-5 py-2 text-sm font-semibold text-[var(--color-fg)] transition hover:-translate-y-0.5 hover:border-[var(--color-brand)] hover:text-[var(--color-brand)]"
         >
           <Download className="h-4 w-4" strokeWidth={2.2} />

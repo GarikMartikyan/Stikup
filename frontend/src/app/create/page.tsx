@@ -25,7 +25,6 @@ export default function CreatePage() {
   const prompt = buildPrompt(selectedStyle);
 
   const handleCopy = async () => {
-    fireSound("tap");
     // Flip hasInteracted FIRST so the "Continue" step reveals even if the
     // clipboard write is blocked (insecure context / denied permission) — the
     // prompt is still reachable via the ChatGPT ?q= pre-fill, so the user must

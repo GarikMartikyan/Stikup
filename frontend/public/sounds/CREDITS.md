@@ -8,7 +8,7 @@ standalone download.
 
 | File         | Mixkit sound                     | Mixkit ID |
 | ------------ | -------------------------------- | --------- |
-| tap.mp3      | "Cool interface click tone"      | 2568      |
+| tap.mp3      | "Long pop"                       | 2358      |
 | success.mp3  | "Fantasy game success notification" | 270    |
 | unlock.mp3   | "Unlock game notification"       | 253       |
 | error.mp3    | "Negative tone interface tap"    | 2569      |

@@ -1,0 +1,42 @@
+"use client";
+
+import { useEffect } from "react";
+
+import { fireSound } from "@/lib/sound";
+
+/**
+ * Plays the universal "tap" sound on EVERY button press, app-wide, so every
+ * `<button>` (and `role="button"`) shares one consistent click sound without
+ * each call site having to opt in.
+ *
+ * Implemented as a single capture-phase listener on `document`: capture runs
+ * before the target's own handlers, so the tap fires even when a handler calls
+ * `stopPropagation()` in the bubble phase, and it automatically covers buttons
+ * rendered later (modals, dynamic lists). Playback is gated by the user's sound
+ * preference inside `fireSound()`.
+ *
+ * Links (`<a>`) are intentionally NOT matched — navigation/text links stay
+ * silent; only buttons tap.
+ */
+export function SoundClickListener() {
+  useEffect(() => {
+    function onClick(e: MouseEvent) {
+      const target = e.target as Element | null;
+      const el = target?.closest?.('button, [role="button"]');
+      if (!el) return;
+      // Don't sound a press that can't do anything.
+      if (
+        el.hasAttribute("disabled") ||
+        el.getAttribute("aria-disabled") === "true"
+      ) {
+        return;
+      }
+      fireSound("tap");
+    }
+
+    document.addEventListener("click", onClick, true);
+    return () => document.removeEventListener("click", onClick, true);
+  }, []);
+
+  return null;
+}

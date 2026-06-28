@@ -75,7 +75,6 @@ export default function UploadPage() {
 
   const submit = useCallback(async () => {
     if (state.kind !== "ready") return;
-    fireSound("tap");
     const file = state.file;
 
     // Web (outside Telegram): don't generate — funnel the user into Telegram.

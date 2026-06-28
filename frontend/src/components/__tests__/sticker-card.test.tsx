@@ -16,11 +16,16 @@ describe("StickerCard", () => {
     expect(img.getAttribute("src")).not.toContain("/_next/image");
   });
 
-  it("does not emit the real image for a locked sticker (renders a placeholder)", () => {
-    render(
+  it("shows a locked sticker's real artwork with a corner lock badge", () => {
+    const { container } = render(
       <StickerCard src="/api/static/packs/abc/sticker_5.webp" alt="s5" locked />,
     );
-    expect(screen.queryByAltText("s5")).toBeNull();
+    // Full reveal: the owner previews their own locked artwork (bytes are
+    // owner-gated server-side), so the real image is rendered, unoptimized.
+    const img = screen.getByAltText("s5") as HTMLImageElement;
+    expect(img.getAttribute("src")).toBe("/api/static/packs/abc/sticker_5.webp");
+    // A lock badge (the only inline SVG StickerCard renders) marks it locked.
+    expect(container.querySelector("svg")).not.toBeNull();
   });
 
   it("still routes local/bundled images through the optimizer", () => {

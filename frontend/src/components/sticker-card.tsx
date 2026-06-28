@@ -50,32 +50,31 @@ export function StickerCard({
           locked ? "" : "group-hover:-translate-y-1 group-hover:scale-[1.04]"
         }`}
       >
-        {locked ? (
-          // Locked stickers must never be fetched: the backend gates their bytes
-          // (StickerFileController) and we render a placeholder instead of the
-          // real image, so the browser never even requests the locked artwork.
-          <div className="flex h-full w-full items-center justify-center rounded-[18%] bg-gradient-to-br from-[var(--color-bg-sunk)] to-[var(--color-border)]">
-            <Lock
-              className="h-1/4 w-1/4 text-[var(--color-fg-muted)]"
-              strokeWidth={2}
-            />
-          </div>
-        ) : (
-          <Image
-            src={src}
-            alt={alt}
-            width={size}
-            height={size}
-            className="h-full w-full object-contain p-2"
-            draggable={false}
-            // Backend-served images (/api/static/packs/...) are auth-gated and
-            // already-optimized webp; they MUST bypass Next's image optimizer,
-            // which fetches them server-side WITHOUT the user's session cookie
-            // (→ 401, broken image). A same-origin <img> sends the cookie.
-            unoptimized={unoptimized || src.startsWith("/api/")}
-          />
-        )}
+        <Image
+          src={src}
+          alt={alt}
+          width={size}
+          height={size}
+          className="h-full w-full object-contain p-2"
+          draggable={false}
+          // Backend-served images (/api/static/packs/...) are auth-gated and
+          // already-optimized webp; they MUST bypass Next's image optimizer,
+          // which fetches them server-side WITHOUT the user's session cookie
+          // (→ 401, broken image). A same-origin <img> sends the cookie.
+          unoptimized={unoptimized || src.startsWith("/api/")}
+        />
       </div>
+      {/* Locked stickers are shown in full (the owner can preview their own
+          artwork); the corner badge marks them as locked until the per-pack
+          referral unlock delivers them to Telegram. */}
+      {locked && (
+        <div
+          aria-hidden
+          className="absolute -top-1 -right-1 z-10 grid h-6 w-6 place-items-center rounded-full bg-[var(--color-fg)] text-[var(--color-bg)] shadow-md"
+        >
+          <Lock className="h-3 w-3" strokeWidth={2.5} />
+        </div>
+      )}
     </div>
   );
 }

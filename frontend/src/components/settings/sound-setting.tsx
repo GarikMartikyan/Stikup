@@ -43,7 +43,7 @@ export function SoundSetting() {
         <button
           type="button"
           role="switch"
-          aria-checked={mounted && enabled}
+          aria-checked={isOn}
           aria-label={t("settings.sound.switch_aria")}
           suppressHydrationWarning
           onClick={handleClick}
